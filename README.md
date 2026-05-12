@@ -132,6 +132,7 @@ ALLOWED_ORIGIN=http://localhost:3001
 
 ARK_API_KEY=
 DEEPSEEK_API_KEY=
+DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
 
 XI_XU_API_BASE_URL=https://api.xi-xu.me
 XI_XU_API_KEY=

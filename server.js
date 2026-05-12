@@ -226,6 +226,8 @@ function getRequiredEnv(name) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+const DEEPSEEK_TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-v4-pro';
+
 function buildXiXuUrl(pathname) {
   const baseUrl = (process.env.XI_XU_API_BASE_URL || 'https://api.xi-xu.me').replace(/\/+$/, '');
   if (baseUrl.endsWith('/v1') && pathname.startsWith('/v1/')) {
@@ -853,7 +855,7 @@ app.post('/generate-copy', copyLimiter, authMiddleware, async (req, res) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: DEEPSEEK_TEXT_MODEL,
         messages: [
           { role: 'system', content: fullPrompt },
           { role: 'user', content: `主题：${topic}` }
@@ -930,7 +932,7 @@ app.post('/rewrite', copyLimiter, authMiddleware, async (req, res) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: DEEPSEEK_TEXT_MODEL,
         messages: [
           { role: 'system', content: REWRITE_SYSTEM },
           { role: 'user', content: REWRITE_STYLE_PROMPTS[style] || REWRITE_STYLE_PROMPTS['原创改写'] }
@@ -1028,7 +1030,7 @@ app.post('/generate-both', imageLimiter, authMiddleware, async (req, res) => {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'deepseek-chat',
+            model: DEEPSEEK_TEXT_MODEL,
             messages: [
               { role: 'system', content: '你是小红书爆款内容专家。' },
               { role: 'user', content: COPY_SYSTEM }
