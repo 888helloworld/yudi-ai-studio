@@ -67,6 +67,7 @@ const PUBLIC_FILES = new Set([
   'privacy.html',
   'terms.html',
   'content-policy.html',
+  'image-studio.html',
   'xi-image.html',
   'favicon.svg',
   'favicon.ico',

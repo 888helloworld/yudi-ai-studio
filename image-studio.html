@@ -1,0 +1,2516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>gpt-image-2 生图 - 御弟哥哥</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+  <link rel="shortcut icon" href="/favicon.ico?v=2">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body .container{width:min(1760px,calc(100% - 40px));padding-top:48px}
+    body .user-bar{width:min(1760px,calc(100% - 40px))}
+    .xi-workspace{display:grid;grid-template-columns:minmax(620px,700px) minmax(680px,1fr);gap:22px;align-items:start}
+    .xi-left-column,.xi-right-column{display:grid;gap:20px;align-items:start}
+    .xi-control-grid{display:grid;grid-template-columns:.78fr 1fr 1fr 1.15fr;gap:10px;align-items:start}
+    .xi-control-grid + .generate-btn{margin-top:16px}
+    .xi-control-grid .form-group{margin-bottom:0}
+    .xi-control-grid input{padding:9px 10px;font-size:13px}
+    .xi-control-grid label{font-size:12px;margin-bottom:6px}
+    .xi-control-grid .field-hint{font-size:11px;line-height:1.45;margin-top:5px}
+    .xi-action-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .xi-action-row .generate-btn{min-height:48px}
+    .xi-action-row .generate-btn.secondary{background:var(--bg-surface);border:1px solid var(--border-light);box-shadow:none;color:var(--text-primary)}
+    .xi-action-row .generate-btn.secondary:hover{border-color:var(--neon-cyan);box-shadow:0 8px 28px rgba(0,240,255,0.12)}
+    .xi-status{min-height:22px;color:var(--text-muted);font-size:13px;line-height:1.5;margin-top:12px}
+    .xi-status.ok{color:var(--neon-green)}
+    .xi-status.error{color:var(--neon-red)}
+    .field-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+    .field-label-row label{margin:0}
+    .xi-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:12px}
+    .xi-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;text-align:center}
+    .xi-stat strong{display:block;font-size:18px;font-weight:900;color:var(--neon-cyan);line-height:1}
+    .xi-stat span{display:block;margin-top:4px;color:var(--text-muted);font-size:11px}
+    .param-help{margin:-4px 0 18px;padding:14px;border:1px solid rgba(0,240,255,0.14);border-radius:var(--radius-md);background:rgba(0,240,255,0.045)}
+    .param-help-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--text-primary);font-size:13px;font-weight:800}
+    .param-help-total{color:var(--neon-cyan);white-space:nowrap}
+    .param-help p{color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0}
+    .param-help p+p{margin-top:4px}
+    .xi-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .xi-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .xi-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0;flex-wrap:wrap}
+    .xi-pager-left,.xi-pager-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .xi-pager label{color:var(--text-muted);font-size:12px;font-weight:700}
+    .xi-pager select{width:auto;min-width:82px;padding:7px 28px 7px 10px;border-radius:var(--radius-sm);font-size:13px}
+    .xi-page-info{color:var(--text-muted);font-size:12px}
+    .xi-small-btn{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:700;transition:var(--base)}
+    .xi-small-btn:hover{border-color:var(--neon-pink);color:var(--neon-pink)}
+    .xi-small-btn.danger{border-color:rgba(239,68,68,0.3);color:var(--neon-red)}
+    .xi-small-btn.danger:hover{background:rgba(239,68,68,0.08)}
+    .xi-record-panel{padding:20px}
+    .xi-record-panel .section-heading h2{font-size:16px;margin-bottom:3px}
+    .xi-record-panel .section-heading p{font-size:12px;line-height:1.4}
+    .xi-task-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+    .xi-task-card .task-body{display:flex;flex-direction:column;gap:12px}
+    .task-close{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-surface);color:var(--text-muted);font-size:18px;line-height:1;transition:var(--fast)}
+    .task-close:hover{background:var(--neon-red);color:#fff}
+    .xi-source-preview{position:relative;width:100%;display:grid;place-items:center;z-index:3}
+    .xi-source-preview img{width:62px;height:62px;border-radius:var(--radius-sm);display:block;object-fit:cover;border:1px solid var(--border);cursor:zoom-in;transition:var(--base)}
+    .xi-source-preview img:hover{border-color:var(--neon-cyan);filter:brightness(1.08)}
+    .xi-source-preview img[draggable="true"]{cursor:grab}
+    .xi-source-slot.dragging{opacity:.6}
+    .xi-source-preview .remove-ref{top:-6px;right:-6px;width:20px;height:20px;font-size:13px;z-index:5}
+    .xi-source-name{display:none}
+    .xi-source-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .xi-source-slot{min-height:40px;padding:8px}
+    .xi-source-slot input[type="file"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:0;cursor:pointer;z-index:2}
+    .xi-source-slot.has-source input[type="file"]{pointer-events:none}
+    .xi-source-grid.paste-ready .xi-source-slot:not(.has-source){border-color:var(--neon-cyan);box-shadow:0 0 0 1px rgba(0,240,255,0.18),var(--shadow-glow)}
+    #reverseDropZone.paste-ready{border-color:var(--neon-cyan);box-shadow:0 0 0 1px rgba(0,240,255,0.18),var(--shadow-glow)}
+    .xi-source-slot .drop-hint{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}
+    .xi-source-slot .drop-hint p{font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .xi-source-slot .upload-icon{width:18px;height:18px;margin:0;font-size:14px;flex:0 0 auto}
+    .xi-source-thumb{display:grid;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);min-width:0;overflow:hidden}
+    .xi-source-thumb-header{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--text-muted);font-size:12px}
+    .xi-source-thumb-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .xi-source-thumb-actions .xi-small-btn{padding:5px 8px;font-size:11px}
+    .xi-source-thumb-nav{display:flex;gap:6px;flex-shrink:0}
+    .xi-source-thumb-nav button{width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);font-size:14px;line-height:1;transition:var(--base)}
+    .xi-source-thumb-nav button:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+    .xi-source-scroll{display:flex;gap:8px;overflow:hidden;scroll-behavior:smooth;min-width:0}
+    .xi-source-scroll img{width:58px;height:58px;border-radius:var(--radius-sm);object-fit:cover;flex:0 0 auto;border:1px solid var(--border);background:var(--bg-surface);cursor:zoom-in;transition:var(--base)}
+    .xi-source-scroll img:hover{border-color:var(--neon-cyan);transform:translateY(-1px)}
+    .xi-source-name-chip{flex:0 0 auto;max-width:140px;min-height:58px;display:flex;align-items:center;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-muted);font-size:12px;line-height:1.4;word-break:break-all;background:var(--bg-surface)}
+    .xi-task-meta{display:block;color:var(--text-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .xi-duration{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid rgba(0,240,255,0.16);border-radius:var(--radius-sm);background:rgba(0,240,255,0.055);color:var(--text-secondary);font-size:12px;font-weight:800}
+    .xi-duration strong{color:var(--neon-cyan);font-size:13px}
+    .task-duration-inline{color:var(--neon-cyan);font-size:11px;font-weight:800;white-space:nowrap}
+    .xi-task-prompt{color:var(--text-secondary);font-size:13px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .xi-task-prompt.expanded{display:block;max-height:none;overflow:visible;white-space:pre-wrap;word-break:break-word;padding-right:4px}
+    .xi-prompt-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:-6px}
+    .prompt-toggle{align-self:flex-start;margin-top:-6px;padding:4px 0;color:var(--neon-cyan);font-size:12px;font-weight:800}
+    .xi-prompt-tools .prompt-toggle{margin-top:0}
+    .prompt-toggle:hover{color:var(--neon-pink)}
+    .xi-image-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+    .xi-image-card{position:relative;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+    .xi-image-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:zoom-in;transition:var(--base)}
+    .xi-image-card:hover img{transform:scale(1.03);filter:brightness(1.08)}
+    .xi-image-card a{position:absolute;right:8px;bottom:8px;padding:5px 8px;border-radius:var(--radius-sm);background:rgba(10,14,23,0.78);border:1px solid rgba(255,255,255,0.12);color:var(--text-primary);font-size:12px;font-weight:700}
+    .preview-overlay{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(10,14,23,0.86);backdrop-filter:blur(14px)}
+    .preview-overlay.show{display:flex}
+    .preview-modal{width:min(1040px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden}
+    .preview-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary)}
+    .preview-title{font-size:14px;font-weight:800;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .preview-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .preview-actions a,.preview-actions button{padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);font-size:13px;font-weight:800;transition:var(--base)}
+    .preview-actions a:hover,.preview-actions button:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+    .preview-actions .close-preview:hover{border-color:var(--neon-red);color:#fff;background:var(--neon-red)}
+    .preview-body{min-height:0;display:flex;align-items:center;justify-content:center;padding:18px;background:var(--bg-input)}
+    .preview-body img{max-width:100%;max-height:calc(100vh - 190px);object-fit:contain;border-radius:var(--radius-sm);box-shadow:var(--shadow-md)}
+    .preview-footer{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg-secondary)}
+    .preview-edit-btn{padding:10px 16px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;font-size:13px;font-weight:800;box-shadow:0 4px 14px rgba(255,45,120,.22)}
+    .preview-edit-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(255,45,120,.32)}
+    .prompt-preview-body{display:grid;gap:14px;padding:18px;overflow:auto;background:var(--bg-input)}
+    .xi-empty{min-height:260px;border:1px dashed var(--border-light);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);background:rgba(255,255,255,0.02);padding:28px;line-height:1.7}
+    .quality-selector{display:flex;flex-wrap:nowrap;gap:6px}
+    .quality-btn{flex:1;min-width:0;text-align:center;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;padding:8px 8px;cursor:pointer;transition:var(--base)}
+    .quality-btn:hover{border-color:rgba(0,240,255,0.35);color:var(--neon-cyan);background:rgba(0,240,255,0.05)}
+    .quality-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);font-weight:800}
+    .quality-price{display:block;margin-top:3px;color:var(--text-muted);font-size:10px;font-weight:700;line-height:1}
+    .quality-btn.active .quality-price{color:var(--neon-cyan)}
+    .reverse-layout{display:grid;gap:20px;align-items:start}
+    #reverseDropZone{min-height:118px;padding:14px}
+    #reverseDropHint{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+    .reverse-preview{position:relative;width:100%}
+    .reverse-preview img{max-width:100%;max-height:132px;border-radius:var(--radius-sm);display:block;margin:0 auto}
+    .reverse-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .reverse-template-btn{min-height:38px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:800;text-align:center;transition:var(--base)}
+    .reverse-template-btn:hover{border-color:rgba(0,240,255,0.35);color:var(--neon-cyan);background:rgba(0,240,255,0.05)}
+    .reverse-template-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);box-shadow:0 0 0 1px rgba(0,240,255,0.12)}
+    .reverse-file-name{margin-top:8px;color:var(--text-muted);font-size:12px;text-align:center;word-break:break-all}
+    .reverse-status{min-height:22px;margin-top:12px;color:var(--text-muted);font-size:13px;line-height:1.5}
+    .reverse-status.ok{color:var(--neon-green)}
+    .reverse-status.error{color:var(--neon-red)}
+    .reverse-result{display:grid;gap:16px}
+    .reverse-history{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+    .reverse-history-card{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);padding:12px;display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;align-items:start}
+    .reverse-history-thumb{width:58px;height:58px;border-radius:var(--radius-sm);object-fit:cover;background:var(--bg-input);border:1px solid var(--border)}
+    img.reverse-history-thumb{cursor:zoom-in;transition:var(--base)}
+    img.reverse-history-thumb:hover{border-color:var(--neon-cyan);filter:brightness(1.08)}
+    .reverse-history-thumb.placeholder{display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:20px}
+    .reverse-history-info{display:grid;gap:8px;min-width:0}
+    .reverse-history-card h4{margin:0;color:var(--text-primary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .reverse-history-card p{margin:0;color:var(--text-muted);font-size:12px;line-height:1.5}
+    .reverse-history-summary{margin:0;color:var(--text-secondary);font-size:12px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word}
+    .reverse-history-card button{justify-self:start}
+    .reverse-prompt-btn{min-height:32px;padding:8px 14px;border-color:rgba(0,240,255,0.28);background:rgba(0,240,255,0.08);color:var(--neon-cyan);font-size:13px;font-weight:900}
+    .reverse-prompt-btn:hover{border-color:var(--neon-cyan);background:rgba(0,240,255,0.14);color:#fff}
+    .prompt-block{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
+    .prompt-block-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
+    .prompt-block-header h3{font-size:14px;font-weight:800;margin:0}
+    .copy-btn{padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:12px;font-weight:800;transition:var(--base)}
+    .copy-btn:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+    .prompt-content{padding:14px;color:var(--text-primary);font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
+    .prompt-content.muted{color:var(--text-secondary)}
+    .prompt-block-actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 14px}
+    .prompt-use-btn{padding:9px 14px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;font-size:13px;font-weight:800;box-shadow:0 4px 14px rgba(255,45,120,.22)}
+    .prompt-use-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(255,45,120,.32)}
+    .keyword-row{display:flex;gap:8px;flex-wrap:wrap;padding:14px}
+    .keyword-chip{padding:6px 10px;border-radius:999px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.16);color:var(--neon-cyan);font-size:12px;font-weight:700}
+    .reverse-empty{min-height:320px;border:1px dashed var(--border-light);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);background:rgba(255,255,255,0.02);padding:28px;line-height:1.8}
+    .reverse-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+    .reverse-meta .xi-stat{text-align:left}
+    .login-overlay{display:none}
+    .login-overlay.show{display:flex}
+    body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:16px auto 0;z-index:10}
+    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(480px,560px) minmax(520px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <nav class="user-bar" id="userBar">
+    <div class="brand-mini">御弟哥哥 · gpt-image-2 生图</div>
+    <div class="user-info">
+      <span class="user-name" id="navUsername"></span>
+      <span class="user-points" id="navPoints">0 积分</span>
+      <div class="user-actions">
+        <a href="/">返回首页</a>
+        <a href="profile.html">个人中心</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-prompt login-overlay" id="loginPrompt">
+    <div class="login-prompt-content">
+      <div class="eyebrow">需要登录</div>
+      <h2>登录后开始创作</h2>
+      <p>你的作品和记录会保存在账号里，换设备也能继续查看。</p>
+      <div class="login-prompt-buttons">
+        <a href="login.html" class="btn-login">去登录</a>
+        <a href="register.html" class="btn-register">注册账号</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="preview-overlay" id="imagePreview" aria-hidden="true">
+    <div class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+      <div class="preview-header">
+        <div class="preview-title" id="previewTitle">图片预览</div>
+        <div class="preview-actions">
+          <a id="previewDownload" href="#" download="xi_xu_image.png">下载图片</a>
+          <a id="previewOpen" href="#" target="_blank" rel="noopener">打开原图</a>
+          <button class="close-preview" id="previewClose" type="button">关闭</button>
+        </div>
+      </div>
+      <div class="preview-body">
+        <img id="previewImage" src="" alt="生成图片预览">
+      </div>
+      <div class="preview-footer">
+        <button class="preview-edit-btn" id="previewEditBtn" type="button">用这张改图</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="preview-overlay" id="promptPreview" aria-hidden="true">
+    <div class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="promptPreviewTitle">
+      <div class="preview-header">
+        <div class="preview-title" id="promptPreviewTitle">Prompt 结果</div>
+        <div class="preview-actions">
+          <button class="close-preview" id="promptPreviewClose" type="button">关闭</button>
+        </div>
+      </div>
+      <div class="prompt-preview-body" id="promptPreviewBody"></div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="xi-workspace">
+      <div class="xi-left-column">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="header-icon">🖼</div>
+          <div>
+            <h2>画面工坊</h2>
+            <p>把脑海里的光影、人物与气氛，慢慢写成一张画。</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="field-label-row">
+            <label for="prompt">图片描述</label>
+            <button class="xi-small-btn" id="clearPromptBtn" type="button">清空描述</button>
+          </div>
+          <textarea id="prompt" rows="8" placeholder="例如：雨后的窗边，一束柔光落在旧木桌上，咖啡仍有热气，翻开的书页停在风里，画面安静、真实、带一点温柔的颗粒感。"></textarea>
+        </div>
+
+        <div class="form-group">
+          <div class="field-label-row">
+            <label>参考图（可选）</label>
+            <button class="xi-small-btn" id="clearSourcesBtn" type="button">清空参考图</button>
+          </div>
+          <div class="xi-source-grid" id="sourceGrid">
+            <div class="drop-zone xi-source-slot" data-source-slot="0">
+              <input type="file" class="source-image-input" accept="image/*">
+              <div class="drop-hint">
+                <div class="upload-icon">+</div>
+                <p>图1</p>
+              </div>
+              <div class="xi-source-preview"></div>
+            </div>
+            <div class="drop-zone xi-source-slot" data-source-slot="1">
+              <input type="file" class="source-image-input" accept="image/*">
+              <div class="drop-hint">
+                <div class="upload-icon">+</div>
+                <p>图2</p>
+              </div>
+              <div class="xi-source-preview"></div>
+            </div>
+            <div class="drop-zone xi-source-slot" data-source-slot="2">
+              <input type="file" class="source-image-input" accept="image/*">
+              <div class="drop-hint">
+                <div class="upload-icon">+</div>
+                <p>图3</p>
+              </div>
+              <div class="xi-source-preview"></div>
+            </div>
+            <div class="drop-zone xi-source-slot" data-source-slot="3">
+              <input type="file" class="source-image-input" accept="image/*">
+              <div class="drop-hint">
+                <div class="upload-icon">+</div>
+                <p>图4</p>
+              </div>
+              <div class="xi-source-preview"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>图片尺寸</label>
+          <div class="ratio-selector" id="sizeSelector">
+          <div class="ratio-btn" data-size="1024x1024">1:1 方形 · 1024×1024</div>
+          <div class="ratio-btn active" data-size="1024x1536">2:3 竖图 · 1024×1536</div>
+            <div class="ratio-btn" data-size="1536x1024">3:2 横图 · 1536×1024</div>
+          </div>
+        </div>
+
+        <div class="xi-control-grid">
+          <div class="form-group">
+            <label for="count">每组出图</label>
+            <input type="number" id="count" min="1" max="1" value="1" disabled>
+            <div class="field-hint">每组固定 1 张。</div>
+          </div>
+
+          <div class="form-group">
+            <label for="batchCount">出图组数</label>
+            <input type="number" id="batchCount" min="1" max="1000" value="1">
+            <div class="field-hint">要几版就填几组。</div>
+          </div>
+
+          <div class="form-group">
+            <label for="parallelism">同时开跑</label>
+            <input type="number" id="parallelism" min="1" value="10">
+            <div class="field-hint">一次同时跑几组，不设上限。</div>
+          </div>
+
+          <div class="form-group">
+            <label>质量</label>
+            <div class="quality-selector" id="qualitySelector">
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.009</span></div>
+              <div class="quality-btn active" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.034</span></div>
+              <div class="quality-btn" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.133</span></div>
+            </div>
+          </div>
+        </div>
+
+        <button id="generateBtn" class="generate-btn" type="button"><span>开始出图</span></button>
+        <div id="status" class="xi-status"></div>
+      </section>
+
+      <section class="panel" id="reversePrompt">
+        <div class="panel-header">
+          <div class="header-icon">⌕</div>
+          <div>
+            <h2>看图写 Prompt</h2>
+            <p>上传喜欢的图，提炼成可复用的绘图提示词</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>上传图片</label>
+          <div class="drop-zone" id="reverseDropZone">
+            <input type="file" id="reverseImageInput" accept="image/*">
+            <div class="drop-hint" id="reverseDropHint">
+              <div class="upload-icon">+</div>
+              <p>拖拽、粘贴图片到此处或点击上传</p>
+            </div>
+            <div class="reverse-preview" id="reversePreview"></div>
+          </div>
+          <div class="field-hint">支持 PNG/JPG/WebP，单图最大 5MB。可以连续加入多张图，不用等上一张识别完。</div>
+        </div>
+
+        <div class="form-group">
+          <label>反推模板</label>
+          <div class="reverse-template-grid" id="reverseTemplateGrid">
+            <button class="reverse-template-btn active" type="button" data-reverse-mode="general">通用拆解</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="amazon">亚马逊主图</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="outfit">模特穿搭</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="style-only">只取风格</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="structured">精准拆图</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="tabi-socks">足袋袜主图</button>
+          </div>
+          <div class="field-hint" id="reverseTemplateHint">按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。</div>
+        </div>
+
+        <button class="generate-btn" id="reverseBtn" type="button" disabled><span>加入识图</span></button>
+        <div id="reverseStatus" class="reverse-status"></div>
+        <div class="reverse-history" id="reverseHistory"></div>
+        <div class="xi-pager" id="reversePager" style="display:none;">
+          <div class="xi-pager-left">
+            <label>反推记录</label>
+            <span class="xi-page-info" id="reversePageInfo">第 1 / 1 页</span>
+          </div>
+          <div class="xi-pager-right">
+            <button class="xi-small-btn" id="reversePrevPage" type="button">上一页</button>
+            <button class="xi-small-btn" id="reverseNextPage" type="button">下一页</button>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <div class="xi-right-column">
+      <section class="section-block xi-record-panel" style="margin-top:0;">
+        <div class="xi-toolbar">
+          <div class="section-heading">
+        <h2>生成记录</h2>
+        <p>查看进度、预览结果和下载图片</p>
+          </div>
+          <div class="xi-toolbar-actions">
+            <button class="xi-small-btn" id="reloadHistoryBtn" type="button">刷新历史</button>
+            <button class="xi-small-btn danger" id="clearQueuedBtn" type="button">清空排队</button>
+          </div>
+        </div>
+
+        <div class="xi-stats">
+          <div class="xi-stat"><strong id="statQueued">0</strong><span>排队</span></div>
+          <div class="xi-stat"><strong id="statRunning">0</strong><span>运行</span></div>
+          <div class="xi-stat"><strong id="statDone">0</strong><span>完成</span></div>
+          <div class="xi-stat"><strong id="statTotal">0</strong><span>总记录</span></div>
+          <div class="xi-stat"><strong id="statImages">0</strong><span>图片</span></div>
+          <div class="xi-stat"><strong id="statFailed">0</strong><span>失败</span></div>
+          <div class="xi-stat"><strong id="statConcurrency">10</strong><span>同时开跑</span></div>
+        </div>
+
+        <div id="empty" class="xi-empty">还没有作品。写一句画面描述，点“开始出图”，这里就会出现你的生成结果。</div>
+        <div id="taskList" class="xi-task-list"></div>
+
+        <div class="xi-pager" id="taskPager" style="display:none;">
+          <div class="xi-pager-left">
+            <label for="taskPageSize">每页显示</label>
+            <select id="taskPageSize">
+              <option value="12">12 条</option>
+              <option value="20">20 条</option>
+              <option value="50" selected>50 条</option>
+              <option value="100">100 条</option>
+            </select>
+          </div>
+          <div class="xi-pager-right">
+            <button class="xi-small-btn" id="taskPrevPage" type="button">上一页</button>
+            <span class="xi-page-info" id="taskPageInfo">第 1 / 1 页</span>
+            <button class="xi-small-btn" id="taskNextPage" type="button">下一页</button>
+          </div>
+        </div>
+
+      </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const promptEl = document.getElementById('prompt');
+    const sourceGrid = document.getElementById('sourceGrid');
+    const sourceSlots = Array.from(document.querySelectorAll('[data-source-slot]'));
+    const countEl = document.getElementById('count');
+    const batchCountEl = document.getElementById('batchCount');
+    const parallelismEl = document.getElementById('parallelism');
+    const estimateTotalEl = document.getElementById('estimateTotal');
+    const statusEl = document.getElementById('status');
+    const emptyEl = document.getElementById('empty');
+    const taskListEl = document.getElementById('taskList');
+    const taskPagerEl = document.getElementById('taskPager');
+    const taskPageSizeEl = document.getElementById('taskPageSize');
+    const taskPrevPageBtn = document.getElementById('taskPrevPage');
+    const taskNextPageBtn = document.getElementById('taskNextPage');
+    const taskPageInfoEl = document.getElementById('taskPageInfo');
+    const qualityPriceEls = Array.from(document.querySelectorAll('[data-price-quality]'));
+    const generateBtn = document.getElementById('generateBtn');
+    const clearPromptBtn = document.getElementById('clearPromptBtn');
+    const clearSourcesBtn = document.getElementById('clearSourcesBtn');
+    const reloadHistoryBtn = document.getElementById('reloadHistoryBtn');
+    const clearQueuedBtn = document.getElementById('clearQueuedBtn');
+    const previewOverlay = document.getElementById('imagePreview');
+    const previewImage = document.getElementById('previewImage');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewDownload = document.getElementById('previewDownload');
+    const previewOpen = document.getElementById('previewOpen');
+    const previewClose = document.getElementById('previewClose');
+    const previewEditBtn = document.getElementById('previewEditBtn');
+    const promptPreviewOverlay = document.getElementById('promptPreview');
+    const promptPreviewTitle = document.getElementById('promptPreviewTitle');
+    const promptPreviewBody = document.getElementById('promptPreviewBody');
+    const promptPreviewClose = document.getElementById('promptPreviewClose');
+    const reverseImageInput = document.getElementById('reverseImageInput');
+    const reverseDropZone = document.getElementById('reverseDropZone');
+    const reverseDropHint = document.getElementById('reverseDropHint');
+    const reversePreview = document.getElementById('reversePreview');
+    const reverseBtn = document.getElementById('reverseBtn');
+    const reverseStatusEl = document.getElementById('reverseStatus');
+    const reverseHistoryEl = document.getElementById('reverseHistory');
+    const reversePagerEl = document.getElementById('reversePager');
+    const reversePageInfoEl = document.getElementById('reversePageInfo');
+    const reversePrevPageBtn = document.getElementById('reversePrevPage');
+    const reverseNextPageBtn = document.getElementById('reverseNextPage');
+    const reverseTemplateGrid = document.getElementById('reverseTemplateGrid');
+    const reverseTemplateHint = document.getElementById('reverseTemplateHint');
+    const MAX_BATCH_COUNT = 1000;
+    const MAX_PARALLELISM = Number.MAX_SAFE_INTEGER;
+    const DEFAULT_SIZE = '1024x1536';
+    const DEFAULT_QUALITY = 'medium';
+    const DEFAULT_BATCH_COUNT = 1;
+    const DEFAULT_PARALLELISM = 10;
+    const IMAGE_PRICE_MAP = {
+      low: { '1024x1024': '$0.009', '1024x1536': '$0.013', '1536x1024': '$0.013' },
+      medium: { '1024x1024': '$0.034', '1024x1536': '$0.050', '1536x1024': '$0.050' },
+      high: { '1024x1024': '$0.133', '1024x1536': '$0.200', '1536x1024': '$0.200' }
+    };
+    const REVERSE_TEMPLATE_HINTS = {
+      general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
+      amazon: '适合袜子、足袋袜、抹布、家居类产品主图，重点输出专业棚拍和亚马逊白底主图提示词。',
+      outfit: '适合模特穿搭、电商场景图，重点拆解姿势、腿部动作、袜子纹理、日系氛围和白底主图要求。',
+      'style-only': '只提取风格、构图、光线、色彩和商业摄影感觉，不复制人物、品牌、logo 或独特设计。',
+      structured: '按主体、背景、构图、镜头、光线、颜色、材质、风格、细节和画质关键词结构化拆图。',
+      'tabi-socks': '足袋袜主图专用，强调分趾结构、罗纹织物、脚部穿着效果、纯白背景和亚马逊主图限制。'
+    };
+    let reverseSelectedFile = null;
+    let reversePreviewUrl = '';
+    let currentPreviewImage = null;
+
+    const state = {
+      tasks: [],
+      queue: [],
+      running: 0,
+      finished: 0,
+      failed: 0,
+      images: 0,
+      taskSeq: 0,
+      selectedSize: DEFAULT_SIZE,
+      quality: DEFAULT_QUALITY,
+      reverseMode: 'general',
+      sourceFiles: [null, null, null, null],
+      sourcePreviewUrls: ['', '', '', ''],
+      taskPage: 1,
+      taskPageSize: 50,
+      reverseHistory: [],
+      reverseSeq: 0,
+      reversePage: 1,
+      reversePageSize: 10
+    };
+
+    if (!token) {
+      document.getElementById('loginPrompt').classList.add('show');
+      generateBtn.disabled = true;
+      reverseBtn.disabled = true;
+    } else {
+      initUser();
+    }
+
+    function handleAuthExpired(message) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      document.getElementById('loginPrompt').classList.add('show');
+      generateBtn.disabled = true;
+      reverseBtn.disabled = true;
+      setStatus(message || '登录已过期，请重新登录。', 'error');
+    }
+
+    document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#sizeSelector .ratio-btn').forEach((item) => item.classList.remove('active'));
+        btn.classList.add('active');
+        state.selectedSize = btn.dataset.size;
+        updateQualityPrices();
+      });
+    });
+
+    document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#qualitySelector .quality-btn').forEach((item) => item.classList.remove('active'));
+        btn.classList.add('active');
+        state.quality = btn.dataset.quality;
+      });
+    });
+
+    parallelismEl.addEventListener('input', () => {
+      parallelismEl.value = Math.max(Math.floor(Number(parallelismEl.value || 1)), 1);
+      updateEstimate();
+      updateStats();
+      processQueue();
+    });
+
+    countEl.addEventListener('input', updateEstimate);
+    batchCountEl.addEventListener('input', updateEstimate);
+
+    sourceSlots.forEach((slot) => {
+      const index = Number(slot.dataset.sourceSlot || 0);
+      const input = slot.querySelector('.source-image-input');
+      slot.tabIndex = 0;
+      input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        if (file) setSourceImage(index, file);
+      });
+
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        slot.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          slot.classList.add('drag-over');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((eventName) => {
+        slot.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          slot.classList.remove('drag-over');
+        });
+      });
+
+      slot.addEventListener('drop', (event) => {
+        const sourceIndex = getDraggedSourceIndex(event);
+        if (sourceIndex !== null) {
+          moveSourceImage(sourceIndex, index);
+          return;
+        }
+        const file = event.dataTransfer?.files?.[0];
+        if (file) setSourceImage(index, file);
+      });
+    });
+
+    sourceGrid.addEventListener('click', () => {
+      const emptyIndex = getFirstEmptySourceIndex();
+      if (emptyIndex >= 0) sourceSlots[emptyIndex].focus();
+    });
+    document.addEventListener('paste', handleSourcePaste);
+    document.addEventListener('paste', handleReversePaste);
+
+    reverseImageInput.addEventListener('change', () => {
+      const file = reverseImageInput.files?.[0];
+      if (file) setReverseImage(file);
+    });
+
+    reverseTemplateGrid.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-reverse-mode]');
+      if (!btn) return;
+      state.reverseMode = btn.dataset.reverseMode || 'general';
+      reverseTemplateGrid.querySelectorAll('[data-reverse-mode]').forEach((item) => {
+        item.classList.toggle('active', item === btn);
+      });
+      reverseTemplateHint.textContent = REVERSE_TEMPLATE_HINTS[state.reverseMode] || REVERSE_TEMPLATE_HINTS.general;
+      setReverseStatus(`已选择「${btn.textContent.trim()}」模板。`, 'ok');
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      reverseDropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        reverseDropZone.classList.add('drag-over');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+      reverseDropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        reverseDropZone.classList.remove('drag-over');
+      });
+    });
+
+    reverseDropZone.addEventListener('drop', (event) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (file) setReverseImage(file);
+    });
+
+    generateBtn.addEventListener('click', enqueueTasks);
+    clearPromptBtn.addEventListener('click', () => {
+      promptEl.value = '';
+      promptEl.focus();
+      setStatus('已清空图片描述。', 'ok');
+    });
+    clearSourcesBtn.addEventListener('click', clearAllSourceImages);
+    reverseBtn.addEventListener('click', runReversePrompt);
+    reloadHistoryBtn.addEventListener('click', () => loadSavedTasks({ force: true }));
+    clearQueuedBtn.addEventListener('click', clearQueuedTasks);
+    reversePrevPageBtn.addEventListener('click', () => {
+      state.reversePage = Math.max(1, state.reversePage - 1);
+      renderReverseHistoryPage();
+    });
+    reverseNextPageBtn.addEventListener('click', () => {
+      state.reversePage = Math.min(getReverseTotalPages(), state.reversePage + 1);
+      renderReverseHistoryPage();
+    });
+    taskPageSizeEl.addEventListener('change', () => {
+      state.taskPageSize = clamp(Number(taskPageSizeEl.value || 12), 12, 100);
+      state.taskPage = 1;
+      renderTaskPage();
+      updateStats();
+    });
+    taskPrevPageBtn.addEventListener('click', () => {
+      state.taskPage = Math.max(1, state.taskPage - 1);
+      renderTaskPage();
+      updateStats();
+    });
+    taskNextPageBtn.addEventListener('click', () => {
+      const totalPages = getTaskTotalPages();
+      state.taskPage = Math.min(totalPages, state.taskPage + 1);
+      renderTaskPage();
+      updateStats();
+    });
+    previewClose.addEventListener('click', closeImagePreview);
+    previewDownload.addEventListener('click', (event) => {
+      event.preventDefault();
+      downloadImageFile(previewDownload.href, previewDownload.download || 'xi_xu_image.png');
+    });
+    previewEditBtn.addEventListener('click', usePreviewImageAsSource);
+    previewOverlay.addEventListener('click', (event) => {
+      if (event.target === previewOverlay) closeImagePreview();
+    });
+    promptPreviewClose.addEventListener('click', closePromptPreview);
+    promptPreviewOverlay.addEventListener('click', (event) => {
+      if (event.target === promptPreviewOverlay) closePromptPreview();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (previewOverlay.classList.contains('show')) closeImagePreview();
+      if (promptPreviewOverlay.classList.contains('show')) closePromptPreview();
+    });
+
+    async function initUser() {
+      try {
+        const res = await fetch('/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) {
+            handleAuthExpired(data.error || '登录已过期，请重新登录。');
+            return;
+          }
+          throw new Error(data.error || '登录已失效');
+        }
+        const user = await res.json();
+        document.getElementById('navUsername').textContent = user.username || '';
+        updateNavPoints(user.points);
+        await loadServerJobs();
+        await loadSavedTasks();
+        await loadReverseHistory();
+      } catch (err) {
+        setStatus(err.message || '用户信息读取失败，请刷新后再试。', 'error');
+      }
+    }
+
+    function updateNavPoints(points) {
+      if (typeof points !== 'number' || Number.isNaN(points)) return;
+      document.getElementById('navPoints').textContent = points + ' 积分';
+    }
+
+    async function loadSavedTasks(options = {}) {
+      try {
+        if (options.force) {
+          setStatus('正在找回之前的作品...', '');
+          removeLoadedHistoryTasks();
+        }
+
+        const res = await fetch('/api/user/history?type=image&limit=500', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) {
+            handleAuthExpired(data.error || '登录已过期，请重新登录。');
+            return;
+          }
+          setStatus(data.error || '历史记录读取失败，请重新登录后再试。', 'error');
+          return;
+        }
+        const data = await res.json();
+        const saved = (data.history || [])
+          .filter((item) => {
+            if (item.sub_type !== 'xi-generate' && item.sub_type !== 'xi-edit') return false;
+            const meta = parseJson(item.content) || {};
+            return parseSavedImageUrls(item.image_url).length > 0 || meta.status === 'failed';
+          })
+          .slice()
+          .reverse();
+
+        saved.forEach((item) => {
+          const imageUrls = parseSavedImageUrls(item.image_url);
+          const meta = parseJson(item.content) || {};
+          if (imageUrls.length === 0 && meta.status !== 'failed') return;
+          const createdAtMs = parseHistoryTimestamp(item.created_at);
+          const task = {
+            id: 'saved-xi-' + item.id,
+            historyId: item.id,
+            index: item.id,
+            status: meta.status === 'failed' ? 'failed' : 'done',
+            mode: item.sub_type === 'xi-edit' ? 'edit' : 'generate',
+            prompt: item.prompt || '',
+            size: item.ratio || '1024x1024',
+            count: imageUrls.length || meta.count || 1,
+            quality: meta.quality || 'medium',
+            sourceFiles: [],
+            sourcePreviewUrls: meta.source_urls || [],
+            sourceFileNames: meta.sources || (meta.source ? [meta.source] : []),
+            createdAt: formatHistoryTime(item.created_at),
+            createdAtMs,
+            startedAtMs: 0,
+            finishedAtMs: createdAtMs,
+            durationMs: meta.duration_ms || 0,
+            provider: meta.provider || '',
+            fallbackReason: meta.fallback_reason || '',
+            imageUrls,
+            error: formatTaskError(meta.error || ''),
+            saved: true
+          };
+          state.taskSeq = Math.max(state.taskSeq, Number(item.id) || state.taskSeq);
+          state.tasks.unshift(task);
+        });
+        orderTasksForDisplay();
+        renderTaskPage();
+        updateStats();
+        const loadedCount = saved.length;
+        if (loadedCount === 0 && options.force) {
+          setStatus('这个账号还没有生成记录。先写个画面试试。', 'error');
+        }
+      } catch (err) {
+        setStatus('历史记录加载失败：' + (err.message || '网络异常'), 'error');
+      }
+    }
+
+    async function loadServerJobs() {
+      try {
+        const res = await fetch('/api/xi-image/jobs', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) handleAuthExpired(data.error || '登录已过期，请重新登录。');
+          return;
+        }
+        const data = await res.json();
+        (data.jobs || []).forEach((job) => {
+          if (state.tasks.some((task) => task.jobId === job.id)) return;
+          const task = taskFromServerJob(job);
+          state.tasks.unshift(task);
+          if (task.status === 'running' || task.status === 'queued') {
+            pollServerJob(task);
+          }
+        });
+        if ((data.jobs || []).length > 0) {
+          state.taskPage = 1;
+          renderTaskPage();
+          updateStats();
+        setStatus(`已接回 ${data.jobs.length} 个正在生成的作品。`, 'ok');
+        }
+      } catch {}
+    }
+
+    function taskFromServerJob(job) {
+      const index = Number(String(job.id || '').match(/\d+/)?.[0]) || ++state.taskSeq;
+      return {
+        id: 'job-' + job.id,
+        jobId: job.id,
+        index,
+        status: job.status,
+        mode: job.mode || 'generate',
+        prompt: job.prompt || '',
+        size: job.size || '1024x1024',
+        count: job.count || 1,
+        quality: job.quality || 'medium',
+        sourceFiles: [],
+        sourcePreviewUrls: job.sourcePreviewUrls || [],
+        sourceFileNames: job.sourceFileNames || [],
+        createdAt: job.createdAt || '',
+        startedAtMs: job.startedAtMs || 0,
+        finishedAtMs: job.finishedAtMs || 0,
+        imageUrls: job.imageUrls || [],
+        error: job.error || '',
+        historyId: job.historyId || '',
+        provider: job.provider || '',
+        fallbackReason: job.fallbackReason || '',
+        saved: Boolean(job.historyId)
+      };
+    }
+
+    function removeLoadedHistoryTasks() {
+      state.tasks = state.tasks.filter((task) => {
+        if (!task.saved) return true;
+        return false;
+      });
+      state.taskPage = 1;
+      renderTaskPage();
+    }
+
+    function parseSavedImageUrls(value) {
+      if (!value) return [];
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        if (typeof parsed === 'string') return [parsed].filter(Boolean);
+      } catch {}
+      return [value].filter(Boolean);
+    }
+
+    function parseJson(value) {
+      if (!value) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    }
+
+    function parseHistoryTimestamp(value) {
+      if (!value) return 0;
+      const raw = String(value).trim();
+      const normalized = raw.includes('T') || /Z$|[+-]\d{2}:\d{2}$/.test(raw)
+        ? raw
+        : raw.replace(' ', 'T') + 'Z';
+      const ms = Date.parse(normalized);
+      return Number.isFinite(ms) ? ms : 0;
+    }
+
+    function formatHistoryTime(value) {
+      if (!value) return '';
+      const raw = String(value).trim();
+      const ms = parseHistoryTimestamp(raw);
+      if (!ms) return raw.replace('T', ' ').slice(0, 16);
+      const date = new Date(ms);
+      if (Number.isNaN(date.getTime())) return raw.replace('T', ' ').slice(0, 16);
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date).replace(/\//g, '-');
+    }
+
+    function formatBeijingTime(input = new Date()) {
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(input);
+    }
+
+    function formatBeijingDateTime(input = new Date()) {
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(input).replace(/\//g, '-');
+    }
+
+    function enqueueTasks() {
+      const prompt = promptEl.value.trim();
+      if (!prompt) {
+        setStatus('请先输入图片描述。', 'error');
+        return;
+      }
+
+      const count = 1;
+      const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
+      const parallelism = getParallelism();
+      const selectedSources = getSelectedSourceImages();
+      const mode = selectedSources.length > 0 ? 'edit' : 'generate';
+      countEl.value = count;
+      batchCountEl.value = batchCount;
+      parallelismEl.value = parallelism;
+      updateEstimate();
+
+      for (let i = 0; i < batchCount; i += 1) {
+        const createdAtMs = Date.now();
+        const task = {
+          id: 'xi-task-' + (++state.taskSeq),
+          index: state.taskSeq,
+          status: 'queued',
+          mode,
+          prompt,
+          size: state.selectedSize,
+          count,
+          quality: state.quality,
+          sourceFiles: selectedSources.map((source) => source.file),
+          sourcePreviewUrls: selectedSources.map((source) => source.previewUrl),
+          sourceFileNames: selectedSources.map((_, index) => getSourceImageName(index)),
+          createdAt: formatBeijingTime(),
+          createdAtMs,
+          startedAtMs: 0,
+          finishedAtMs: 0,
+          imageUrls: [],
+          error: ''
+        };
+        state.tasks.unshift(task);
+        state.queue.push(task);
+      }
+
+      state.taskPage = 1;
+      renderTaskPage();
+      setStatus(`已开始生成 ${batchCount} 组${mode === 'edit' ? '参考图改图' : '新图'}，同时开跑 ${parallelism} 组。`, 'ok');
+      updateStats();
+      resetImageForm();
+      processQueue();
+    }
+
+    function resetImageForm() {
+      promptEl.value = '';
+      sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
+      countEl.value = 1;
+      batchCountEl.value = DEFAULT_BATCH_COUNT;
+      parallelismEl.value = DEFAULT_PARALLELISM;
+      state.selectedSize = DEFAULT_SIZE;
+      state.quality = DEFAULT_QUALITY;
+      document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.size === DEFAULT_SIZE);
+      });
+      document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.quality === DEFAULT_QUALITY);
+      });
+      updateGenerateButton();
+      updateQualityPrices();
+      updateEstimate();
+    }
+
+    function processQueue() {
+      const parallelism = getParallelism();
+      while (state.running < parallelism && state.queue.length > 0) {
+        const task = state.queue.shift();
+        runTask(task).catch((err) => {
+          task.status = 'failed';
+          task.finishedAtMs = Date.now();
+          task.error = formatTaskError(err?.message || '任务失败');
+          state.failed += 1;
+          updateTaskCard(task);
+          updateStats();
+          setStatus(`#${task.index} 没生成成功，已继续下一个任务。`, 'error');
+          setTimeout(processQueue, 0);
+        });
+      }
+      updateStats();
+    }
+
+    async function runTask(task) {
+      task.status = 'running';
+      task.startedAtMs = Date.now();
+      task.finishedAtMs = 0;
+      state.running += 1;
+      updateTaskCard(task);
+      startTaskTimer(task);
+      updateStats();
+
+      try {
+        const data = await requestImageTask(task);
+        task.status = 'done';
+        task.finishedAtMs = Date.now();
+        const result = data.job || data;
+        task.imageUrls = result.imageUrls || [];
+        task.historyId = result.historyId || task.historyId || '';
+        task.saved = Boolean(task.historyId);
+        task.doneAt = result.createdAt || formatBeijingDateTime();
+        state.finished += 1;
+        state.images += task.imageUrls.length;
+        setStatus(`#${task.index} 已出图，看看有没有顺眼的。`, 'ok');
+      } catch (err) {
+        task.status = 'failed';
+        task.finishedAtMs = Date.now();
+        task.error = formatTaskError(err?.message || '任务失败');
+        state.failed += 1;
+        setStatus(`#${task.index} 没生成成功，已继续下一个任务：${formatTaskError(task.error)}`, 'error');
+      } finally {
+        stopTaskTimer(task);
+        state.running = Math.max(0, state.running - 1);
+        updateTaskCard(task);
+        updateStats();
+        setTimeout(processQueue, 0);
+      }
+    }
+
+    async function requestImageTask(task) {
+      const submitResult = task.mode !== 'edit'
+        ? await requestJson('/api/xi-image/jobs/generate', {
+          prompt: task.prompt,
+          size: task.size,
+          count: task.count,
+          quality: task.quality
+        })
+        : await submitEditJob(task);
+
+      const job = submitResult.job;
+      updateNavPoints(job.remainingPoints);
+      task.jobId = job.id;
+      task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
+      task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
+      return waitServerJob(task);
+    }
+
+    async function submitEditJob(task) {
+      const form = new FormData();
+      form.append('prompt', task.prompt);
+      form.append('size', task.size);
+      form.append('count', String(task.count));
+      form.append('quality', task.quality);
+      (task.sourceFiles || []).forEach((file, index) => {
+        form.append('image', file, task.sourceFileNames?.[index] || getSourceImageName(index));
+      });
+
+      const res = await fetch('/api/xi-image/jobs/edit', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: form
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleAuthExpired(data.error || '登录已过期，请重新登录。');
+        }
+        const detail = data.detail ? '：' + data.detail : '';
+        throw new Error((data.error || '这次没生成成功') + detail);
+      }
+      return data;
+    }
+
+    function waitServerJob(task) {
+      return new Promise((resolve, reject) => {
+        pollServerJob(task, resolve, reject);
+      });
+    }
+
+    async function pollServerJob(task, resolve, reject) {
+      if (!task.jobId) return;
+      try {
+        const res = await fetch('/api/xi-image/jobs/' + encodeURIComponent(task.jobId), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 404 || data.error === '任务不存在') {
+            await handleMissingServerJob(task, resolve, reject);
+            return;
+          }
+          if (res.status === 401) {
+            handleAuthExpired(data.error || '登录已过期，请重新登录。');
+          }
+          throw new Error(data.error || '结果还没取到');
+        }
+        const job = data.job;
+        task.status = job.status;
+        task.startedAtMs = job.startedAtMs || task.startedAtMs;
+        task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
+        task.imageUrls = job.imageUrls || task.imageUrls || [];
+        task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
+        task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
+        task.error = formatTaskError(job.error || '');
+        task.historyId = job.historyId || task.historyId || '';
+        task.provider = job.provider || task.provider || '';
+        task.fallbackReason = job.fallbackReason || task.fallbackReason || '';
+        task.saved = Boolean(task.historyId);
+        updateNavPoints(job.remainingPoints);
+        updateTaskCard(task);
+        updateStats();
+        if (job.status === 'done') {
+          if (resolve) resolve({ job });
+          return;
+        }
+        if (job.status === 'failed') {
+          const err = new Error(job.error || '任务失败');
+          if (reject) reject(err);
+          return;
+        }
+        setTimeout(() => pollServerJob(task, resolve, reject), 1500);
+      } catch (err) {
+        if (reject) reject(err);
+      }
+    }
+
+    async function handleMissingServerJob(task, resolve, reject) {
+      task.status = 'running';
+      task.error = '服务刚刚重启，正在从历史记录找回结果...';
+      updateTaskCard(task);
+      try {
+        await loadSavedTasks({ force: true });
+        const candidates = state.tasks.filter((item) => {
+          if (item.id === task.id || item.jobId === task.jobId) return false;
+          const sameTask = item.status === 'done'
+            && item.prompt === task.prompt
+            && item.size === task.size
+            && item.mode === task.mode;
+          if (!sameTask) return false;
+          const itemTime = Number(item.createdAtMs || 0);
+          const taskTime = Number(task.createdAtMs || 0);
+          return !itemTime || !taskTime || Math.abs(itemTime - taskTime) < 15 * 60 * 1000;
+        });
+        candidates.sort((a, b) => Number(b.createdAtMs || b.finishedAtMs || 0) - Number(a.createdAtMs || a.finishedAtMs || 0));
+        const recovered = candidates[0];
+        if (recovered) {
+          Object.assign(task, {
+            status: 'done',
+            imageUrls: recovered.imageUrls || [],
+            historyId: recovered.historyId || task.historyId || '',
+            saved: true,
+            error: '',
+            finishedAtMs: recovered.finishedAtMs || Date.now()
+          });
+          updateTaskCard(task);
+          updateStats();
+          if (resolve) resolve({ job: task });
+          return;
+        }
+      } catch {}
+      const err = new Error('服务重启后任务状态丢失，未在历史记录里找到结果。请重新生成一次。');
+      if (reject) reject(err);
+    }
+
+    async function requestJson(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleAuthExpired(data.error || '登录已过期，请重新登录。');
+        }
+        const detail = data.detail ? '：' + data.detail : '';
+        throw new Error((data.error || '这次没生成成功') + detail);
+      }
+      return data;
+    }
+
+    function renderTask(task) {
+      const card = document.createElement('article');
+      card.className = 'task-card xi-task-card';
+      card.id = task.id;
+      card.innerHTML = `
+        <div class="task-header">
+          <span class="task-type">排队</span>
+          <button class="task-close" type="button" aria-label="删除任务">×</button>
+        </div>
+        <div class="task-body"></div>
+      `;
+      card.querySelector('.task-close').addEventListener('click', () => removeTask(task.id));
+      taskListEl.appendChild(card);
+      updateTaskCard(task);
+    }
+
+    function renderTaskPage() {
+      orderTasksForDisplay();
+      taskListEl.innerHTML = '';
+      const total = state.tasks.length;
+      const totalPages = getTaskTotalPages();
+      state.taskPage = Math.min(Math.max(state.taskPage, 1), totalPages);
+
+      emptyEl.style.display = total === 0 ? 'flex' : 'none';
+      taskPagerEl.style.display = total > 0 ? 'flex' : 'none';
+      if (total === 0) {
+        taskPageInfoEl.textContent = '第 0 / 0 页';
+        taskPrevPageBtn.disabled = true;
+        taskNextPageBtn.disabled = true;
+        return;
+      }
+
+      const start = (state.taskPage - 1) * state.taskPageSize;
+      const pageTasks = state.tasks.slice(start, start + state.taskPageSize);
+      pageTasks.forEach(renderTask);
+      taskPageInfoEl.textContent = `第 ${state.taskPage} / ${totalPages} 页 · 共 ${total} 条`;
+      taskPrevPageBtn.disabled = state.taskPage <= 1;
+      taskNextPageBtn.disabled = state.taskPage >= totalPages;
+    }
+
+    function orderTasksForDisplay() {
+      const priority = (task) => {
+        if (task.status === 'running') return 0;
+        if (task.status === 'queued') return 1;
+        return 2;
+      };
+      const timeValue = (task) => Number(task.createdAtMs || task.finishedAtMs || task.startedAtMs || task.historyId || task.index || 0);
+      state.tasks.sort((a, b) => {
+        const pa = priority(a);
+        const pb = priority(b);
+        if (pa !== pb) return pa - pb;
+        return timeValue(b) - timeValue(a);
+      });
+    }
+
+    function getTaskTotalPages() {
+      return Math.max(1, Math.ceil(state.tasks.length / state.taskPageSize));
+    }
+
+    function updateTaskCard(task) {
+      const card = document.getElementById(task.id);
+      if (!card) return;
+      const badge = card.querySelector('.task-type');
+      const body = card.querySelector('.task-body');
+
+      const statusMap = {
+        queued: '等待中',
+        running: '出图中',
+        done: '完成',
+        failed: '失败'
+      };
+      badge.textContent = statusMap[task.status] || task.status;
+      badge.className = 'task-type' + (task.status === 'done' ? ' copy-type' : '');
+      const header = card.querySelector('.task-header');
+      header.querySelector('.task-duration-inline')?.remove();
+      if (task.status === 'done') {
+        const duration = document.createElement('span');
+        duration.className = 'task-duration-inline';
+        duration.textContent = getTaskDurationText(task);
+        badge.insertAdjacentElement('afterend', duration);
+      }
+
+      body.innerHTML = '';
+      const infoBlock = createTaskInfoBlock(task);
+      if (task.status !== 'done') body.appendChild(infoBlock);
+
+      if (task.status === 'queued') {
+        appendTaskSourceThumbs(body, task);
+        body.appendChild(createPlainLine('排队等出图'));
+      } else if (task.status === 'running') {
+        appendTaskSourceThumbs(body, task);
+        body.appendChild(createDurationLine(task));
+        const loading = document.createElement('div');
+        loading.className = 'task-loading';
+        loading.innerHTML = `<div class="spinner"></div><span>正在${task.mode === 'edit' ? '参考改图' : '生成图片'}...</span>`;
+        body.appendChild(loading);
+      } else if (task.status === 'failed') {
+        appendTaskSourceThumbs(body, task);
+        body.appendChild(createDurationLine(task));
+        const error = document.createElement('div');
+        error.className = 'task-error';
+        error.textContent = formatTaskError(task.error || '生成失败');
+        body.appendChild(error);
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        const retry = document.createElement('button');
+        retry.className = 'task-btn';
+        retry.type = 'button';
+        retry.textContent = '重试';
+        retry.addEventListener('click', () => retryTask(task.id));
+        actions.appendChild(retry);
+        body.appendChild(actions);
+      } else if (task.status === 'done') {
+        body.appendChild(createImageGrid(task));
+        appendTaskSourceThumbs(body, task);
+        body.appendChild(infoBlock);
+      }
+    }
+
+    function appendTaskSourceThumbs(target, task) {
+      if (task.mode !== 'edit') return;
+      if ((task.sourcePreviewUrls || []).length === 0 && (task.sourceFileNames || []).length === 0) return;
+      target.appendChild(createSourceThumbStrip(task));
+    }
+
+    function createTaskInfoBlock(task) {
+      const fragment = document.createDocumentFragment();
+      const prompt = document.createElement('div');
+      prompt.className = 'xi-task-prompt';
+      prompt.textContent = task.prompt;
+      fragment.appendChild(prompt);
+
+      const promptTools = document.createElement('div');
+      promptTools.className = 'xi-prompt-tools';
+      const copyPrompt = document.createElement('button');
+      copyPrompt.className = 'xi-small-btn';
+      copyPrompt.type = 'button';
+      copyPrompt.textContent = '复制提示词';
+      copyPrompt.addEventListener('click', () => copyTaskPrompt(copyPrompt, task.prompt || ''));
+      promptTools.appendChild(copyPrompt);
+      const refillPrompt = document.createElement('button');
+      refillPrompt.className = 'xi-small-btn';
+      refillPrompt.type = 'button';
+      refillPrompt.textContent = '重新生图';
+      refillPrompt.addEventListener('click', () => refillPromptFromTask(task));
+      promptTools.appendChild(refillPrompt);
+      if ((task.prompt || '').trim()) {
+        const toggle = document.createElement('button');
+        toggle.className = 'prompt-toggle';
+        toggle.type = 'button';
+        toggle.textContent = '查看完整提示词';
+        toggle.addEventListener('click', () => {
+          const expanded = prompt.classList.toggle('expanded');
+          toggle.textContent = expanded ? '收起提示词' : '查看完整提示词';
+        });
+        promptTools.appendChild(toggle);
+      }
+      fragment.appendChild(promptTools);
+
+      const meta = document.createElement('div');
+      meta.className = 'xi-task-meta';
+      meta.textContent = [
+        `#${task.index}`,
+        task.size,
+        `${task.count} 张`,
+        `质量${getQualityLabel(task.quality)}`,
+        task.createdAt
+      ].filter(Boolean).join(' · ');
+      fragment.appendChild(meta);
+      return fragment;
+    }
+
+    function refillPromptFromTask(task) {
+      if (!(task.prompt || '').trim()) {
+        setStatus('这条记录没有可回填的提示词。', 'error');
+        return;
+      }
+      promptEl.value = task.prompt || '';
+      state.selectedSize = ['1024x1024', '1024x1536', '1536x1024'].includes(task.size) ? task.size : state.selectedSize;
+      state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : state.quality;
+      countEl.value = 1;
+      batchCountEl.value = DEFAULT_BATCH_COUNT;
+      document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
+      });
+      document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.quality === state.quality);
+      });
+      updateGenerateButton();
+      updateQualityPrices();
+      updateEstimate();
+      promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      promptEl.focus();
+      setStatus('已把提示词回填到图片描述。', 'ok');
+    }
+
+    function createDurationLine(task) {
+      const line = document.createElement('div');
+      line.className = 'xi-duration';
+      const label = task.status === 'running' ? '已用时' : '生成用时';
+      line.innerHTML = `<span>${label}</span><strong>${getTaskDurationText(task)}</strong>`;
+      return line;
+    }
+
+    function formatTaskError(message) {
+      const text = String(message || '').trim();
+      if (!text) return '';
+      const lower = text.toLowerCase();
+      if (text.includes('豆包备用通道已关闭') || text.includes('本次未使用豆包生成')) {
+        return '图片服务连接失败，请稍后重试。本次没有生成图片，积分已退回。';
+      }
+      if (text.includes('系统已跳过这张')) {
+        return '图片服务连接中断，请稍后重试。本次没有生成图片，积分已退回。';
+      }
+      if (lower.includes('terminated') || lower.includes('socket hang up') || lower.includes('other side closed') || lower.includes('body timeout') || lower.includes('response body')) {
+        return '图片服务连接中断，请稍后重试。本次没有生成图片，积分已退回。';
+      }
+      if (lower.includes('failed to fetch')) {
+        return '本地服务连接中断，可能是服务刚重启或网络请求被浏览器取消。请刷新页面后重试。';
+      }
+      if (lower.includes('fetch failed') || lower.includes('connect timeout') || lower.includes('und_err_connect_timeout')) {
+        return '图片服务连接失败，请稍后重试。本次没有生成图片，积分已退回。';
+      }
+      return text;
+    }
+
+    function getTaskDurationText(task) {
+      return task.durationMs
+        ? formatDurationMs(task.durationMs)
+        : (task.startedAtMs ? formatDurationMs((task.finishedAtMs || Date.now()) - task.startedAtMs) : '历史记录');
+    }
+
+    function createSourceThumbStrip(task) {
+      const source = document.createElement('div');
+      source.className = 'xi-source-thumb';
+      const urls = (task.sourcePreviewUrls || [])
+        .filter((url) => isRenderableSourceUrl(url, task))
+        .slice(0, 4);
+      const names = (task.sourceFileNames || []).filter(Boolean).slice(0, 4);
+      const total = Math.max(urls.length, names.length);
+
+      const header = document.createElement('div');
+      header.className = 'xi-source-thumb-header';
+      const title = document.createElement('span');
+      title.textContent = `参考图 · ${total || 0} 张`;
+      const actions = document.createElement('div');
+      actions.className = 'xi-source-thumb-actions';
+      const refill = document.createElement('button');
+      refill.className = 'xi-small-btn';
+      refill.type = 'button';
+      refill.textContent = '提示词+参考图 重新生图';
+      refill.addEventListener('click', () => refillComposerFromTask(task, refill));
+      actions.appendChild(refill);
+      const nav = document.createElement('div');
+      nav.className = 'xi-source-thumb-nav';
+      const prev = document.createElement('button');
+      prev.type = 'button';
+      prev.textContent = '‹';
+      prev.setAttribute('aria-label', '向左查看参考图');
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.textContent = '›';
+      next.setAttribute('aria-label', '向右查看参考图');
+      nav.append(prev, next);
+      actions.appendChild(nav);
+      header.append(title, actions);
+
+      const scroller = document.createElement('div');
+      scroller.className = 'xi-source-scroll';
+      if (urls.length > 0) {
+        urls.forEach((url, index) => {
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = `参考图 ${index + 1}`;
+          img.title = names[index] || `参考图 ${index + 1}`;
+          img.addEventListener('click', () => {
+            openStandaloneImagePreview(url, names[index] || `任务 #${task.index} · 参考图 ${index + 1}`, `xi_source_${task.index}_${index + 1}.png`);
+          });
+          img.addEventListener('error', () => {
+            img.replaceWith(createSourceNameChip(names[index] || `参考图 ${index + 1}`));
+          }, { once: true });
+          scroller.appendChild(img);
+        });
+      } else {
+        names.forEach((name) => {
+          scroller.appendChild(createSourceNameChip(name));
+        });
+      }
+
+      prev.addEventListener('click', () => scroller.scrollBy({ left: -140, behavior: 'smooth' }));
+      next.addEventListener('click', () => scroller.scrollBy({ left: 140, behavior: 'smooth' }));
+      if (total <= 3) nav.style.display = 'none';
+
+      source.append(header, scroller);
+      return source;
+    }
+
+    async function refillComposerFromTask(task, button) {
+      const urls = (task.sourcePreviewUrls || [])
+        .filter((url) => isRenderableSourceUrl(url, task))
+        .slice(0, 4);
+      if (!task.prompt && urls.length === 0) {
+        setStatus('这条记录没有可回填的提示词或参考图。', 'error');
+        return;
+      }
+
+      const originalText = button?.textContent || '提示词+参考图 重新生图';
+      if (button) {
+        button.disabled = true;
+        button.textContent = '回填中...';
+      }
+      try {
+        promptEl.value = task.prompt || '';
+        state.selectedSize = ['1024x1024', '1024x1536', '1536x1024'].includes(task.size) ? task.size : DEFAULT_SIZE;
+        state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : DEFAULT_QUALITY;
+        countEl.value = 1;
+        batchCountEl.value = DEFAULT_BATCH_COUNT;
+        document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
+        });
+        document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.quality === state.quality);
+        });
+        sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
+
+        let loaded = 0;
+        for (let index = 0; index < urls.length; index += 1) {
+          const filename = task.sourceFileNames?.[index] || getSourceImageName(index);
+          try {
+            const file = await imageUrlToFile(urls[index], filename);
+            await setSourceImage(index, file);
+            loaded += 1;
+          } catch {}
+        }
+
+        updateGenerateButton();
+        updateQualityPrices();
+        updateEstimate();
+        promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        promptEl.focus();
+        const suffix = urls.length > 0 && loaded < urls.length ? `，${urls.length - loaded} 张参考图读取失败` : '';
+        setStatus(`已回填提示词和 ${loaded} 张参考图，可以直接点开始改图${suffix}。`, loaded > 0 || urls.length === 0 ? 'ok' : 'error');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      }
+    }
+
+    function isRenderableSourceUrl(url, task) {
+      if (!url) return false;
+      if (String(url).startsWith('blob:')) return !task.saved;
+      return true;
+    }
+
+    function createSourceNameChip(name) {
+      const chip = document.createElement('div');
+      chip.className = 'xi-source-name-chip';
+      chip.textContent = name || '参考图';
+      return chip;
+    }
+
+    function getQualityLabel(quality) {
+      const map = { low: '快速', medium: '标准', high: '精细' };
+      return map[quality] || '标准';
+    }
+
+    function createImageGrid(task) {
+      const grid = document.createElement('div');
+      grid.className = 'xi-image-grid';
+      task.imageUrls.forEach((url, index) => {
+        const item = document.createElement('div');
+        item.className = 'xi-image-card';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `任务 ${task.index} 图片 ${index + 1}`;
+        img.addEventListener('click', () => openImagePreview(url, task, index));
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.download = buildImageDownloadName(task, index);
+        link.textContent = '下载';
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          downloadImageFile(url, link.download);
+        });
+        item.append(img, link);
+        grid.appendChild(item);
+      });
+      return grid;
+    }
+
+    async function downloadImageFile(url, filename) {
+      const safeName = filename || 'xi_xu_image.png';
+      try {
+        const response = await fetch(resolveAssetUrl(url), { credentials: 'same-origin', cache: 'no-store' });
+        if (!response.ok) throw new Error('下载失败');
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = safeName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        setStatus(`已开始下载 ${safeName}，请在浏览器下载列表或下载文件夹查看。`, 'ok');
+      } catch (err) {
+        window.open(resolveAssetUrl(url), '_blank', 'noopener');
+        setStatus('浏览器下载失败，已打开原图，可以右键另存为。', 'error');
+      }
+    }
+
+    function openImagePreview(url, task, index) {
+      const filename = buildImageDownloadName(task, index);
+      currentPreviewImage = { url, filename, title: `任务 #${task.index} · 图片 ${index + 1}` };
+      previewImage.src = url;
+      previewImage.alt = `任务 ${task.index} 图片 ${index + 1}`;
+      previewTitle.textContent = `任务 #${task.index} · 图片 ${index + 1} · ${task.mode === 'edit' ? '改图' : '生图'}`;
+      previewDownload.href = url;
+      previewDownload.download = filename;
+      previewOpen.href = url;
+      previewOverlay.classList.add('show');
+      previewOverlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function buildImageDownloadName(task, imageIndex = 0) {
+      const parts = [
+        '御弟哥哥 · gpt-image-2 生图',
+        task.index ? `${task.index}` : '',
+        task.size || '',
+        `${task.count || 1} 张`,
+        `质量${getQualityLabel(task.quality)}`,
+        task.createdAt || task.doneAt || '',
+        `第${imageIndex + 1}张`
+      ].filter(Boolean);
+      return sanitizeDownloadFilename(parts.join(' · ')) + '.png';
+    }
+
+    function sanitizeDownloadFilename(name) {
+      return String(name || '御弟哥哥 · gpt-image-2 生图')
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/[. ]+$/g, '')
+        .slice(0, 180);
+    }
+
+    function openStandaloneImagePreview(url, title = '图片预览', filename = 'preview.png') {
+      currentPreviewImage = { url, filename, title };
+      previewImage.src = url;
+      previewImage.alt = title;
+      previewTitle.textContent = title;
+      previewDownload.href = url;
+      previewDownload.download = filename;
+      previewOpen.href = url;
+      previewOverlay.classList.add('show');
+      previewOverlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeImagePreview() {
+      previewOverlay.classList.remove('show');
+      previewOverlay.setAttribute('aria-hidden', 'true');
+      previewImage.src = '';
+      currentPreviewImage = null;
+      document.body.style.overflow = '';
+    }
+
+    async function usePreviewImageAsSource() {
+      if (!currentPreviewImage?.url) {
+        setStatus('没有可用于改图的图片。', 'error');
+        return;
+      }
+      const targetIndex = state.sourceFiles.findIndex((file) => !file);
+      if (targetIndex === -1) {
+        setStatus('参考图已经放满 4 张，请先清掉一张再添加。', 'error');
+        closeImagePreview();
+        return;
+      }
+
+      previewEditBtn.disabled = true;
+      previewEditBtn.textContent = '正在放入参考图...';
+      try {
+        const file = await imageUrlToFile(currentPreviewImage.url, currentPreviewImage.filename || 'preview.png');
+        closeImagePreview();
+        await setSourceImage(targetIndex, file);
+        promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        promptEl.focus();
+        setStatus(`已把图片放到参考图 ${targetIndex + 1}，写下想修改的地方就可以改图。`, 'ok');
+      } catch (err) {
+        setStatus(err?.message || '图片放入参考图失败，请下载后手动上传。', 'error');
+      } finally {
+        previewEditBtn.disabled = false;
+        previewEditBtn.textContent = '用这张改图';
+      }
+    }
+
+    async function imageUrlToFile(url, filename) {
+      const response = await fetch(resolveAssetUrl(url), { credentials: 'same-origin', cache: 'no-store' });
+      if (!response.ok) throw new Error('图片读取失败，请下载后手动上传。');
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('当前文件不是图片，不能用于改图。');
+      return new File([blob], filename || 'preview.png', { type: blob.type || 'image/png' });
+    }
+
+    function resolveAssetUrl(url) {
+      if (!url) return '';
+      if (String(url).startsWith('data:') || String(url).startsWith('blob:')) return url;
+      return new URL(url, window.location.origin).href;
+    }
+
+    function openPromptPreview(data) {
+      promptPreviewBody.innerHTML = '';
+      promptPreviewTitle.textContent = data?.result?.title || 'Prompt 结果';
+      addReverseBlock('中文 Prompt', data?.result?.polished_prompt_zh || data?.result?.universal_prompt_zh || data?.result?.faithful_prompt_zh || '', true, promptPreviewBody);
+      addReverseBlock('英文 Prompt', data?.result?.polished_prompt_en || data?.result?.universal_prompt_en || data?.result?.dalle_prompt || data?.result?.midjourney_prompt || data?.raw || '', true, promptPreviewBody);
+      promptPreviewOverlay.classList.add('show');
+      promptPreviewOverlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePromptPreview() {
+      promptPreviewOverlay.classList.remove('show');
+      promptPreviewOverlay.setAttribute('aria-hidden', 'true');
+      promptPreviewBody.innerHTML = '';
+      document.body.style.overflow = '';
+    }
+
+    function createPlainLine(text) {
+      const line = document.createElement('div');
+      line.className = 'task-meta';
+      line.textContent = text;
+      return line;
+    }
+
+    async function removeTask(taskId) {
+      const task = state.tasks.find((item) => item.id === taskId);
+      if (!task) return;
+      const message = task.saved || task.historyId
+        ? '确定删除这条生成记录吗？删除后刷新历史也不会再显示。'
+        : task.status === 'queued'
+          ? '这个任务还在排队，移除后不会继续生成，也找不回来。确定移除吗？'
+          : task.status === 'running'
+            ? '这个任务正在生成，移出当前列表后可能还会在后台继续跑。确定移出吗？'
+            : '这条临时记录还没保存到历史，移除后找不回来。确定移除吗？';
+      if (!window.confirm(message)) return;
+      if (task.historyId) {
+        try {
+          const res = await fetch(`/api/user/history/${encodeURIComponent(task.historyId)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (res.status === 401) {
+              handleAuthExpired(data.error || '登录已过期，请重新登录。');
+              return;
+            }
+            throw new Error(data.error || '删除历史记录失败');
+          }
+        } catch (err) {
+          setStatus(err.message || '删除历史记录失败，请稍后再试。', 'error');
+          return;
+        }
+      }
+      if (task && task.status === 'queued') {
+        state.queue = state.queue.filter((item) => item.id !== taskId);
+      }
+      state.tasks = state.tasks.filter((item) => item.id !== taskId);
+      renderTaskPage();
+      updateStats();
+      if (task.historyId) {
+        setStatus('生成记录已删除，刷新历史也不会再显示。', 'ok');
+      } else {
+        setStatus('已移出当前列表。', 'ok');
+      }
+    }
+
+    function retryTask(taskId) {
+      const task = state.tasks.find((item) => item.id === taskId);
+      if (!task || task.status === 'running' || task.status === 'queued') return;
+      task.status = 'queued';
+      task.error = '';
+      task.imageUrls = [];
+      task.startedAtMs = 0;
+      task.finishedAtMs = 0;
+      state.queue.push(task);
+      state.taskPage = 1;
+      renderTaskPage();
+      updateTaskCard(task);
+      updateStats();
+      setStatus(`#${task.index} 已重新开跑。`, 'ok');
+      processQueue();
+    }
+
+    function clearQueuedTasks() {
+      const queuedIds = new Set(state.queue.map((task) => task.id));
+      state.queue = [];
+      state.tasks = state.tasks.filter((task) => {
+        if (!queuedIds.has(task.id)) return true;
+        return false;
+      });
+      renderTaskPage();
+      updateStats();
+      setStatus('已取消等待中的内容，正在生成的会继续完成。', 'ok');
+    }
+
+    function updateStats() {
+      const queued = state.queue.length;
+      const running = state.tasks.filter((task) => task.status === 'running').length;
+      const done = state.tasks.filter((task) => task.status === 'done').length;
+      const failed = state.tasks.filter((task) => task.status === 'failed').length;
+      const total = state.tasks.length;
+      const images = state.tasks.reduce((sum, task) => sum + (task.imageUrls?.length || 0), 0);
+      const totalPages = getTaskTotalPages();
+      state.taskPage = Math.min(Math.max(state.taskPage, 1), totalPages);
+      document.getElementById('statQueued').textContent = queued;
+      document.getElementById('statRunning').textContent = running;
+      document.getElementById('statDone').textContent = done;
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statImages').textContent = images;
+      document.getElementById('statFailed').textContent = failed;
+      document.getElementById('statConcurrency').textContent = getParallelism();
+      if (state.tasks.length > 0) {
+        taskPageInfoEl.textContent = `第 ${state.taskPage} / ${totalPages} 页 · 共 ${state.tasks.length} 条`;
+        taskPrevPageBtn.disabled = state.taskPage <= 1;
+        taskNextPageBtn.disabled = state.taskPage >= totalPages;
+      }
+    }
+
+    function updateEstimate() {
+      const count = 1;
+      const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
+      const parallelism = getParallelism();
+      const totalImages = count * batchCount;
+      if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组`;
+    }
+
+    function updateQualityPrices() {
+      qualityPriceEls.forEach((el) => {
+        const quality = el.dataset.priceQuality;
+        el.textContent = IMAGE_PRICE_MAP[quality]?.[state.selectedSize] || '';
+      });
+    }
+
+    async function setSourceImage(index, file) {
+      if (!file.type.startsWith('image/')) {
+        setStatus('只能上传图片文件。', 'error');
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        setStatus('单张参考图不能超过 20MB。', 'error');
+        return;
+      }
+
+      const slot = sourceSlots[index];
+      const hint = slot.querySelector('.drop-hint');
+      const preview = slot.querySelector('.xi-source-preview');
+      setStatus(`正在准备参考图 ${index + 1}...`, '');
+      generateBtn.disabled = true;
+      let pngFile;
+      try {
+        pngFile = await convertImageToPng(file);
+      } catch (err) {
+        generateBtn.disabled = false;
+        setStatus('图片格式处理失败，请换一张 PNG/JPG/WebP 图片。', 'error');
+        return;
+      }
+
+      if (state.sourcePreviewUrls[index]) URL.revokeObjectURL(state.sourcePreviewUrls[index]);
+      state.sourceFiles[index] = pngFile;
+      state.sourcePreviewUrls[index] = URL.createObjectURL(pngFile);
+      renderSourceSlot(index);
+      generateBtn.disabled = false;
+      updateGenerateButton();
+      setStatus(`已放入 ${getSelectedSourceImages().length} 张参考图，可以开始改图了。`, 'ok');
+    }
+
+    function renderSourceSlot(index) {
+      const slot = sourceSlots[index];
+      const input = slot.querySelector('.source-image-input');
+      const hint = slot.querySelector('.drop-hint');
+      const preview = slot.querySelector('.xi-source-preview');
+      const file = state.sourceFiles[index];
+      const previewUrl = state.sourcePreviewUrls[index];
+      input.value = '';
+      preview.innerHTML = '';
+      slot.classList.toggle('has-source', Boolean(file && previewUrl));
+      hint.style.display = file && previewUrl ? 'none' : 'flex';
+      if (!file || !previewUrl) return;
+
+      const img = document.createElement('img');
+      img.src = previewUrl;
+      img.alt = `原图 ${index + 1} 预览`;
+      img.title = '点击放大参考图，拖动可换位置';
+      img.draggable = true;
+      img.addEventListener('dragstart', (event) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/x-source-index', String(index));
+        event.dataTransfer.setData('text/plain', String(index));
+        slot.classList.add('dragging');
+      });
+      img.addEventListener('dragend', () => {
+        sourceSlots.forEach((item) => item.classList.remove('dragging', 'drag-over'));
+      });
+      img.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openStandaloneImagePreview(previewUrl, `参考图 ${index + 1}`, getSourceImageName(index));
+      });
+
+      const name = document.createElement('div');
+      name.className = 'xi-source-name';
+      name.textContent = getSourceImageName(index);
+      const remove = document.createElement('button');
+      remove.className = 'remove-ref';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        clearSourceImage(index);
+      });
+
+      preview.append(img, name, remove);
+    }
+
+    function getDraggedSourceIndex(event) {
+      const raw = event.dataTransfer?.getData('text/x-source-index');
+      if (raw === '') return null;
+      const index = Number(raw);
+      if (!Number.isInteger(index) || index < 0 || index >= state.sourceFiles.length) return null;
+      return state.sourceFiles[index] ? index : null;
+    }
+
+    function moveSourceImage(fromIndex, toIndex) {
+      if (fromIndex === toIndex) return;
+      if (!state.sourceFiles[fromIndex]) return;
+      [state.sourceFiles[fromIndex], state.sourceFiles[toIndex]] = [state.sourceFiles[toIndex], state.sourceFiles[fromIndex]];
+      [state.sourcePreviewUrls[fromIndex], state.sourcePreviewUrls[toIndex]] = [state.sourcePreviewUrls[toIndex], state.sourcePreviewUrls[fromIndex]];
+      renderSourceSlot(fromIndex);
+      renderSourceSlot(toIndex);
+      updateGenerateButton();
+      setStatus(`已调整参考图顺序：图${fromIndex + 1} ↔ 图${toIndex + 1}。`, 'ok');
+    }
+
+    async function handleSourcePaste(event) {
+      if (shouldIgnoreImagePaste(event.target)) return;
+      const file = getImageFileFromClipboard(event.clipboardData);
+      if (!file) return;
+
+      const targetIndex = getPasteTargetSourceIndex(event.target);
+      if (targetIndex < 0) {
+        setStatus('参考图已经放满 4 张，请先清掉一张再粘贴。', 'error');
+        return;
+      }
+
+      event.preventDefault();
+      sourceGrid.classList.add('paste-ready');
+      try {
+        await setSourceImage(targetIndex, file);
+        setStatus(`已粘贴到参考图 ${targetIndex + 1}，可以开始改图了。`, 'ok');
+      } finally {
+        setTimeout(() => sourceGrid.classList.remove('paste-ready'), 450);
+      }
+    }
+
+    async function handleReversePaste(event) {
+      if (!isReversePasteTarget(event.target)) return;
+      const file = getImageFileFromClipboard(event.clipboardData, 'pasted_reverse');
+      if (!file) return;
+
+      event.preventDefault();
+      reverseDropZone.classList.add('paste-ready');
+      try {
+        if (setReverseImage(file)) {
+          setReverseStatus('已粘贴图片，可以加入识图。', 'ok');
+        }
+      } finally {
+        setTimeout(() => reverseDropZone.classList.remove('paste-ready'), 450);
+      }
+    }
+
+    function shouldIgnoreImagePaste(target) {
+      if (!target) return false;
+      const tagName = target.tagName;
+      if (tagName === 'TEXTAREA') return false;
+      if (tagName === 'INPUT' && target.type !== 'file') return false;
+      return Boolean(target.closest?.('#reversePrompt, .preview-overlay, .prompt-preview-overlay'));
+    }
+
+    function isReversePasteTarget(target) {
+      return Boolean(target?.closest?.('#reversePrompt'));
+    }
+
+    function getImageFileFromClipboard(clipboardData, basename = 'pasted_source') {
+      const items = Array.from(clipboardData?.items || []);
+      const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+      const file = imageItem?.getAsFile();
+      if (!file) return null;
+      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.type.split('/')[1] || 'png');
+      const name = file.name || `${basename}_${Date.now()}.${ext}`;
+      return new File([file], name, { type: file.type || 'image/png' });
+    }
+
+    function getPasteTargetSourceIndex(target) {
+      const slot = target?.closest?.('[data-source-slot]');
+      if (slot) {
+        const index = Number(slot.dataset.sourceSlot || 0);
+        if (!state.sourceFiles[index]) return index;
+      }
+      return getFirstEmptySourceIndex();
+    }
+
+    function getFirstEmptySourceIndex() {
+      return state.sourceFiles.findIndex((file) => !file);
+    }
+
+    function clearSourceImage(index, options = {}) {
+      state.sourceFiles[index] = null;
+      if (state.sourcePreviewUrls[index]) URL.revokeObjectURL(state.sourcePreviewUrls[index]);
+      state.sourcePreviewUrls[index] = '';
+      renderSourceSlot(index);
+      updateGenerateButton();
+      const selectedCount = getSelectedSourceImages().length;
+      if (!options.silent) {
+        setStatus(selectedCount > 0 ? `还保留 ${selectedCount} 张参考图。` : '参考图已清空，现在是自由生图。', 'ok');
+      }
+    }
+
+    function clearAllSourceImages() {
+      if (getSelectedSourceImages().length === 0) {
+        setStatus('现在没有参考图。', 'ok');
+        return;
+      }
+      sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
+      updateGenerateButton();
+      setStatus('参考图已清空，现在是自由生图。', 'ok');
+    }
+
+    function updateGenerateButton() {
+      const span = generateBtn.querySelector('span');
+      if (span) span.textContent = getSelectedSourceImages().length > 0 ? '开始改图' : '开始出图';
+    }
+
+    function getSelectedSourceImages() {
+      return state.sourceFiles
+        .map((file, index) => ({ file, previewUrl: state.sourcePreviewUrls[index] }))
+        .filter((source) => source.file);
+    }
+
+    function getSourceImageName(index) {
+      return `图${index + 1}.png`;
+    }
+
+    async function convertImageToPng(file) {
+      if (file.type === 'image/png' && file.size <= 5 * 1024 * 1024) {
+        return new File([file], normalizePngName(file.name), { type: 'image/png' });
+      }
+
+      const dataUrl = await readFileAsDataUrl(file);
+      const image = await loadImage(dataUrl);
+      const maxSides = [1536, 1280, 1024, 768];
+      let lastBlob = null;
+
+      for (const maxSide of maxSides) {
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const blob = await drawImageToPngBlob(image, width, height);
+        lastBlob = blob;
+        if (blob.size <= 5 * 1024 * 1024) {
+          return new File([blob], normalizePngName(file.name), { type: 'image/png' });
+        }
+      }
+
+      throw new Error('PNG 文件过大');
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('图片无法解码'));
+        image.src = src;
+      });
+    }
+
+    function drawImageToPngBlob(image, width, height) {
+      return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('PNG 转换失败'));
+        }, 'image/png');
+      });
+    }
+
+    function normalizePngName(name) {
+      const base = String(name || 'source').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_') || 'source';
+      return `${base}.png`;
+    }
+
+    function startTaskTimer(task) {
+      stopTaskTimer(task);
+      task.timerId = setInterval(() => {
+        if (task.status === 'running') updateTaskCard(task);
+      }, 1000);
+    }
+
+    function stopTaskTimer(task) {
+      if (task.timerId) {
+        clearInterval(task.timerId);
+        task.timerId = null;
+      }
+    }
+
+    function formatDurationMs(ms) {
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      if (minutes <= 0) return `${seconds} 秒`;
+      return `${minutes} 分 ${seconds} 秒`;
+    }
+
+    function setReverseImage(file) {
+      if (!file.type.startsWith('image/')) {
+        setReverseStatus('只能上传图片文件。', 'error');
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setReverseStatus('图片不能超过 5MB。', 'error');
+        return false;
+      }
+
+      reverseSelectedFile = file;
+      if (reversePreviewUrl) URL.revokeObjectURL(reversePreviewUrl);
+      reversePreviewUrl = URL.createObjectURL(file);
+      reverseDropHint.style.display = 'none';
+      reversePreview.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.src = reversePreviewUrl;
+      img.alt = '反推图片预览';
+      const name = document.createElement('div');
+      name.className = 'reverse-file-name';
+      name.textContent = file.name;
+      const remove = document.createElement('button');
+      remove.className = 'remove-ref';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        clearReverseImage();
+      });
+
+      reversePreview.append(img, name, remove);
+      reverseBtn.disabled = false;
+      setReverseStatus('图片已上传，可以开始反推提示词。', 'ok');
+      return true;
+    }
+
+    function clearReverseImage(options = {}) {
+      const { silent = false } = options;
+      reverseSelectedFile = null;
+      reverseImageInput.value = '';
+      if (reversePreviewUrl) URL.revokeObjectURL(reversePreviewUrl);
+      reversePreviewUrl = '';
+      reversePreview.innerHTML = '';
+      reverseDropHint.style.display = 'block';
+      reverseBtn.disabled = true;
+      if (!silent) setReverseStatus('已移除图片。', '');
+    }
+
+    async function runReversePrompt() {
+      if (!reverseSelectedFile) {
+        setReverseStatus('请先上传图片。', 'error');
+        return;
+      }
+
+      const file = reverseSelectedFile;
+      const queuedPreviewUrl = URL.createObjectURL(file);
+      const localId = `reverse-local-${Date.now()}-${++state.reverseSeq}`;
+      const item = {
+        localId,
+        title: file.name || '图片 Prompt',
+        previewUrl: queuedPreviewUrl,
+        createdAt: formatBeijingTime(),
+        durationMs: 0,
+        status: 'running',
+        data: null,
+        error: ''
+      };
+      state.reverseHistory.unshift(item);
+      state.reversePage = 1;
+      renderReverseHistoryPage();
+      clearReverseImage({ silent: true });
+      setReverseStatus('已加入识图，完成后会出现在记录里。', 'ok');
+
+      try {
+        const startedAtMs = Date.now();
+        const form = new FormData();
+        form.append('image', file, file.name || 'image.png');
+        form.append('reverseMode', state.reverseMode || 'general');
+        const res = await fetch('/api/xi-image/reverse-prompt', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: form
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 401) {
+            handleAuthExpired(data.error || '登录已过期，请重新登录。');
+          }
+          const detail = data.detail ? '：' + data.detail : '';
+          throw new Error((data.error || '反推失败') + detail);
+        }
+        item.status = 'done';
+        item.historyId = data.historyId;
+        item.title = data.result?.title || file.name || '图片 Prompt';
+        item.createdAt = data.createdAt || item.createdAt;
+        item.durationMs = data.durationMs || (Date.now() - startedAtMs);
+        if (data.previewUrl && item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
+        item.previewUrl = data.previewUrl || item.previewUrl;
+        item.data = data;
+        updateNavPoints(data.remainingPoints);
+        openPromptPreview(data);
+        renderReverseHistoryPage();
+        setReverseStatus('Prompt 已生成，可以继续上传下一张。', 'ok');
+      } catch (err) {
+        item.status = 'failed';
+        item.error = err.message || '反推失败';
+        item.durationMs = item.durationMs || 0;
+        renderReverseHistoryPage();
+        setReverseStatus(item.error, 'error');
+      }
+    }
+
+    async function loadReverseHistory() {
+      try {
+        const res = await fetch('/api/user/history?type=reverse&limit=200', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) handleAuthExpired(data.error || '登录已过期，请重新登录。');
+          return;
+        }
+        const data = await res.json();
+        state.reverseHistory = (data.history || [])
+          .filter((item) => item.sub_type === 'xi-reverse')
+          .map((item) => {
+            const meta = parseJson(item.content) || {};
+            return {
+              historyId: item.id,
+              title: meta.result?.title || item.prompt || '图片反推提示词',
+              previewUrl: meta.preview_url || '',
+              createdAt: formatHistoryTime(item.created_at),
+              durationMs: meta.duration_ms || 0,
+              status: 'done',
+              data: {
+                model: meta.model || 'gpt-5.5',
+                result: meta.result || null,
+                raw: meta.raw || '',
+                previewUrl: meta.preview_url || '',
+                createdAt: formatHistoryTime(item.created_at),
+                durationMs: meta.duration_ms || 0
+              }
+            };
+          });
+        state.reversePage = 1;
+        renderReverseHistoryPage();
+      } catch {}
+    }
+
+    function prependReverseHistory(data) {
+      state.reverseHistory.unshift({
+        historyId: data.historyId,
+        title: data.result?.title || '图片反推提示词',
+        previewUrl: data.previewUrl || '',
+        createdAt: data.createdAt || '',
+        durationMs: data.durationMs || 0,
+        status: 'done',
+        data
+      });
+      state.reversePage = 1;
+      renderReverseHistoryPage();
+    }
+
+    function renderReverseHistoryPage() {
+      reverseHistoryEl.innerHTML = '';
+      const total = state.reverseHistory.length;
+      reversePagerEl.style.display = total > state.reversePageSize ? 'flex' : 'none';
+      if (total === 0) return;
+
+      const totalPages = getReverseTotalPages();
+      state.reversePage = Math.min(Math.max(state.reversePage, 1), totalPages);
+      const start = (state.reversePage - 1) * state.reversePageSize;
+      state.reverseHistory
+        .slice(start, start + state.reversePageSize)
+        .forEach((item) => reverseHistoryEl.appendChild(createReverseHistoryCard(item)));
+
+      reversePageInfoEl.textContent = `第 ${state.reversePage} / ${totalPages} 页 · 共 ${total} 条`;
+      reversePrevPageBtn.disabled = state.reversePage <= 1;
+      reverseNextPageBtn.disabled = state.reversePage >= totalPages;
+    }
+
+    function getReverseTotalPages() {
+      return Math.max(1, Math.ceil(state.reverseHistory.length / state.reversePageSize));
+    }
+
+    function createReverseHistoryCard(item) {
+      const card = document.createElement('div');
+      card.className = 'reverse-history-card';
+      const statusText = item.status === 'running' ? '识图中' : (item.status === 'failed' ? '失败' : '完成');
+      const thumb = item.previewUrl || item.data?.previewUrl || '';
+      const thumbHtml = thumb
+        ? `<img class="reverse-history-thumb" src="${escapeHtml(thumb)}" alt="识图缩略图">`
+        : '<div class="reverse-history-thumb placeholder">图</div>';
+      card.innerHTML = `${thumbHtml}<div class="reverse-history-info">
+          <h4>${escapeHtml(item.title)}</h4>
+          <p>${escapeHtml(item.createdAt || '-')} · ${statusText}${item.durationMs ? ' · 用时 ' + formatDurationMs(item.durationMs) : ''}</p>
+        </div>`;
+      const summary = getReversePromptSummary(item);
+      if (summary) {
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'reverse-history-summary';
+        summaryEl.textContent = summary;
+        card.querySelector('.reverse-history-info').appendChild(summaryEl);
+      }
+      const thumbEl = card.querySelector('img.reverse-history-thumb');
+      if (thumbEl) {
+        thumbEl.addEventListener('click', () => {
+          openStandaloneImagePreview(thumb, item.title || '看图写 Prompt 原图', `reverse_prompt_${item.historyId || Date.now()}.png`);
+        });
+      }
+      const btn = document.createElement('button');
+      btn.className = 'xi-small-btn reverse-prompt-btn';
+      btn.type = 'button';
+      btn.textContent = item.status === 'running' ? '生成中' : (item.status === 'failed' ? '查看错误' : '查看提示词');
+      btn.disabled = item.status === 'running';
+      btn.addEventListener('click', () => {
+        if (item.status === 'failed') {
+          setReverseStatus(item.error || '反推失败', 'error');
+          return;
+        }
+        if (item.data) openPromptPreview(item.data);
+      });
+      card.querySelector('.reverse-history-info').appendChild(btn);
+      return card;
+    }
+
+    function getReversePromptSummary(item) {
+      if (item.status === 'failed') return item.error || '';
+      const result = item.data?.result || {};
+      return result.polished_prompt_zh
+        || result.polished_prompt_en
+        || result.universal_prompt_zh
+        || result.universal_prompt_en
+        || result.dalle_prompt
+        || result.midjourney_prompt
+        || item.data?.raw
+        || '';
+    }
+
+    function addReverseBlock(title, text, copyable, targetEl = promptPreviewBody) {
+      if (!text) return;
+      const block = document.createElement('section');
+      block.className = 'prompt-block';
+      const header = document.createElement('div');
+      header.className = 'prompt-block-header';
+      const h3 = document.createElement('h3');
+      h3.textContent = title;
+      header.appendChild(h3);
+      if (copyable) {
+        const btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.type = 'button';
+        btn.textContent = '复制';
+        btn.addEventListener('click', () => copyReverseText(btn, text));
+        header.appendChild(btn);
+      }
+      const content = document.createElement('div');
+      content.className = 'prompt-content' + (copyable ? '' : ' muted');
+      content.textContent = text;
+      block.append(header, content);
+      if (title === '中文 Prompt' || title === '英文 Prompt') {
+        const actions = document.createElement('div');
+        actions.className = 'prompt-block-actions';
+        const useBtn = document.createElement('button');
+        useBtn.className = 'prompt-use-btn';
+        useBtn.type = 'button';
+        useBtn.textContent = '用它生图';
+        useBtn.addEventListener('click', () => usePromptForImage(text, title));
+        actions.appendChild(useBtn);
+        block.appendChild(actions);
+      }
+      targetEl.appendChild(block);
+    }
+
+    function usePromptForImage(text, title = 'Prompt') {
+      promptEl.value = text;
+      closePromptPreview();
+      promptEl.focus();
+      promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus(`已填入${title}，可以直接开始出图。`, 'ok');
+    }
+
+    function copyReverseText(btn, text) {
+      copyTextToClipboard(text).then(() => {
+        const old = btn.textContent;
+        btn.textContent = '已复制';
+        setTimeout(() => { btn.textContent = old; }, 1400);
+      }).catch(() => {
+        setReverseStatus('复制失败，请手动选择文本复制。', 'error');
+      });
+    }
+
+    function copyTaskPrompt(btn, text) {
+      if (!text) return;
+      copyTextToClipboard(text).then(() => {
+        const old = btn.textContent;
+        btn.textContent = '已复制';
+        setStatus('提示词已复制。', 'ok');
+        setTimeout(() => { btn.textContent = old; }, 1400);
+      }).catch(() => {
+        setStatus('复制失败，请手动选择提示词复制。', 'error');
+      });
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) throw new Error('copy failed');
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function setReverseBusy(busy) {
+      reverseBtn.disabled = !reverseSelectedFile;
+      const span = reverseBtn.querySelector('span');
+      if (span) span.textContent = '加入识图';
+    }
+
+    function setReverseStatus(text, type) {
+      reverseStatusEl.textContent = text || '';
+      reverseStatusEl.className = 'reverse-status' + (type ? ' ' + type : '');
+    }
+
+    function getParallelism() {
+      return clamp(Number(parallelismEl.value || 1), 1, MAX_PARALLELISM);
+    }
+
+    function clamp(value, min, max) {
+      if (!Number.isFinite(value)) return min;
+      return Math.min(Math.max(Math.floor(value), min), max);
+    }
+
+    function setStatus(text, type) {
+      statusEl.textContent = text || '';
+      statusEl.className = 'xi-status' + (type ? ' ' + type : '');
+    }
+
+    updateEstimate();
+    updateQualityPrices();
+    renderTaskPage();
+    updateStats();
+  </script>
+</body>
+</html>
+

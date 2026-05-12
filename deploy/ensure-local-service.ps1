@@ -20,7 +20,7 @@ function Get-Listener {
 
 function Test-AppHttp {
   try {
-    $res = Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 "http://127.0.0.1:$Port/xi-image.html"
+    $res = Invoke-WebRequest -UseBasicParsing -TimeoutSec 8 "http://127.0.0.1:$Port/image-studio.html"
     return $res.StatusCode -eq 200
   } catch {
     return $false

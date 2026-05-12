@@ -8,7 +8,7 @@
 
 ### 御弟哥哥 · gpt-image-2 生图
 
-`xi-image.html` 是当前最重要的图片创作页面，面向通用出图、批量测试和参考图改图。
+`image-studio.html` 是当前最重要的图片创作页面，面向通用出图、批量测试和参考图改图。
 
 - 支持 `gpt-image-2` 文生图。
 - 支持上传 1-4 张参考图进行改图。
@@ -87,7 +87,7 @@
 ## 主要页面
 
 - `index.html`：首页和内容创作入口。
-- `xi-image.html`：御弟哥哥 · gpt-image-2 生图、参考图改图、看图写 Prompt、生成记录。
+- `image-studio.html`：御弟哥哥 · gpt-image-2 生图、参考图改图、看图写 Prompt、生成记录。
 - `reverse-prompt.html`：独立图片反推提示词页面。
 - `profile.html`：个人中心。
 - `admin.html`：管理后台。
