@@ -256,8 +256,12 @@ function addPointLog(userId, type, amount, balance, description) {
 }
 
 // 获取积分记录
-function getPointLogs(userId, limit = 50) {
-  return db.prepare('SELECT * FROM point_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?').all(userId, limit);
+function getPointLogs(userId, limit = 50, offset = 0) {
+  return db.prepare('SELECT * FROM point_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all(userId, limit, offset);
+}
+
+function getPointLogsCount(userId) {
+  return db.prepare('SELECT COUNT(*) as total FROM point_logs WHERE user_id = ?').get(userId).total;
 }
 
 // 获取用户积分
@@ -384,6 +388,24 @@ function getAllHistory(options = {}) {
   return db.prepare(sql).all(...params);
 }
 
+function getAllHistoryCount(options = {}) {
+  const { type, keyword } = options;
+  let sql = 'SELECT COUNT(*) as total FROM history h LEFT JOIN users u ON h.user_id = u.id WHERE 1=1';
+  const params = [];
+
+  if (type) {
+    sql += ' AND h.type = ?';
+    params.push(type);
+  }
+
+  if (keyword) {
+    sql += ' AND (h.content LIKE ? OR h.prompt LIKE ? OR u.username LIKE ?)';
+    params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+  }
+
+  return db.prepare(sql).get(...params).total;
+}
+
 // 删除单条历史（管理员）
 function deleteHistoryAdmin(id) {
   db.prepare('DELETE FROM history WHERE id = ?').run(id);
@@ -403,6 +425,18 @@ function getStats() {
     SELECT COUNT(*) as count, SUM(cost_points) as cost
     FROM history WHERE date(created_at) = ?
   `).get(today);
+
+  const todayRecharge = db.prepare(`
+    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as points
+    FROM point_logs
+    WHERE type = 'recharge' AND amount > 0 AND date(created_at) = ?
+  `).get(today);
+
+  const todayPaid = db.prepare(`
+    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as revenue, COALESCE(SUM(points), 0) as points
+    FROM payment_orders
+    WHERE status = 'paid' AND date(paid_at) = ?
+  `).get(today);
   
   const totalHistory = db.prepare('SELECT COUNT(*) as count FROM history').get().count;
   
@@ -411,6 +445,11 @@ function getStats() {
     totalPoints,
     todayCount: todayHistory.count,
     todayCost: todayHistory.cost || 0,
+    todayRecharge: todayRecharge.points || 0,
+    todayRechargeCount: todayRecharge.count || 0,
+    todayPaidRevenue: todayPaid.revenue || 0,
+    todayPaidOrders: todayPaid.count || 0,
+    todayPaidPoints: todayPaid.points || 0,
     totalHistory
   };
 }
@@ -453,8 +492,9 @@ function getUserStats(userId) {
   const totalRecords = historyRows.length;
   const totalCost = db.prepare("SELECT COALESCE(SUM(cost_points), 0) as sum FROM history WHERE user_id = ?").get(userId).sum;
   const totalRecharge = db.prepare("SELECT COALESCE(SUM(amount), 0) as sum FROM point_logs WHERE user_id = ? AND type = 'recharge'").get(userId).sum;
+  const currentPoints = getUserPoints(userId);
 
-  return { totalImages, totalCopies, totalBoth, totalRecords, totalCost, totalRecharge };
+  return { currentPoints, totalImages, totalCopies, totalBoth, totalRecords, totalCost, totalRecharge };
 }
 
 // 修改密码（用户自己改）
@@ -502,6 +542,10 @@ function getAllPointLogs(limit = 100, offset = 0) {
     LEFT JOIN users u ON pl.user_id = u.id 
     ORDER BY pl.created_at DESC LIMIT ? OFFSET ?
   `).all(limit, offset);
+}
+
+function getAllPointLogsCount() {
+  return db.prepare('SELECT COUNT(*) as total FROM point_logs').get().total;
 }
 
 // =============================================
@@ -661,7 +705,21 @@ function getPaymentStats() {
   const paidOrders = db.prepare("SELECT COUNT(*) as count FROM payment_orders WHERE status = 'paid'").get().count;
   const totalRevenue = db.prepare("SELECT COALESCE(SUM(amount), 0) as sum FROM payment_orders WHERE status = 'paid'").get().sum;
   const totalPoints = db.prepare("SELECT COALESCE(SUM(points), 0) as sum FROM payment_orders WHERE status = 'paid'").get().sum;
-  return { totalOrders, paidOrders, totalRevenue, totalPoints };
+  const today = new Date().toISOString().split('T')[0];
+  const todayPaid = db.prepare(`
+    SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as revenue, COALESCE(SUM(points), 0) as points
+    FROM payment_orders
+    WHERE status = 'paid' AND date(paid_at) = ?
+  `).get(today);
+  return {
+    totalOrders,
+    paidOrders,
+    totalRevenue,
+    totalPoints,
+    todayPaidOrders: todayPaid.count || 0,
+    todayPaidRevenue: todayPaid.revenue || 0,
+    todayPaidPoints: todayPaid.points || 0
+  };
 }
 
 // 初始化数据库
@@ -678,12 +736,14 @@ module.exports = {
   deductPoints,
   rechargePoints,
   getPointLogs,
+  getPointLogsCount,
   getUserPoints,
   addHistory,
   getUserHistory,
   getUserHistoryCount,
   deleteHistory,
   getAllHistory,
+  getAllHistoryCount,
   deleteHistoryAdmin,
   getStats,
   getUserStats,
@@ -691,6 +751,7 @@ module.exports = {
   adminResetPassword,
   getDailyStats,
   getAllPointLogs,
+  getAllPointLogsCount,
   // 卡密
   generateCdkeys,
   generateUserInviteCode,

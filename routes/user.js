@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const {
   getUserPoints,
   getPointLogs,
+  getPointLogsCount,
   getUserHistory,
   getUserHistoryCount,
   deleteHistory,
@@ -30,8 +31,18 @@ router.get('/points', authMiddleware, (req, res) => {
 
 // 获取积分记录
 router.get('/points/logs', authMiddleware, (req, res) => {
-  const logs = getPointLogs(req.userId);
-  res.json({ logs });
+  const page = parsePositiveInt(req.query.page, 1, 100000);
+  const limit = parsePositiveInt(req.query.limit, 10, 100);
+  const offset = (page - 1) * limit;
+  const logs = getPointLogs(req.userId, limit, offset);
+  const total = getPointLogsCount(req.userId);
+  res.json({
+    logs,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  });
 });
 
 // 获取历史记录

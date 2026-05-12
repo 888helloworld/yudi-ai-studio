@@ -21,8 +21,9 @@
     .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .profile-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
     .profile-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-    .profile-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+    .profile-stats { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
     .profile-stat { text-align: center; padding: 16px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border); }
+    .profile-stat.balance { text-align: left; background: linear-gradient(135deg, rgba(255,45,120,0.14), rgba(0,240,255,0.08)); border-color: rgba(255,45,120,0.28); }
     .profile-stat-value { font-size: 24px; font-weight: 900; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .profile-stat-label { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
     .profile-form-group { margin-bottom: 16px; }
@@ -96,6 +97,7 @@
 
   <main class="profile-container">
     <div class="profile-stats" id="statsContainer">
+      <div class="profile-stat balance"><div class="profile-stat-value" id="statBalance">-</div><div class="profile-stat-label">剩余积分</div></div>
       <div class="profile-stat"><div class="profile-stat-value" id="statImages">-</div><div class="profile-stat-label">生成图片</div></div>
       <div class="profile-stat"><div class="profile-stat-value" id="statCopies">-</div><div class="profile-stat-label">生成文案</div></div>
       <div class="profile-stat"><div class="profile-stat-value" id="statCost">-</div><div class="profile-stat-label">消耗积分</div></div>
@@ -154,8 +156,9 @@
 
     const authHeaders = { 'Authorization': `Bearer ${token}` };
     let pointLogs = [];
+    let logTotal = 0;
     let logPage = 1;
-    let logPageSize = 15;
+    let logPageSize = 10;
     let invitesLoaded = false;
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -169,11 +172,11 @@
       try {
         const res = await fetch('/api/user/stats', { headers: authHeaders });
         const data = await res.json();
-        console.log('统计接口返回:', res.status, data);
         if (!res.ok) {
           document.getElementById('statsContainer').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">加载失败：' + (data.error || '未知错误') + '</div>';
           return;
         }
+        document.getElementById('statBalance').textContent = data.currentPoints ?? 0;
         document.getElementById('statImages').textContent = data.totalImages ?? 0;
         document.getElementById('statCopies').textContent = data.totalCopies ?? 0;
         document.getElementById('statCost').textContent = data.totalCost ?? 0;
@@ -185,12 +188,15 @@
     }
 
     // 加载积分明细
-    async function loadLogs() {
+    async function loadLogs(page = logPage) {
       try {
-        const res = await fetch('/api/user/points/logs', { headers: authHeaders });
+        logPage = page;
+        const params = new URLSearchParams({ page: String(logPage), limit: String(logPageSize) });
+        const res = await fetch(`/api/user/points/logs?${params}`, { headers: authHeaders });
         const data = await res.json();
         pointLogs = data.logs || [];
-        logPage = 1;
+        logTotal = Number(data.total || pointLogs.length);
+        logPage = Number(data.page || logPage);
         renderLogs();
       } catch (e) {
         document.getElementById('logsContainer').innerHTML = '<div class="log-empty">加载失败</div>';
@@ -204,10 +210,9 @@
         return;
       }
 
-      const totalPages = Math.max(1, Math.ceil(pointLogs.length / logPageSize));
+      const totalPages = Math.max(1, Math.ceil(logTotal / logPageSize));
       logPage = Math.min(Math.max(logPage, 1), totalPages);
-      const start = (logPage - 1) * logPageSize;
-      const pageLogs = pointLogs.slice(start, start + logPageSize);
+      const pageLogs = pointLogs;
 
       let html = '<table class="log-table"><thead><tr><th>时间</th><th>类型</th><th>金额</th><th>说明</th></tr></thead><tbody>';
       pageLogs.forEach(log => {
@@ -227,31 +232,29 @@
         <div class="log-pager-left">
           <label for="logPageSize">每页显示</label>
           <select id="logPageSize">
-            <option value="15"${logPageSize === 15 ? ' selected' : ''}>15 条</option>
+            <option value="10"${logPageSize === 10 ? ' selected' : ''}>10 条</option>
             <option value="30"${logPageSize === 30 ? ' selected' : ''}>30 条</option>
             <option value="50"${logPageSize === 50 ? ' selected' : ''}>50 条</option>
           </select>
         </div>
         <div class="log-pager-right">
           <button class="log-page-btn" id="logPrevPage" type="button"${logPage <= 1 ? ' disabled' : ''}>上一页</button>
-          <span class="log-page-info">第 ${logPage} / ${totalPages} 页 · 共 ${pointLogs.length} 条</span>
+          <span class="log-page-info">第 ${logPage} / ${totalPages} 页 · 共 ${logTotal} 条</span>
           <button class="log-page-btn" id="logNextPage" type="button"${logPage >= totalPages ? ' disabled' : ''}>下一页</button>
         </div>
       </div>`;
       container.innerHTML = html;
 
       document.getElementById('logPageSize')?.addEventListener('change', (event) => {
-        logPageSize = Number(event.target.value) || 15;
+        logPageSize = Number(event.target.value) || 10;
         logPage = 1;
-        renderLogs();
+        loadLogs(1);
       });
       document.getElementById('logPrevPage')?.addEventListener('click', () => {
-        logPage = Math.max(1, logPage - 1);
-        renderLogs();
+        loadLogs(Math.max(1, logPage - 1));
       });
       document.getElementById('logNextPage')?.addEventListener('click', () => {
-        logPage = Math.min(totalPages, logPage + 1);
-        renderLogs();
+        loadLogs(Math.min(totalPages, logPage + 1));
       });
     }
 

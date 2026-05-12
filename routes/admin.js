@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, deleteUser, rechargePoints, getAllHistory, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats } = require('../db');
+const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 function parsePositiveInt(value, fallback, max) {
@@ -82,8 +82,15 @@ router.get('/history', (req, res) => {
     limit,
     offset
   });
+  const total = getAllHistoryCount({ type, keyword });
   
-  res.json({ history });
+  res.json({
+    history,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  });
 });
 
 // 删除历史记录
@@ -123,7 +130,14 @@ router.get('/point-logs', (req, res) => {
   const limit = parsePositiveInt(req.query.limit, 50, 200);
   const offset = (page - 1) * limit;
   const logs = getAllPointLogs(limit, offset);
-  res.json({ logs });
+  const total = getAllPointLogsCount();
+  res.json({
+    logs,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  });
 });
 
 // =============================================
@@ -147,12 +161,19 @@ router.post('/cdkeys/generate', (req, res) => {
 // 获取卡密列表
 router.get('/cdkeys', (req, res) => {
   const { used, page, limit } = req.query;
+  const pageNum = parsePositiveInt(page, 1, 100000);
+  const limitNum = parsePositiveInt(limit, 50, 200);
   const result = getAllCdkeys({
     used,
-    page: parsePositiveInt(page, 1, 100000),
-    limit: parsePositiveInt(limit, 50, 200)
+    page: pageNum,
+    limit: limitNum
   });
-  res.json(result);
+  res.json({
+    ...result,
+    page: pageNum,
+    limit: limitNum,
+    totalPages: Math.ceil(result.total / limitNum)
+  });
 });
 
 // 获取卡密统计
@@ -168,11 +189,19 @@ router.get('/cdkeys/stats', (req, res) => {
 // 获取支付订单列表
 router.get('/payment-orders', (req, res) => {
   const { page, limit } = req.query;
+  const pageNum = parsePositiveInt(page, 1, 100000);
+  const limitNum = parsePositiveInt(limit, 50, 200);
   const result = getAllPaymentOrders({
-    page: parsePositiveInt(page, 1, 100000),
-    limit: parsePositiveInt(limit, 50, 200)
+    page: pageNum,
+    limit: limitNum
   });
-  res.json({ ...result, orders: result.list });
+  res.json({
+    ...result,
+    orders: result.list,
+    page: pageNum,
+    limit: limitNum,
+    totalPages: Math.ceil(result.total / limitNum)
+  });
 });
 
 // 获取支付统计

@@ -20,7 +20,7 @@
     .admin-user-info a:hover { background: var(--bg-card); color: var(--text-primary); }
     #adminName { color: var(--neon-pink); font-weight: 900; }
     .admin-container { position: relative; z-index: 1; width: min(1180px,calc(100% - 48px)); margin: 0 auto; padding: 28px 0 42px; }
-    .admin-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+    .admin-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 14px; margin-bottom: 18px; }
     .admin-stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; transition: var(--base); }
     .admin-stat-card:hover { border-color: rgba(255,45,120,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
     .admin-stat-label { color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
@@ -49,6 +49,13 @@
     .admin-btn-danger { color: var(--neon-red); border-color: rgba(239,68,68,0.3); }
     .admin-btn-danger:hover { background: rgba(239,68,68,0.08); border-color: var(--neon-red); }
     .admin-btn-sm { padding: 6px 9px; font-size: 12px; margin-right: 6px; }
+    .admin-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; color: var(--text-muted); font-size: 12px; font-weight: 700; }
+    .admin-pager-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .admin-pager select { width: auto; min-width: 86px; padding: 7px 28px 7px 10px; border-radius: var(--radius-sm); font-size: 13px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); }
+    .admin-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .admin-panel-title h2 { font-size: 16px; font-weight: 800; }
+    .admin-panel-title p { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+    .payment-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; margin-bottom: 14px; }
     .admin-modal { position: fixed; inset: 0; background: rgba(10,14,23,0.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; backdrop-filter: blur(12px); }
     .admin-modal-content { width: min(420px,100%); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 24px; }
     .admin-modal-content h3 { font-size: 20px; font-weight: 800; margin-bottom: 14px; }
@@ -117,6 +124,8 @@
       <div class="admin-stat-card"><div class="admin-stat-label">总积分</div><div class="admin-stat-value" id="totalPoints">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日生成</div><div class="admin-stat-value" id="todayCount">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日消耗积分</div><div class="admin-stat-value" id="todayCost">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日充值积分</div><div class="admin-stat-value" id="todayRecharge">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日支付金额</div><div class="admin-stat-value" id="todayPaidRevenue">-</div></div>
     </section>
 
     <nav class="admin-tabs">
@@ -129,6 +138,9 @@
     </nav>
 
     <section class="admin-panel active" id="usersPanel">
+      <div class="admin-panel-title">
+        <div><h2>用户管理</h2><p>查看余额、给用户充值、重置密码或删除普通用户。</p></div>
+      </div>
       <div class="admin-toolbar">
         <input type="text" id="searchUser" placeholder="搜索用户名...">
       </div>
@@ -150,6 +162,9 @@
     </section>
 
     <section class="admin-panel" id="historyPanel">
+      <div class="admin-panel-title">
+        <div><h2>历史记录</h2><p>支持按用户名、内容、提示词搜索，并可删除无效记录。</p></div>
+      </div>
       <div class="admin-toolbar">
         <input type="text" id="searchHistory" placeholder="搜索内容...">
         <select id="filterType">
@@ -159,6 +174,7 @@
         </select>
       </div>
       <div id="historyList"></div>
+      <div id="historyPager"></div>
     </section>
 
     <section class="admin-panel" id="chartsPanel">
@@ -180,8 +196,8 @@
     </section>
 
     <section class="admin-panel" id="pointlogsPanel">
-      <div class="admin-toolbar">
-        <span style="color:var(--text-secondary);font-size:14px;font-weight:600;">全平台积分流水</span>
+      <div class="admin-panel-title">
+        <div><h2>积分流水</h2><p>查看全平台充值、消费与变更后余额。</p></div>
       </div>
       <div class="admin-table-wrap">
         <table>
@@ -198,10 +214,14 @@
           <tbody id="pointLogsList"></tbody>
         </table>
       </div>
+      <div id="pointLogsPager"></div>
     </section>
 
     <!-- 卡密管理面板 -->
     <section class="admin-panel" id="cdkeysPanel">
+      <div class="admin-panel-title">
+        <div><h2>卡密管理</h2><p>批量生成兑换码，跟踪使用状态和总积分池。</p></div>
+      </div>
       <div class="cdkey-form">
         <div>
           <label>生成数量</label>
@@ -244,13 +264,15 @@
           <tbody id="cdkeysList"></tbody>
         </table>
       </div>
+      <div id="cdkeysPager"></div>
     </section>
 
     <!-- 支付订单面板 -->
     <section class="admin-panel" id="paymentPanel">
-      <div class="admin-toolbar">
-        <span style="color:var(--text-secondary);font-size:14px;font-weight:600;">支付订单管理</span>
+      <div class="admin-panel-title">
+        <div><h2>支付订单</h2><p>查看支付订单、支付成功金额与到账积分。</p></div>
       </div>
+      <div class="payment-stats" id="paymentStats"></div>
       <div class="admin-table-wrap">
         <table>
           <thead>
@@ -268,6 +290,7 @@
           <tbody id="paymentOrdersList"></tbody>
         </table>
       </div>
+      <div id="paymentOrdersPager"></div>
     </section>
   </main>
 
@@ -306,6 +329,14 @@
 
     let currentUserId = null;
     let users = [];
+    let historyPage = 1;
+    let historyLimit = 10;
+    let pointLogsPage = 1;
+    let pointLogsLimit = 10;
+    let cdkeysPage = 1;
+    let cdkeysLimit = 10;
+    let paymentPage = 1;
+    let paymentLimit = 10;
 
     async function checkAdmin() {
       try {
@@ -333,6 +364,8 @@
         document.getElementById('totalPoints').textContent = data.totalPoints;
         document.getElementById('todayCount').textContent = data.todayCount;
         document.getElementById('todayCost').textContent = data.todayCost || 0;
+        document.getElementById('todayRecharge').textContent = data.todayRecharge || 0;
+        document.getElementById('todayPaidRevenue').textContent = formatMoney(data.todayPaidRevenue || 0);
       } catch (err) {
         console.error('加载统计失败', err);
       }
@@ -485,16 +518,28 @@
       }
     }
 
-    async function loadHistory() {
+    async function loadHistory(page = historyPage) {
       const keyword = document.getElementById('searchHistory').value;
       const type = document.getElementById('filterType').value;
       try {
+        historyPage = page;
         const params = new URLSearchParams();
         if (keyword) params.append('keyword', keyword);
         if (type) params.append('type', type);
+        params.append('page', String(historyPage));
+        params.append('limit', String(historyLimit));
         const res = await fetch(`/api/admin/history?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         renderHistory(data.history);
+        renderPager('historyPager', {
+          page: Number(data.page || historyPage),
+          limit: historyLimit,
+          total: Number(data.total || 0),
+          totalPages: Number(data.totalPages || 1),
+          sizes: [10, 20, 50],
+          onPage: loadHistory,
+          onLimit: (limit) => { historyLimit = limit; loadHistory(1); }
+        });
       } catch (err) {
         console.error('加载历史失败', err);
       }
@@ -510,17 +555,35 @@
         <div class="admin-history-item">
           <div class="meta">
             <span>用户：${escapeHtml(h.username || '未知')}</span>
-            <span>类型：${h.type === 'image' ? '图片' : '文案'}</span>
+            <span>类型：${h.type === 'image' ? '图片' : (h.type === 'copy' ? '文案' : '图文')}</span>
             <span>消耗：${escapeHtml(h.cost_points || 0)} 积分</span>
             <span>时间：${escapeHtml(h.created_at)}</span>
           </div>
           <div class="content">${escapeHtml(h.content || h.prompt || h.image_url || '')}</div>
+          <div style="margin-top:10px;">
+            <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="deleteHistoryRecord(${Number(h.id)})">删除</button>
+          </div>
         </div>
       `).join('');
     }
 
-    document.getElementById('searchHistory').addEventListener('input', loadHistory);
-    document.getElementById('filterType').addEventListener('change', loadHistory);
+    async function deleteHistoryRecord(id) {
+      if (!confirm('确定删除这条历史记录吗？')) return;
+      try {
+        const res = await fetch(`/api/admin/history/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('删除失败');
+        loadHistory(historyPage);
+      } catch (err) {
+        alert(err.message || '删除失败');
+      }
+    }
+    window.deleteHistoryRecord = deleteHistoryRecord;
+
+    document.getElementById('searchHistory').addEventListener('input', () => loadHistory(1));
+    document.getElementById('filterType').addEventListener('change', () => loadHistory(1));
 
     // 图表功能
     async function loadChartData(days) {
@@ -551,7 +614,7 @@
           const both = stats.find(s => s.day === d && s.type === 'both');
           return (cp ? cp.count : 0) + (both ? both.count : 0);
         });
-        const costData = days_list.map(d => { const r = stats.find(s => s.day === d); return r ? (r.cost || 0) : 0; });
+        const costData = days_list.map(d => stats.filter(s => s.day === d).reduce((sum, row) => sum + (row.cost || 0), 0));
 
         // 用纯CSS柱状图
         const maxVal = Math.max(...imageData, ...copyData, 1);
@@ -587,14 +650,51 @@
     }
     window.loadChartData = loadChartData;
 
+    function renderPager(containerId, config) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const total = Number(config.total || 0);
+      if (total === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      const page = Math.max(1, Number(config.page || 1));
+      const totalPages = Math.max(1, Number(config.totalPages || Math.ceil(total / config.limit)));
+      const sizes = config.sizes || [10, 20, 50];
+      container.innerHTML = `<div class="admin-pager">
+        <div>第 ${page} / ${totalPages} 页 · 共 ${total} 条</div>
+        <div class="admin-pager-actions">
+          <span>每页</span>
+          <select data-pager-size="${containerId}">
+            ${sizes.map(size => `<option value="${size}"${Number(config.limit) === size ? ' selected' : ''}>${size} 条</option>`).join('')}
+          </select>
+          <button class="admin-btn admin-btn-sm" data-pager-prev="${containerId}"${page <= 1 ? ' disabled' : ''}>上一页</button>
+          <button class="admin-btn admin-btn-sm" data-pager-next="${containerId}"${page >= totalPages ? ' disabled' : ''}>下一页</button>
+        </div>
+      </div>`;
+
+      container.querySelector(`[data-pager-size="${containerId}"]`)?.addEventListener('change', (event) => {
+        config.onLimit(Number(event.target.value));
+      });
+      container.querySelector(`[data-pager-prev="${containerId}"]`)?.addEventListener('click', () => {
+        config.onPage(Math.max(1, page - 1));
+      });
+      container.querySelector(`[data-pager-next="${containerId}"]`)?.addEventListener('click', () => {
+        config.onPage(Math.min(totalPages, page + 1));
+      });
+    }
+
     // 积分流水
-    async function loadPointLogs() {
+    async function loadPointLogs(page = pointLogsPage) {
       try {
-        const res = await fetch('/api/admin/point-logs', { headers: { 'Authorization': `Bearer ${token}` } });
+        pointLogsPage = page;
+        const params = new URLSearchParams({ page: String(pointLogsPage), limit: String(pointLogsLimit) });
+        const res = await fetch(`/api/admin/point-logs?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const tbody = document.getElementById('pointLogsList');
         if (!data.logs || data.logs.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+          document.getElementById('pointLogsPager').innerHTML = '';
           return;
         }
         tbody.innerHTML = data.logs.map(log => {
@@ -611,6 +711,15 @@
             <td style="color:var(--text-secondary);">${escapeHtml(log.description || '-')}</td>
           </tr>`;
         }).join('');
+        renderPager('pointLogsPager', {
+          page: Number(data.page || pointLogsPage),
+          limit: pointLogsLimit,
+          total: Number(data.total || 0),
+          totalPages: Number(data.totalPages || 1),
+          sizes: [10, 20, 50, 100],
+          onPage: loadPointLogs,
+          onLimit: (limit) => { pointLogsLimit = limit; loadPointLogs(1); }
+        });
       } catch (e) {
         document.getElementById('pointLogsList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--neon-red);padding:40px;">加载失败</td></tr>';
       }
@@ -631,7 +740,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         alert(`成功生成 ${data.keys.length} 张卡密`);
-        loadCdkeys();
+        loadCdkeys(1);
         loadCdkeyStats();
       } catch (err) { alert('生成失败: ' + err.message); }
     }
@@ -648,17 +757,21 @@
       } catch (e) { console.error('加载卡密统计失败', e); }
     }
 
-    async function loadCdkeys() {
+    async function loadCdkeys(page = cdkeysPage) {
       const used = document.getElementById('cdkeyUsedFilter').value;
       try {
+        cdkeysPage = page;
         const params = new URLSearchParams();
         if (used) params.append('used', used);
+        params.append('page', String(cdkeysPage));
+        params.append('limit', String(cdkeysLimit));
         const res = await fetch(`/api/admin/cdkeys?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const tbody = document.getElementById('cdkeysList');
         const list = data.list || [];
         if (list.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无卡密</td></tr>';
+          document.getElementById('cdkeysPager').innerHTML = '';
           return;
         }
         tbody.innerHTML = list.map(c => {
@@ -673,6 +786,15 @@
             <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.created_at)}</td>
           </tr>`;
         }).join('');
+        renderPager('cdkeysPager', {
+          page: Number(data.page || cdkeysPage),
+          limit: cdkeysLimit,
+          total: Number(data.total || 0),
+          totalPages: Math.ceil(Number(data.total || 0) / cdkeysLimit),
+          sizes: [10, 20, 50, 100],
+          onPage: loadCdkeys,
+          onLimit: (limit) => { cdkeysLimit = limit; loadCdkeys(1); }
+        });
       } catch (e) { console.error('加载卡密失败', e); }
     }
 
@@ -692,16 +814,34 @@
     }
     window.copyCdkey = copyCdkey;
 
-    document.getElementById('cdkeyUsedFilter').addEventListener('change', loadCdkeys);
+    document.getElementById('cdkeyUsedFilter').addEventListener('change', () => loadCdkeys(1));
 
     // 支付订单管理
-    async function loadPaymentOrders() {
+    async function loadPaymentStats() {
       try {
-        const res = await fetch('/api/admin/payment-orders', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch('/api/admin/payment-orders/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('paymentStats').innerHTML = `
+          <div class="cdkey-stat"><div class="num">${escapeHtml(data.paidOrders || 0)}</div><div class="lbl">已支付订单</div></div>
+          <div class="cdkey-stat"><div class="num">${escapeHtml(formatMoney(data.totalRevenue || 0))}</div><div class="lbl">累计收入</div></div>
+          <div class="cdkey-stat"><div class="num">${escapeHtml(data.totalPoints || 0)}</div><div class="lbl">累计到账积分</div></div>
+          <div class="cdkey-stat"><div class="num">${escapeHtml(data.todayPaidPoints || 0)}</div><div class="lbl">今日支付积分</div></div>
+        `;
+      } catch (e) {
+        console.error('加载支付统计失败', e);
+      }
+    }
+
+    async function loadPaymentOrders(page = paymentPage) {
+      try {
+        paymentPage = page;
+        const params = new URLSearchParams({ page: String(paymentPage), limit: String(paymentLimit) });
+        const res = await fetch(`/api/admin/payment-orders?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const tbody = document.getElementById('paymentOrdersList');
         if (!data.orders || data.orders.length === 0) {
           tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
+          document.getElementById('paymentOrdersPager').innerHTML = '';
           return;
         }
         tbody.innerHTML = data.orders.map(o => {
@@ -712,7 +852,7 @@
           return `<tr>
             <td style="font-size:12px;font-family:monospace;">${escapeHtml(o.order_no)}</td>
             <td>${escapeHtml(o.username || '未知')}</td>
-            <td style="font-weight:700;">${escapeHtml(o.amount)} 元</td>
+            <td style="font-weight:700;">${escapeHtml(formatMoney(o.amount))} 元</td>
             <td>${escapeHtml(o.points)}</td>
             <td><span class="pay-channel-tag ${channelClass}">${channelLabel}</span></td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
@@ -720,6 +860,15 @@
             <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.created_at)}</td>
           </tr>`;
         }).join('');
+        renderPager('paymentOrdersPager', {
+          page: Number(data.page || paymentPage),
+          limit: paymentLimit,
+          total: Number(data.total || 0),
+          totalPages: Math.ceil(Number(data.total || 0) / paymentLimit),
+          sizes: [10, 20, 50, 100],
+          onPage: loadPaymentOrders,
+          onLimit: (limit) => { paymentLimit = limit; loadPaymentOrders(1); }
+        });
       } catch (e) { console.error('加载支付订单失败', e); }
     }
 
@@ -731,9 +880,9 @@
         document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
         if (tab.dataset.tab === 'history') loadHistory();
         if (tab.dataset.tab === 'charts') loadChartData(7);
-        if (tab.dataset.tab === 'pointlogs') loadPointLogs();
-        if (tab.dataset.tab === 'cdkeys') { loadCdkeys(); loadCdkeyStats(); }
-        if (tab.dataset.tab === 'payment') loadPaymentOrders();
+        if (tab.dataset.tab === 'pointlogs') loadPointLogs(1);
+        if (tab.dataset.tab === 'cdkeys') { loadCdkeys(1); loadCdkeyStats(); }
+        if (tab.dataset.tab === 'payment') { loadPaymentStats(); loadPaymentOrders(1); }
       });
     });
 
@@ -751,6 +900,11 @@
 
     function escapeJsString(value) {
       return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function formatMoney(value) {
+      const number = Number(value || 0);
+      return Number.isInteger(number) ? String(number) : number.toFixed(2);
     }
 
     checkAdmin();
