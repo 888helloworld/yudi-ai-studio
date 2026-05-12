@@ -11,6 +11,7 @@ const { PNG } = require('pngjs');
 
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
 function formatBeijingDateTime(input = new Date(), options = {}) {
   const { date = true, seconds = false } = options;
