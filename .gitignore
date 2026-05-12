@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Local configuration and secrets
+.env
+.env.*.local
+
+# Runtime data
+data.db
+data.db-*
+history.json
+uploads/
+logs/
+*.log
+*.out
+*.err
+out*.txt
+err*.txt
+node_out.txt
+node_err.txt
+server.out.log
+server.err.log
+
+# Editor and assistant-local state
+.vscode/
+.claude/
+.workbuddy/
+
+# OS artifacts
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>图片反推提示词 - 冰侠客</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .reverse-layout{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);gap:20px;align-items:start}
+    .reverse-preview{position:relative;width:100%}
+    .reverse-preview img{max-width:100%;max-height:360px;border-radius:var(--radius-md);display:block;margin:0 auto;object-fit:contain}
+    .reverse-file-name{margin-top:10px;color:var(--text-muted);font-size:12px;text-align:center;word-break:break-all}
+    .reverse-status{min-height:22px;color:var(--text-muted);font-size:13px;line-height:1.5;margin-top:12px}
+    .reverse-status.ok{color:var(--neon-green)}
+    .reverse-status.error{color:var(--neon-red)}
+    .reverse-result{display:grid;gap:16px}
+    .prompt-block{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
+    .prompt-block-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
+    .prompt-block-header h3{font-size:14px;font-weight:800;margin:0}
+    .copy-btn{padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:12px;font-weight:800;transition:var(--base)}
+    .copy-btn:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
+    .prompt-content{padding:14px;color:var(--text-primary);font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
+    .prompt-content.muted{color:var(--text-secondary)}
+    .keyword-row{display:flex;gap:8px;flex-wrap:wrap;padding:14px}
+    .keyword-chip{padding:6px 10px;border-radius:999px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.16);color:var(--neon-cyan);font-size:12px;font-weight:700}
+    .reverse-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .reverse-template-btn{min-height:38px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:800;text-align:center;transition:var(--base)}
+    .reverse-template-btn:hover{border-color:rgba(0,240,255,0.35);color:var(--neon-cyan);background:rgba(0,240,255,0.05)}
+    .reverse-template-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);box-shadow:0 0 0 1px rgba(0,240,255,0.12)}
+    .reverse-empty{min-height:360px;border:1px dashed var(--border-light);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);background:rgba(255,255,255,0.02);padding:28px;line-height:1.8}
+    .reverse-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+    .reverse-meta-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;text-align:center}
+    .reverse-meta-card strong{display:block;font-size:18px;font-weight:900;color:var(--neon-pink)}
+    .reverse-meta-card span{display:block;margin-top:4px;color:var(--text-muted);font-size:12px}
+    #dropZone.paste-ready{border-color:var(--neon-cyan);box-shadow:0 0 0 1px rgba(0,240,255,0.18),var(--shadow-glow)}
+    .login-overlay{display:none}
+    .login-overlay.show{display:flex}
+    @media(max-width:980px){.reverse-layout{grid-template-columns:1fr}.reverse-meta{grid-template-columns:1fr}}
+    @media(max-width:560px){.reverse-template-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <nav class="user-bar">
+    <div class="brand-mini">冰侠客 · 图片反推提示词</div>
+    <div class="user-info">
+      <span class="user-name" id="navUsername"></span>
+      <span class="user-points" id="navPoints">0 积分</span>
+      <div class="user-actions">
+        <a href="/">返回首页</a>
+        <a href="xi-image.html">Xi-Xu 生图</a>
+        <a href="profile.html">个人中心</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-prompt login-overlay" id="loginPrompt">
+    <div class="login-prompt-content">
+      <div class="eyebrow">需要登录</div>
+      <h2>登录后使用图片反推</h2>
+      <p>该功能会调用服务端配置的 Xi-Xu gpt-5.5 视觉模型，需要先登录账号。</p>
+      <div class="login-prompt-buttons">
+        <a href="login.html" class="btn-login">去登录</a>
+        <a href="register.html" class="btn-register">注册账号</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">gpt-5.5 vision · prompt reverse engineering</div>
+        <h1>上传图片，反推出专业绘图提示词</h1>
+        <p class="subtitle">识别图片主体、构图、光线、色彩、镜头和风格，生成适合 Midjourney、SDXL、FLUX、DALL·E / GPT Image 使用的提示词。</p>
+      </div>
+      <div class="hero-stats">
+        <div><strong>MJ</strong><span>Midjourney</span></div>
+        <div><strong>SD</strong><span>SDXL/FLUX</span></div>
+        <div><strong>GPT</strong><span>DALL·E</span></div>
+      </div>
+    </div>
+
+    <div class="reverse-layout">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="header-icon">🔎</div>
+          <div>
+            <h2>图片上传</h2>
+            <p>上传一张图片，系统会反推出可复用的绘图 prompt</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>参考图片</label>
+          <div class="drop-zone" id="dropZone">
+            <input type="file" id="imageInput" accept="image/*">
+            <div class="drop-hint" id="dropHint">
+              <div class="upload-icon">+</div>
+              <p>拖拽、粘贴图片到此处或点击上传</p>
+            </div>
+            <div class="reverse-preview" id="preview"></div>
+          </div>
+          <div class="field-hint">支持常见图片格式，单张最大 5MB。系统只分析视觉内容，不会保存图片。</div>
+        </div>
+
+        <div class="form-group">
+          <label>反推模板</label>
+          <div class="reverse-template-grid" id="reverseTemplateGrid">
+            <button class="reverse-template-btn active" type="button" data-reverse-mode="general">通用拆解</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="amazon">亚马逊主图</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="outfit">模特穿搭</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="style-only">只取风格</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="structured">精准拆图</button>
+            <button class="reverse-template-btn" type="button" data-reverse-mode="tabi-socks">足袋袜主图</button>
+          </div>
+          <div class="field-hint" id="reverseTemplateHint">按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。</div>
+        </div>
+
+        <button class="generate-btn" id="reverseBtn" type="button" disabled><span>反推提示词</span></button>
+        <div id="status" class="reverse-status"></div>
+      </section>
+
+      <section class="section-block" style="margin-top:0;">
+        <div class="section-heading" style="margin-bottom:16px;">
+          <h2>反推结果</h2>
+          <p>复制对应版本到你的绘图工具里使用</p>
+        </div>
+
+        <div class="reverse-meta" id="meta" style="display:none;">
+          <div class="reverse-meta-card"><strong id="modelName">gpt-5.5</strong><span>识图模型</span></div>
+          <div class="reverse-meta-card"><strong id="resultTitle">-</strong><span>画面标题</span></div>
+          <div class="reverse-meta-card"><strong id="createdAt">-</strong><span>生成时间</span></div>
+        </div>
+
+        <div id="empty" class="reverse-empty">上传图片后点击“反推提示词”，结果会显示在这里。</div>
+        <div id="result" class="reverse-result"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const imageInput = document.getElementById('imageInput');
+    const dropZone = document.getElementById('dropZone');
+    const dropHint = document.getElementById('dropHint');
+    const preview = document.getElementById('preview');
+    const reverseBtn = document.getElementById('reverseBtn');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const emptyEl = document.getElementById('empty');
+    const metaEl = document.getElementById('meta');
+    const reverseTemplateGrid = document.getElementById('reverseTemplateGrid');
+    const reverseTemplateHint = document.getElementById('reverseTemplateHint');
+    const REVERSE_TEMPLATE_HINTS = {
+      general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
+      amazon: '适合袜子、足袋袜、抹布、家居类产品主图，重点输出专业棚拍和亚马逊白底主图提示词。',
+      outfit: '适合模特穿搭、电商场景图，重点拆解姿势、腿部动作、袜子纹理、日系氛围和白底主图要求。',
+      'style-only': '只提取风格、构图、光线、色彩和商业摄影感觉，不复制人物、品牌、logo 或独特设计。',
+      structured: '按主体、背景、构图、镜头、光线、颜色、材质、风格、细节和画质关键词结构化拆图。',
+      'tabi-socks': '足袋袜主图专用，强调分趾结构、罗纹织物、脚部穿着效果、纯白背景和亚马逊主图限制。'
+    };
+    let selectedFile = null;
+    let previewUrl = '';
+    let reverseMode = 'general';
+
+    if (!token) {
+      document.getElementById('loginPrompt').classList.add('show');
+    } else {
+      initUser();
+    }
+
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files?.[0];
+      if (file) setImage(file);
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.remove('drag-over');
+      });
+    });
+
+    dropZone.addEventListener('drop', (event) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (file) setImage(file);
+    });
+
+    reverseTemplateGrid.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-reverse-mode]');
+      if (!btn) return;
+      reverseMode = btn.dataset.reverseMode || 'general';
+      reverseTemplateGrid.querySelectorAll('[data-reverse-mode]').forEach((item) => {
+        item.classList.toggle('active', item === btn);
+      });
+      reverseTemplateHint.textContent = REVERSE_TEMPLATE_HINTS[reverseMode] || REVERSE_TEMPLATE_HINTS.general;
+      setStatus(`已选择「${btn.textContent.trim()}」模板。`, 'ok');
+    });
+
+    document.addEventListener('paste', handleImagePaste);
+    reverseBtn.addEventListener('click', reversePrompt);
+
+    async function initUser() {
+      try {
+        const res = await fetch('/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) throw new Error('登录已失效');
+        const user = await res.json();
+        document.getElementById('navUsername').textContent = user.username || '';
+        document.getElementById('navPoints').textContent = (user.points ?? 0) + ' 积分';
+      } catch {
+        localStorage.removeItem('token');
+        document.getElementById('loginPrompt').classList.add('show');
+      }
+    }
+
+    function setImage(file) {
+      if (!file.type.startsWith('image/')) {
+        setStatus('只能上传图片文件。', 'error');
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setStatus('图片不能超过 5MB。', 'error');
+        return false;
+      }
+
+      selectedFile = file;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(file);
+      dropHint.style.display = 'none';
+      preview.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.src = previewUrl;
+      img.alt = '上传图片预览';
+      const name = document.createElement('div');
+      name.className = 'reverse-file-name';
+      name.textContent = file.name;
+      const remove = document.createElement('button');
+      remove.className = 'remove-ref';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        clearImage();
+      });
+
+      preview.append(img, name, remove);
+      reverseBtn.disabled = false;
+      setStatus('图片已上传，可以开始反推提示词。', 'ok');
+      return true;
+    }
+
+    function handleImagePaste(event) {
+      if (!isImagePasteTarget(event.target)) return;
+      const file = getImageFileFromClipboard(event.clipboardData);
+      if (!file) return;
+
+      event.preventDefault();
+      dropZone.classList.add('paste-ready');
+      try {
+        if (setImage(file)) {
+          setStatus('已粘贴图片，可以开始反推提示词。', 'ok');
+        }
+      } finally {
+        setTimeout(() => dropZone.classList.remove('paste-ready'), 450);
+      }
+    }
+
+    function isImagePasteTarget(target) {
+      if (!target) return false;
+      return Boolean(target.closest?.('.panel'));
+    }
+
+    function getImageFileFromClipboard(clipboardData) {
+      const items = Array.from(clipboardData?.items || []);
+      const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
+      const file = imageItem?.getAsFile();
+      if (!file) return null;
+      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.type.split('/')[1] || 'png');
+      const name = file.name || `pasted_reverse_${Date.now()}.${ext}`;
+      return new File([file], name, { type: file.type || 'image/png' });
+    }
+
+    function clearImage() {
+      selectedFile = null;
+      imageInput.value = '';
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = '';
+      preview.innerHTML = '';
+      dropHint.style.display = 'block';
+      reverseBtn.disabled = true;
+      setStatus('已移除图片。', '');
+    }
+
+    async function reversePrompt() {
+      if (!selectedFile) {
+        setStatus('请先上传图片。', 'error');
+        return;
+      }
+
+      setButtonBusy(true);
+      setStatus('正在使用 gpt-5.5 分析图片并反推提示词...', '');
+
+      try {
+        const form = new FormData();
+        form.append('image', selectedFile, selectedFile.name || 'image.png');
+        form.append('reverseMode', reverseMode || 'general');
+        const res = await fetch('/api/xi-image/reverse-prompt', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: form
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = data.detail ? '：' + data.detail : '';
+          throw new Error((data.error || '反推失败') + detail);
+        }
+        renderResult(data);
+        setStatus('反推完成。', 'ok');
+      } catch (err) {
+        setStatus(err.message, 'error');
+      } finally {
+        setButtonBusy(false);
+      }
+    }
+
+    function renderResult(data) {
+      resultEl.innerHTML = '';
+      emptyEl.style.display = 'none';
+      metaEl.style.display = 'grid';
+      document.getElementById('modelName').textContent = data.model || 'gpt-5.5';
+      document.getElementById('createdAt').textContent = data.createdAt || '-';
+
+      const result = data.result;
+      if (!result) {
+        document.getElementById('resultTitle').textContent = 'Raw';
+        addBlock('原始返回', data.raw || '', true);
+        return;
+      }
+
+      document.getElementById('resultTitle').textContent = result.title || '-';
+      addBlock('中文 Prompt', result.polished_prompt_zh || result.universal_prompt_zh || result.faithful_prompt_zh || '', true);
+      addBlock('英文 Prompt', result.polished_prompt_en || result.universal_prompt_en || result.dalle_prompt || result.midjourney_prompt || '', true);
+    }
+
+    function addBlock(title, text, copyable) {
+      if (!text) return;
+      const block = document.createElement('section');
+      block.className = 'prompt-block';
+      const header = document.createElement('div');
+      header.className = 'prompt-block-header';
+      const h3 = document.createElement('h3');
+      h3.textContent = title;
+      header.appendChild(h3);
+      if (copyable) {
+        const btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.type = 'button';
+        btn.textContent = '复制';
+        btn.addEventListener('click', () => copyText(btn, text));
+        header.appendChild(btn);
+      }
+      const content = document.createElement('div');
+      content.className = 'prompt-content' + (copyable ? '' : ' muted');
+      content.textContent = text;
+      block.append(header, content);
+      resultEl.appendChild(block);
+    }
+
+    function addKeywords(keywords) {
+      if (!Array.isArray(keywords) || keywords.length === 0) return;
+      const block = document.createElement('section');
+      block.className = 'prompt-block';
+      const header = document.createElement('div');
+      header.className = 'prompt-block-header';
+      const h3 = document.createElement('h3');
+      h3.textContent = '风格关键词';
+      header.appendChild(h3);
+      const row = document.createElement('div');
+      row.className = 'keyword-row';
+      keywords.forEach((keyword) => {
+        const chip = document.createElement('span');
+        chip.className = 'keyword-chip';
+        chip.textContent = keyword;
+        row.appendChild(chip);
+      });
+      block.append(header, row);
+      resultEl.appendChild(block);
+    }
+
+    function copyText(btn, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const old = btn.textContent;
+        btn.textContent = '已复制';
+        setTimeout(() => { btn.textContent = old; }, 1400);
+      });
+    }
+
+    function setButtonBusy(busy) {
+      reverseBtn.disabled = busy || !selectedFile;
+      const span = reverseBtn.querySelector('span');
+      if (span) span.textContent = busy ? '反推中...' : '反推提示词';
+    }
+
+    function setStatus(text, type) {
+      statusEl.textContent = text || '';
+      statusEl.className = 'reverse-status' + (type ? ' ' + type : '');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>个人中心 · 冰侠客</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .profile-body { min-height: 100vh; background: var(--bg-primary); color: var(--text-primary); }
+    .profile-body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,240,255,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.03)1px,transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+    .profile-body::after { content: ''; position: fixed; top: -300px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse,rgba(255,45,120,0.08)0%,transparent 70%); pointer-events: none; z-index: 0; }
+    .profile-nav { position: sticky; top: 0; z-index: 10; background: rgba(10,14,23,0.85); border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); }
+    .profile-nav-inner { width: min(1000px,calc(100% - 48px)); margin: 0 auto; min-height: 64px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
+    .profile-nav h1 { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .profile-nav a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm); transition: var(--base); }
+    .profile-nav a:hover { color: var(--text-primary); background: var(--bg-card); }
+    .profile-container { position: relative; z-index: 1; width: min(1000px,calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .profile-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+    .profile-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .profile-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+    .profile-stat { text-align: center; padding: 16px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border); }
+    .profile-stat-value { font-size: 24px; font-weight: 900; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .profile-stat-label { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+    .profile-form-group { margin-bottom: 16px; }
+    .profile-form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+    .profile-form-group input { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; outline: none; transition: var(--base); }
+    .profile-form-group input:focus { border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.15); }
+    .profile-form-group input::placeholder { color: var(--text-dim); }
+    .profile-btn { padding: 10px 20px; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; background: linear-gradient(135deg, var(--neon-pink), #d92d6a); color: #fff; border: none; cursor: pointer; transition: var(--base); box-shadow: 0 4px 12px rgba(255,45,120,0.25); }
+    .profile-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,45,120,0.35); }
+    .profile-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .profile-msg { display: none; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; }
+    .profile-msg.success { display: block; color: var(--neon-green); background: rgba(34,211,160,0.1); border: 1px solid rgba(34,211,160,0.2); }
+    .profile-msg.error { display: block; color: var(--neon-red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+    .log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .log-table th, .log-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+    .log-table th { color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .log-table tr:hover td { background: rgba(255,45,120,0.03); }
+    .log-type { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .log-type.recharge { color: var(--neon-green); background: rgba(34,211,160,0.1); }
+    .log-type.consume { color: var(--neon-red); background: rgba(239,68,68,0.1); }
+    .log-amount { font-weight: 700; }
+    .log-amount.positive { color: var(--neon-green); }
+    .log-amount.negative { color: var(--neon-red); }
+    .log-empty { text-align: center; color: var(--text-muted); padding: 32px; }
+    .log-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .log-pager-left, .log-pager-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .log-pager label, .log-page-info { color: var(--text-muted); font-size: 12px; font-weight: 700; }
+    .log-pager select { width: auto; min-width: 82px; padding: 7px 28px 7px 10px; border-radius: var(--radius-sm); font-size: 13px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); }
+    .log-page-btn { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-secondary); font-size: 13px; font-weight: 700; cursor: pointer; transition: var(--base); }
+    .log-page-btn:hover:not(:disabled) { border-color: var(--neon-pink); color: var(--neon-pink); }
+    .log-page-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .profile-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .profile-tab { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: var(--base); }
+    .profile-tab:hover { color: var(--text-primary); background: var(--bg-surface); }
+    .profile-tab.active { color: var(--neon-pink); background: rgba(255,45,120,0.08); }
+    .profile-tab-content { display: none; }
+    .profile-tab-content.active { display: block; }
+    .invite-panel { display: grid; gap: 14px; }
+    .invite-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .invite-note { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+    .invite-list { display: grid; gap: 10px; }
+    .invite-item { display: grid; gap: 10px; padding: 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .invite-main { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .invite-code { font-size: 16px; font-weight: 900; color: var(--neon-cyan); letter-spacing: .04em; }
+    .invite-meta { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+    .invite-status { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; }
+    .invite-status.unused { color: var(--neon-green); background: rgba(34,211,160,0.1); }
+    .invite-status.used { color: var(--text-muted); background: rgba(148,163,184,0.12); }
+    .invite-copy-row { display: flex; gap: 8px; align-items: center; }
+    .invite-link { flex: 1; min-width: 0; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-btn.secondary { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border); box-shadow: none; }
+    .profile-btn.secondary:hover { color: var(--neon-pink); border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.12); }
+    @media (max-width: 768px) {
+      .profile-grid { grid-template-columns: 1fr; }
+      .profile-stats { grid-template-columns: repeat(2,1fr); }
+      .invite-copy-row { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body class="profile-body">
+  <nav class="profile-nav">
+    <div class="profile-nav-inner">
+      <h1>个人中心</h1>
+      <div>
+        <span id="profileUserName" style="color:var(--neon-cyan);font-weight:700;font-size:14px;margin-right:12px;"></span>
+        <a href="index.html">返回首页</a>
+        <a href="#" id="logoutBtn">退出</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="profile-container">
+    <div class="profile-stats" id="statsContainer">
+      <div class="profile-stat"><div class="profile-stat-value" id="statImages">-</div><div class="profile-stat-label">生成图片</div></div>
+      <div class="profile-stat"><div class="profile-stat-value" id="statCopies">-</div><div class="profile-stat-label">生成文案</div></div>
+      <div class="profile-stat"><div class="profile-stat-value" id="statCost">-</div><div class="profile-stat-label">消耗积分</div></div>
+      <div class="profile-stat"><div class="profile-stat-value" id="statRecharge">-</div><div class="profile-stat-label">获得积分</div></div>
+    </div>
+
+    <div class="profile-grid">
+      <div class="profile-card">
+        <h2>积分明细</h2>
+        <div id="logsContainer">
+          <div class="log-empty">加载中...</div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <h2>账号设置</h2>
+        <div class="profile-tabs">
+          <button class="profile-tab active" data-tab="password">修改密码</button>
+          <button class="profile-tab" data-tab="invite">邀请注册</button>
+        </div>
+        <div class="profile-tab-content active" id="passwordTab">
+          <div class="profile-msg" id="pwMsg"></div>
+          <div class="profile-form-group">
+            <label for="oldPassword">当前密码</label>
+            <input type="password" id="oldPassword" placeholder="输入当前密码">
+          </div>
+          <div class="profile-form-group">
+            <label for="newPassword">新密码</label>
+            <input type="password" id="newPassword" placeholder="至少6个字符" minlength="6">
+          </div>
+          <div class="profile-form-group">
+            <label for="confirmPassword">确认新密码</label>
+            <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+          </div>
+          <button class="profile-btn" id="changePwBtn">修改密码</button>
+        </div>
+        <div class="profile-tab-content" id="inviteTab">
+          <div class="profile-msg" id="inviteMsg"></div>
+          <div class="invite-panel">
+            <div class="invite-actions">
+              <button class="profile-btn" id="generateInviteBtn" type="button">生成邀请码</button>
+              <span class="invite-note">每个邀请码只能注册 1 个新账号，新用户注册送 1000 积分。</span>
+            </div>
+            <div class="invite-list" id="inviteList">
+              <div class="log-empty">加载中...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) { window.location.href = 'login.html'; }
+
+    const authHeaders = { 'Authorization': `Bearer ${token}` };
+    let pointLogs = [];
+    let logPage = 1;
+    let logPageSize = 15;
+    let invitesLoaded = false;
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    });
+
+    // 加载用户统计
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/user/stats', { headers: authHeaders });
+        const data = await res.json();
+        console.log('统计接口返回:', res.status, data);
+        if (!res.ok) {
+          document.getElementById('statsContainer').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">加载失败：' + (data.error || '未知错误') + '</div>';
+          return;
+        }
+        document.getElementById('statImages').textContent = data.totalImages ?? 0;
+        document.getElementById('statCopies').textContent = data.totalCopies ?? 0;
+        document.getElementById('statCost').textContent = data.totalCost ?? 0;
+        document.getElementById('statRecharge').textContent = data.totalRecharge ?? 0;
+      } catch (e) { 
+        console.error('统计加载失败:', e);
+        document.getElementById('statsContainer').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">网络错误</div>';
+      }
+    }
+
+    // 加载积分明细
+    async function loadLogs() {
+      try {
+        const res = await fetch('/api/user/points/logs', { headers: authHeaders });
+        const data = await res.json();
+        pointLogs = data.logs || [];
+        logPage = 1;
+        renderLogs();
+      } catch (e) {
+        document.getElementById('logsContainer').innerHTML = '<div class="log-empty">加载失败</div>';
+      }
+    }
+
+    function renderLogs() {
+      const container = document.getElementById('logsContainer');
+      if (!pointLogs.length) {
+        container.innerHTML = '<div class="log-empty">暂无积分记录</div>';
+        return;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(pointLogs.length / logPageSize));
+      logPage = Math.min(Math.max(logPage, 1), totalPages);
+      const start = (logPage - 1) * logPageSize;
+      const pageLogs = pointLogs.slice(start, start + logPageSize);
+
+      let html = '<table class="log-table"><thead><tr><th>时间</th><th>类型</th><th>金额</th><th>说明</th></tr></thead><tbody>';
+      pageLogs.forEach(log => {
+        const typeLabel = log.type === 'recharge' ? '获得' : '消耗';
+        const typeClass = log.type === 'recharge' ? 'recharge' : 'consume';
+        const amountClass = log.type === 'recharge' ? 'positive' : 'negative';
+        const amount = log.type === 'recharge' ? `+${log.amount}` : `${log.amount}`;
+        html += `<tr>
+          <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(log.created_at)}</td>
+          <td><span class="log-type ${typeClass}">${typeLabel}</span></td>
+          <td class="log-amount ${amountClass}">${escapeHtml(amount)}</td>
+          <td style="color:var(--text-secondary);">${escapeHtml(log.description || '-')}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      html += `<div class="log-pager">
+        <div class="log-pager-left">
+          <label for="logPageSize">每页显示</label>
+          <select id="logPageSize">
+            <option value="15"${logPageSize === 15 ? ' selected' : ''}>15 条</option>
+            <option value="30"${logPageSize === 30 ? ' selected' : ''}>30 条</option>
+            <option value="50"${logPageSize === 50 ? ' selected' : ''}>50 条</option>
+          </select>
+        </div>
+        <div class="log-pager-right">
+          <button class="log-page-btn" id="logPrevPage" type="button"${logPage <= 1 ? ' disabled' : ''}>上一页</button>
+          <span class="log-page-info">第 ${logPage} / ${totalPages} 页 · 共 ${pointLogs.length} 条</span>
+          <button class="log-page-btn" id="logNextPage" type="button"${logPage >= totalPages ? ' disabled' : ''}>下一页</button>
+        </div>
+      </div>`;
+      container.innerHTML = html;
+
+      document.getElementById('logPageSize')?.addEventListener('change', (event) => {
+        logPageSize = Number(event.target.value) || 15;
+        logPage = 1;
+        renderLogs();
+      });
+      document.getElementById('logPrevPage')?.addEventListener('click', () => {
+        logPage = Math.max(1, logPage - 1);
+        renderLogs();
+      });
+      document.getElementById('logNextPage')?.addEventListener('click', () => {
+        logPage = Math.min(totalPages, logPage + 1);
+        renderLogs();
+      });
+    }
+
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = value == null ? '' : String(value);
+      return div.innerHTML;
+    }
+
+    document.querySelectorAll('.profile-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        document.querySelectorAll('.profile-tab').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.profile-tab-content').forEach(item => item.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`${tabName}Tab`)?.classList.add('active');
+        if (tabName === 'invite' && !invitesLoaded) loadInvites();
+      });
+    });
+
+    async function loadInvites() {
+      const listEl = document.getElementById('inviteList');
+      try {
+        const res = await fetch('/api/user/invites', { headers: authHeaders });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '加载失败');
+        invitesLoaded = true;
+        renderInvites(data.invites || []);
+      } catch (err) {
+        listEl.innerHTML = `<div class="log-empty">${escapeHtml(err.message || '加载失败')}</div>`;
+      }
+    }
+
+    function renderInvites(invites) {
+      const listEl = document.getElementById('inviteList');
+      if (!invites.length) {
+        listEl.innerHTML = '<div class="log-empty">暂无邀请码</div>';
+        return;
+      }
+
+      const origin = window.location.origin;
+      listEl.innerHTML = invites.map(invite => {
+        const link = `${origin}/register.html?invite=${encodeURIComponent(invite.code)}`;
+        const used = invite.used === 1;
+        const statusText = used ? `已注册${invite.used_by_name ? `：${invite.used_by_name}` : ''}` : '未使用';
+        return `<div class="invite-item">
+          <div class="invite-main">
+            <div>
+              <div class="invite-code">${escapeHtml(invite.code)}</div>
+              <div class="invite-meta">创建时间：${escapeHtml(invite.created_at || '-')}</div>
+            </div>
+            <span class="invite-status ${used ? 'used' : 'unused'}">${escapeHtml(statusText)}</span>
+          </div>
+          <div class="invite-copy-row">
+            <div class="invite-link" title="${escapeHtml(link)}">${escapeHtml(link)}</div>
+            <button class="profile-btn secondary copy-invite-code" type="button" data-copy="${escapeHtml(invite.code)}">复制码</button>
+            <button class="profile-btn secondary copy-invite-link" type="button" data-copy="${escapeHtml(link)}">复制链接</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      document.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', () => copyInviteText(btn.dataset.copy, btn));
+      });
+    }
+
+    async function copyInviteText(text, btn) {
+      const oldText = btn.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '已复制';
+        setTimeout(() => { btn.textContent = oldText; }, 1200);
+      } catch (e) {
+        const msgEl = document.getElementById('inviteMsg');
+        msgEl.textContent = '复制失败，请手动选择文本复制';
+        msgEl.className = 'profile-msg error';
+      }
+    }
+
+    document.getElementById('generateInviteBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('generateInviteBtn');
+      const msgEl = document.getElementById('inviteMsg');
+      msgEl.className = 'profile-msg';
+      btn.disabled = true;
+      btn.textContent = '生成中...';
+      try {
+        const res = await fetch('/api/user/invites/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '生成失败');
+        msgEl.textContent = '邀请码已生成';
+        msgEl.className = 'profile-msg success';
+        await loadInvites();
+      } catch (err) {
+        msgEl.textContent = err.message;
+        msgEl.className = 'profile-msg error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '生成邀请码';
+      }
+    });
+
+    // 修改密码
+    document.getElementById('changePwBtn').addEventListener('click', async () => {
+      const oldPw = document.getElementById('oldPassword').value;
+      const newPw = document.getElementById('newPassword').value;
+      const confirmPw = document.getElementById('confirmPassword').value;
+      const msgEl = document.getElementById('pwMsg');
+      msgEl.className = 'profile-msg';
+
+      if (!oldPw || !newPw) { msgEl.textContent = '请填写完整'; msgEl.className = 'profile-msg error'; return; }
+      if (newPw.length < 6) { msgEl.textContent = '新密码至少6个字符'; msgEl.className = 'profile-msg error'; return; }
+      if (newPw !== confirmPw) { msgEl.textContent = '两次密码不一致'; msgEl.className = 'profile-msg error'; return; }
+
+      try {
+        const res = await fetch('/api/user/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        msgEl.textContent = '密码修改成功！';
+        msgEl.className = 'profile-msg success';
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+      } catch (err) {
+        msgEl.textContent = err.message;
+        msgEl.className = 'profile-msg error';
+      }
+    });
+
+    // 加载用户名
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      document.getElementById('profileUserName').textContent = userData.username || '';
+    } catch (e) {}
+
+    loadStats();
+    loadLogs();
+  </script>
+</body>
+</html>

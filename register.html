@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>注册 · 冰侠客</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .auth-shell { display: flex; width: min(800px,100%); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); overflow: hidden; }
+    .auth-aside { width: 320px; flex-shrink: 0; background: linear-gradient(135deg, rgba(255,45,120,0.08), rgba(0,240,255,0.04)); padding: 40px 32px; display: flex; flex-direction: column; justify-content: center; gap: 16px; border-right: 1px solid var(--border); }
+    .auth-aside .eyebrow { color: var(--neon-pink); font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .auth-aside h1 { font-size: 24px; font-weight: 800; line-height: 1.3; background: linear-gradient(135deg, var(--text-primary), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; max-width: 100%; }
+    .auth-aside p { color: var(--text-secondary); font-size: 14px; line-height: 1.7; }
+    .auth-card { flex: 1; padding: 40px 36px; display: flex; flex-direction: column; justify-content: center; }
+    .auth-card h2 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+    .auth-card > p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+    .auth-card .form-group { margin-bottom: 18px; }
+    .auth-card label { display: block; font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+    .auth-card input { width: 100%; padding: 12px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 15px; outline: none; transition: var(--base); }
+    .auth-card input:focus { border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.15); }
+    .auth-card input::placeholder { color: var(--text-dim); }
+    .auth-card .hint { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+    .auth-card .btn { width: 100%; padding: 13px; border-radius: var(--radius-md); font-weight: 700; font-size: 15px; background: linear-gradient(135deg, var(--neon-pink), #d92d6a); color: #fff; border: none; cursor: pointer; transition: var(--base); box-shadow: 0 4px 16px rgba(255,45,120,0.25); }
+    .auth-card .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,45,120,0.35); }
+    .auth-card .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .auth-card .error { display: none; color: var(--neon-red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; }
+    .auth-card .success { display: none; color: var(--neon-green); background: rgba(34,211,160,0.1); border: 1px solid rgba(34,211,160,0.2); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; }
+    .auth-card .links { text-align: center; margin-top: 20px; }
+    .auth-card .links a { color: var(--neon-cyan); font-size: 14px; font-weight: 600; transition: var(--fast); }
+    .auth-card .links a:hover { color: var(--neon-pink); }
+    .auth-card .back-link { text-align: center; margin-top: 12px; }
+    .auth-card .back-link a { color: var(--text-muted); font-size: 13px; transition: var(--fast); }
+    .auth-card .back-link a:hover { color: var(--text-primary); }
+    @media (max-width: 640px) {
+      .auth-aside { display: none; }
+      .auth-card { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body class="auth-page">
+  <main class="auth-shell">
+    <section class="auth-aside">
+      <div>
+        <p class="eyebrow">Start Creating</p>
+        <h1>给每条笔记一个更好的开头。</h1>
+      </div>
+      <p>新用户注册后赠送 1000 积分，可用于图片生成、文案生成和爆款改写。</p>
+    </section>
+
+    <section class="auth-card">
+      <h2>创建账号</h2>
+      <p>注册后即可进入创作台。</p>
+
+      <div class="success" id="success">注册成功，即将跳转到登录页...</div>
+      <div class="error" id="error"></div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="inviteCode">邀请码 <span style="color:var(--neon-pink)">*</span></label>
+          <input type="text" id="inviteCode" placeholder="请输入邀请码" required autocomplete="off">
+          <p class="hint">需要邀请码才能注册，请联系管理员获取。</p>
+        </div>
+        <div class="form-group">
+          <label for="username">用户名</label>
+          <input type="text" id="username" placeholder="3-20 个字符" required minlength="3" maxlength="20" autocomplete="username">
+          <p class="hint">支持字母、数字和下划线。</p>
+        </div>
+        <div class="form-group">
+          <label for="password">密码</label>
+          <input type="password" id="password" placeholder="至少 8 个字符，包含大小写字母和数字" required minlength="8" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">确认密码</label>
+          <input type="password" id="confirmPassword" placeholder="再次输入密码" required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn" id="submitBtn">注册</button>
+      </form>
+
+      <div class="links">
+        <a href="login.html">已有账号？立即登录</a>
+      </div>
+      <div class="back-link">
+        <a href="index.html">返回首页</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('registerForm');
+    const errorEl = document.getElementById('error');
+    const successEl = document.getElementById('success');
+    const submitBtn = document.getElementById('submitBtn');
+    const inviteInput = document.getElementById('inviteCode');
+
+    const inviteFromUrl = new URLSearchParams(window.location.search).get('invite');
+    if (inviteFromUrl) {
+      inviteInput.value = inviteFromUrl.trim().toUpperCase();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.style.display = 'none';
+      successEl.style.display = 'none';
+
+      const inviteCode = document.getElementById('inviteCode').value.trim();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!inviteCode) {
+        errorEl.textContent = '请输入邀请码';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorEl.textContent = '两次密码输入不一致';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '注册中...';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, inviteCode })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '注册失败');
+
+        successEl.textContent = '注册成功！新用户赠送 1000 积分，即将跳转到登录页...';
+        successEl.style.display = 'block';
+        submitBtn.textContent = '注册成功';
+
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1500);
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = '注册';
+      }
+    });
+  </script>
+</body>
+</html>

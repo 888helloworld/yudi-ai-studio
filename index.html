@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>冰侠客 - 小红书AI内容创作平台</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
+.hero-section{position:relative;padding:80px 0 60px;text-align:center;overflow:hidden}
+.hero-section::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:900px;height:900px;background:radial-gradient(ellipse,rgba(255,45,120,0.1) 0%,rgba(0,240,255,0.04) 40%,transparent 70%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:rgba(255,45,120,0.1);border:1px solid rgba(255,45,120,0.25);border-radius:999px;font-size:13px;font-weight:700;color:var(--neon-pink);margin-bottom:24px}
+.hero-section h1{font-size:clamp(42px,6vw,72px);font-weight:900;line-height:1.05;letter-spacing:-0.03em;background:linear-gradient(135deg,#fff 30%,var(--neon-pink) 60%,var(--neon-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 auto 20px;max-width:800px}
+.hero-section .subtitle{font-size:clamp(16px,2.2vw,20px);color:var(--text-secondary);max-width:640px;margin:0 auto 32px;line-height:1.7}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hero-btn{display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:var(--radius-md);font-weight:800;font-size:16px;transition:var(--base);text-decoration:none}
+.hero-btn-primary{background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;box-shadow:0 4px 20px rgba(255,45,120,0.3)}
+.hero-btn-primary:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(255,45,120,0.45)}
+.hero-btn-secondary{background:rgba(255,255,255,0.06);border:1px solid var(--border-light);color:var(--text-primary)}
+.hero-btn-secondary:hover{background:rgba(255,255,255,0.1);border-color:var(--neon-cyan);transform:translateY(-3px)}
+.hero-stats-row{display:flex;gap:32px;justify-content:center;margin-top:40px;flex-wrap:wrap}
+.hero-stat-item{text-align:center}
+.hero-stat-item .num{font-size:32px;font-weight:900;color:var(--neon-cyan);display:block;font-variant-numeric:tabular-nums;min-width:88px}
+.hero-stat-item .label{font-size:13px;color:var(--text-muted);margin-top:4px}
+.features-section{padding:40px 0}
+.section-header{text-align:center;margin-bottom:40px}
+.section-header h2{font-size:clamp(24px,3.5vw,36px);font-weight:900;margin-bottom:12px}
+.section-header p{color:var(--text-secondary);font-size:16px;max-width:500px;margin:0 auto}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.business-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:stretch}
+.business-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:30px}
+.business-panel h2{font-size:28px;font-weight:900;margin-bottom:12px}
+.business-panel p{color:var(--text-secondary);font-size:15px;line-height:1.8}
+.business-list{display:grid;gap:12px;margin-top:20px}
+.business-item{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-surface)}
+.business-item strong{display:block;color:var(--text-primary);font-size:15px;margin-bottom:3px}
+.business-item span{color:var(--text-muted);font-size:13px;line-height:1.6}
+.business-dot{width:10px;height:10px;border-radius:50%;background:var(--neon-cyan);box-shadow:0 0 16px rgba(0,240,255,.55);margin-top:7px;flex-shrink:0}
+.workflow-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.workflow-step{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:22px}
+.workflow-step .step-num{font-size:12px;font-weight:900;color:var(--neon-pink);margin-bottom:10px}
+.workflow-step h3{font-size:16px;font-weight:800;margin-bottom:8px}
+.workflow-step p{color:var(--text-secondary);font-size:13px;line-height:1.65}
+.model-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.model-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px}
+.model-card h3{font-size:20px;font-weight:900;margin-bottom:10px}
+.model-card p{color:var(--text-secondary);font-size:14px;line-height:1.75;margin-bottom:16px}
+.model-card ul{list-style:none;display:grid;gap:8px}
+.model-card li{color:var(--text-muted);font-size:13px;line-height:1.6;padding-left:18px;position:relative}
+.model-card li::before{content:'';position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--neon-cyan)}
+.feature-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;transition:var(--base);position:relative;overflow:hidden}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--neon-pink),var(--neon-cyan));opacity:0;transition:var(--base)}
+.feature-card:hover{transform:translateY(-4px);border-color:var(--border-light);box-shadow:var(--shadow-md)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:52px;height:52px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:18px}
+.feature-icon.pink{background:rgba(255,45,120,0.12);color:var(--neon-pink)}
+.feature-icon.cyan{background:rgba(0,240,255,0.1);color:var(--neon-cyan)}
+.feature-icon.purple{background:rgba(168,85,247,0.12);color:var(--neon-purple)}
+.feature-icon.green{background:rgba(34,211,160,0.12);color:var(--neon-green)}
+.feature-icon.amber{background:rgba(245,158,11,0.12);color:var(--neon-amber)}
+.feature-card h3{font-size:18px;font-weight:800;margin-bottom:10px}
+.feature-card p{color:var(--text-secondary);font-size:14px;line-height:1.65}
+.shop-section{padding:40px 0}
+.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.shop-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;text-align:center;transition:var(--base);position:relative;overflow:hidden}
+.shop-card.featured{border-color:rgba(255,45,120,0.3);box-shadow:0 0 30px rgba(255,45,120,0.08)}
+.shop-card.featured::before{content:'推荐';position:absolute;top:12px;right:-28px;background:var(--neon-pink);color:#fff;font-size:11px;font-weight:800;padding:4px 36px;transform:rotate(45deg)}
+.shop-card:hover{transform:translateY(-4px);border-color:var(--border-light);box-shadow:var(--shadow-md)}
+.shop-card .points-num{font-size:42px;font-weight:900;background:linear-gradient(135deg,var(--neon-pink),var(--neon-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:block;margin-bottom:4px}
+.shop-card .points-label{color:var(--text-muted);font-size:14px;margin-bottom:16px}
+.shop-card .price{font-size:28px;font-weight:900;color:var(--text-primary);margin-bottom:20px}
+.shop-card .price small{font-size:16px;color:var(--text-muted);font-weight:400}
+.shop-btn{width:100%;padding:14px;border-radius:var(--radius-md);font-weight:800;font-size:15px;cursor:pointer;transition:var(--base);border:none}
+.shop-btn.buy{background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;box-shadow:0 4px 16px rgba(255,45,120,0.25)}
+.shop-btn.buy:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,45,120,0.35)}
+.redeem-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(10,14,23,0.85);backdrop-filter:blur(12px)}
+.redeem-modal.show{display:flex}
+.redeem-modal-inner{width:min(420px,100%);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);padding:36px;box-shadow:var(--shadow-lg)}
+.redeem-modal-inner h3{font-size:22px;font-weight:800;margin-bottom:8px;text-align:center}
+.redeem-modal-inner>p{color:var(--text-secondary);font-size:14px;text-align:center;margin-bottom:24px}
+.redeem-modal-inner input{text-align:center;font-size:18px;letter-spacing:3px;text-transform:uppercase;padding:14px}
+.redeem-modal-inner .error{display:none;color:var(--neon-red);background:rgba(239,68,68,0.08);padding:12px;border-radius:var(--radius-sm);font-size:14px;margin-bottom:12px;text-align:center}
+.redeem-modal-inner .success-msg{display:none;color:var(--neon-green);background:rgba(34,211,160,0.1);padding:12px;border-radius:var(--radius-sm);font-size:14px;margin-bottom:12px;text-align:center}
+.redeem-modal-actions{display:flex;gap:10px;margin-top:20px}
+.redeem-modal-actions button{flex:1;padding:14px;border-radius:var(--radius-md);font-weight:800;font-size:15px;cursor:pointer;transition:var(--base);border:none}
+.redeem-modal-actions .btn-cancel{background:var(--bg-surface);border:1px solid var(--border);color:var(--text-secondary)}
+.redeem-modal-actions .btn-confirm{background:linear-gradient(135deg,var(--neon-cyan),#0099cc);color:#fff;box-shadow:0 4px 16px rgba(0,240,255,0.25)}
+.redeem-modal-actions .btn-confirm:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,240,255,0.35)}
+.redeem-modal-actions .btn-confirm:disabled{opacity:0.5;cursor:wait;transform:none}
+.pay-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(10,14,23,0.85);backdrop-filter:blur(12px)}
+.pay-modal.show{display:flex}
+.pay-modal-inner{width:min(480px,100%);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);padding:36px;box-shadow:var(--shadow-lg)}
+.pay-modal-inner .pay-header{text-align:center;margin-bottom:28px}
+.pay-modal-inner .pay-header h3{font-size:24px;font-weight:800;margin-bottom:6px}
+.pay-modal-inner .pay-header .amount{font-size:36px;font-weight:900;color:var(--neon-pink);margin:12px 0 4px}
+.pay-modal-inner .pay-header .points-got{color:var(--neon-cyan);font-weight:700;font-size:15px}
+.pay-channel-select{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.pay-channel-btn{padding:16px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-surface);cursor:pointer;text-align:center;transition:var(--base)}
+.pay-channel-btn:hover{border-color:var(--border-light);background:var(--bg-card)}
+.pay-channel-btn.active{border-color:var(--neon-pink);background:rgba(255,45,120,0.08)}
+.pay-channel-btn .icon{font-size:28px;display:block;margin-bottom:6px}
+.pay-channel-btn .name{font-size:14px;font-weight:700;color:var(--text-primary)}
+.pay-qr-area{text-align:center;padding:20px;background:var(--bg-input);border-radius:var(--radius-md);margin-bottom:20px;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pay-qr-area img{width:180px;height:180px;border-radius:var(--radius-sm);margin-bottom:12px}
+.pay-qr-area .hint{color:var(--text-muted);font-size:13px}
+.pay-status-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.12);border-radius:var(--radius-md);margin-bottom:16px}
+.pay-status-bar .spinner{width:18px;height:18px}
+.pay-status-bar .text{color:var(--neon-cyan);font-size:14px;font-weight:600}
+.pay-close-btn{width:100%;padding:14px;border-radius:var(--radius-md);font-weight:800;font-size:15px;cursor:pointer;border:none;background:var(--bg-surface);border:1px solid var(--border);color:var(--text-secondary)}
+.pay-close-btn:hover{background:var(--bg-card)}
+.cta-section{padding:60px 0;text-align:center}
+.cta-section h2{font-size:clamp(22px,3vw,32px);font-weight:900;margin-bottom:16px}
+.cta-section p{color:var(--text-secondary);font-size:16px;max-width:500px;margin:0 auto 28px}
+.footer-main{padding:40px 0 20px;border-top:1px solid var(--border);margin-top:20px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
+.footer-brand .brand-name{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--neon-pink),var(--neon-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.footer-brand p{color:var(--text-muted);font-size:13px;line-height:1.7;max-width:280px}
+.footer-col h4{font-size:13px;font-weight:800;color:var(--text-secondary);margin-bottom:14px;text-transform:uppercase;letter-spacing:0.05em}
+.footer-col a{display:block;color:var(--text-muted);font-size:13px;padding:4px 0;transition:var(--fast)}
+.footer-col a:hover{color:var(--neon-cyan)}
+.footer-bottom{text-align:center;padding-top:20px;border-top:1px solid var(--border);color:var(--text-dim);font-size:12px}
+@media(max-width:900px){.features-grid,.shop-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.features-grid,.shop-grid,.footer-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:1fr}.hero-actions{flex-direction:column;align-items:center}.hero-btn{width:100%;justify-content:center}.pay-channel-select{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="user-bar" id="globalUserBar" style="display:none;">
+  <div class="brand-mini">冰侠客</div>
+  <div class="user-info">
+    <span class="user-name" id="navUsername"></span>
+    <span class="user-points" id="navPoints">0 积分</span>
+    <div class="user-actions">
+      <a href="xhs.html">小红书工具</a>
+        <a href="xi-image.html">gpt-image-2 生图</a>
+      <a href="#" onclick="showRedeemModal()">兑换</a>
+      <a href="#" onclick="showPayModal()">充值</a>
+      <a href="profile.html">个人中心</a>
+      <a href="admin.html" class="admin-link" id="navAdmin" style="display:none;">管理后台</a>
+      <a href="login.html" onclick="logout()">退出</a>
+    </div>
+  </div>
+</nav>
+
+<nav class="user-bar" id="guestBar">
+  <div class="brand-mini">冰侠客</div>
+    <div class="user-info">
+      <div class="user-actions">
+        <a href="xhs.html">小红书工具</a>
+        <a href="xi-image.html">gpt-image-2 生图</a>
+      <a href="login.html">登录</a>
+      <a href="register.html" style="background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;border-radius:var(--radius-md);padding:7px 16px;">注册</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:80px;">
+  <section class="hero-section">
+    <div class="hero-badge">AI 内容生产 · 图片生成 · 提示词反推</div>
+    <h1>冰侠客 AI 内容创作工作台</h1>
+    <p class="subtitle">面向小红书运营、短视频团队、电商卖家和个人创作者，提供文案生成、图片生成、gpt-image-2 批量生图、图片反推提示词和历史资产管理。</p>
+    <div class="hero-actions">
+      <a href="xhs.html" class="hero-btn hero-btn-primary" id="heroStartBtn">小红书创作</a>
+        <a href="xi-image.html" class="hero-btn hero-btn-secondary">gpt-image-2 生图</a>
+      <a href="#" class="hero-btn hero-btn-secondary" onclick="showRedeemModal()">卡密兑换</a>
+      <a href="#" class="hero-btn hero-btn-secondary" onclick="showPayModal()">充值积分</a>
+    </div>
+    <div class="hero-stats-row">
+      <div class="hero-stat-item"><span class="num" id="statUsers">-</span><span class="label">注册用户</span></div>
+      <div class="hero-stat-item"><span class="num" id="statImages">-</span><span class="label">生成内容</span></div>
+      <div class="hero-stat-item"><span class="num" id="statCopies">-</span><span class="label">文案总数</span></div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <div class="business-grid">
+      <div class="business-panel">
+        <h2>这个站点能做什么</h2>
+        <p>冰侠客把内容创作拆成“想法、文案、图片、提示词、素材管理”几个环节。用户可以先生成小红书笔记文案，再生成配图；也可以直接用 gpt-image-2 做通用生图、改图和批量测试。</p>
+        <div class="business-list">
+          <div class="business-item"><span class="business-dot"></span><div><strong>小红书笔记生产</strong><span>围绕种草、探店、穿搭、美食、旅行、知识等场景生成标题、正文和配图。</span></div></div>
+          <div class="business-item"><span class="business-dot"></span><div><strong>通用 AI 生图</strong><span>独立 gpt-image-2 页面，支持提示词原样发送、多任务批量、质量档位、历史保存和图片下载。</span></div></div>
+          <div class="business-item"><span class="business-dot"></span><div><strong>图片反推提示词</strong><span>上传图片后由 gpt-5.5 识图，输出英文 Prompt 和中文 Prompt，方便拿到其他绘图工具继续生成。</span></div></div>
+        </div>
+      </div>
+      <div class="business-panel">
+        <h2>适合谁用</h2>
+        <p>适合需要稳定产出图文内容的人，而不是只做一次性娱乐生成。</p>
+        <div class="business-list">
+          <div class="business-item"><span class="business-dot"></span><div><strong>账号运营</strong><span>快速生成选题、标题、封面图和正文初稿。</span></div></div>
+          <div class="business-item"><span class="business-dot"></span><div><strong>电商和本地生活</strong><span>批量测试商品图、活动图、探店图和不同风格素材。</span></div></div>
+          <div class="business-item"><span class="business-dot"></span><div><strong>设计和投放团队</strong><span>沉淀可复用 Prompt，管理图片记录，快速复盘生成效果。</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <div class="section-header"><h2>核心功能</h2><p>从小红书图文到通用 AI 生图，覆盖日常内容生产的主要流程</p></div>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon pink">&#x1F5BC;</div><h3>小红书图片生成</h3><p>输入图片描述即可生成小红书风格配图，支持常用比例和参考图。</p></div>
+      <div class="feature-card"><div class="feature-icon cyan">&#x2728;</div><h3>gpt-image-2 生图</h3><p>把想要的画面写清楚，直接出图；也可以上传参考图做改图，一次多跑几版慢慢挑。</p></div>
+      <div class="feature-card"><div class="feature-icon purple">&#x1F50D;</div><h3>反推提示词</h3><p>上传图片后识别画面，输出英文 Prompt 和中文 Prompt，便于复刻风格或迁移到其他绘图软件。</p></div>
+      <div class="feature-card"><div class="feature-icon cyan">&#x270D;</div><h3>小红书文案生成</h3><p>支持种草、探店、穿搭、美食、旅行、知识等内容类型，快速生成标题和正文。</p></div>
+      <div class="feature-card"><div class="feature-icon purple">&#x1F504;</div><h3>文案改写优化</h3><p>对已有内容做语气、结构和卖点优化，减少从零开始写稿的时间。</p></div>
+      <div class="feature-card"><div class="feature-icon green">&#x1F4CB;</div><h3>历史资产管理</h3><p>图片、文案、gpt-image-2 任务和反推结果按账号保存，方便回看、下载和复用。</p></div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <div class="section-header"><h2>使用流程</h2><p>未登录也能查看介绍，开始生成、充值、兑换时再登录账号</p></div>
+    <div class="workflow-grid">
+      <div class="workflow-step"><div class="step-num">01</div><h3>选择工具</h3><p>首页了解业务后，进入小红书工作台或 gpt-image-2 生图页面。</p></div>
+      <div class="workflow-step"><div class="step-num">02</div><h3>输入需求</h3><p>填写主题、文案方向、图片描述，或上传参考图和待反推图片。</p></div>
+      <div class="workflow-step"><div class="step-num">03</div><h3>生成结果</h3><p>系统调用对应模型生成图片、文案或 Prompt，并展示用时和任务状态。</p></div>
+      <div class="workflow-step"><div class="step-num">04</div><h3>沉淀资产</h3><p>结果自动进入历史记录，后续可以查看、下载、复制和复用。</p></div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <div class="section-header"><h2>模型和计费说明</h2><p>不同工具走不同模型和记录体系，避免混在一起看不清</p></div>
+    <div class="model-grid">
+      <div class="model-card">
+        <h3>小红书创作工具</h3>
+        <p>用于小红书风格图文生成，适合账号运营日常生产。</p>
+        <ul>
+          <li>图片生成、文案生成、文案改写、图文一体。</li>
+          <li>使用站内积分扣费，个人中心可以查看积分明细。</li>
+          <li>历史记录按图片、文案、图文分别展示。</li>
+        </ul>
+      </div>
+      <div class="model-card">
+        <h3>gpt-image-2 / gpt-5.5 工具</h3>
+        <p>用于通用生图、改图、批量测试和图片反推 Prompt。</p>
+        <ul>
+          <li>gpt-image-2 负责生图和基于参考图改图。</li>
+          <li>gpt-5.5 负责识图并反推英文/中文 Prompt。</li>
+          <li>当前不扣站内积分，任务记录和小红书工具分开保存。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="shop-section" id="shopSection">
+    <div class="section-header"><h2>积分商城</h2><p>选择适合你的积分套餐，开启高效创作之旅</p></div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <div style="text-align:center;margin-top:24px;">
+      <button class="hero-btn hero-btn-secondary" onclick="showRedeemModal()">我有卡密，点击兑换</button>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 创作工具区域（登录后可见） -->
+  <!-- ============================================ -->
+  <section id="toolSection" style="display:none;padding-top:20px;">
+
+    <!-- 登录提示 -->
+    <div class="login-prompt" id="loginPrompt" style="display:none;">
+      <div class="login-prompt-content">
+        <div class="eyebrow">需要登录</div>
+        <h2>登录后即可使用</h2>
+        <p>请先登录或注册账号，即可使用 AI 图片生成、文案创作等功能</p>
+        <div class="login-prompt-buttons">
+          <a href="login.html" class="btn-login">去登录</a>
+          <a href="register.html" class="btn-register">免费注册</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户栏 -->
+    <div class="user-bar" id="userBar" style="display:none;">
+      <div class="brand-mini">冰侠客</div>
+      <div class="user-info">
+        <span class="user-name" id="userName"></span>
+        <span class="user-points" id="userPoints">积分: 0</span>
+        <div class="user-actions">
+        <a href="xi-image.html">gpt-image-2 生图</a>
+          <a href="profile.html">个人中心</a>
+          <a href="admin.html" class="admin-link" id="adminLink" style="display:none;">管理后台</a>
+          <a href="#" id="logoutBtn">退出</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero 区域 -->
+    <div class="hero" style="margin-top:20px;">
+      <div>
+        <div class="eyebrow">创作工作台</div>
+        <h1>开始创作你的<br>下一篇爆款笔记</h1>
+        <p class="subtitle">AI 图片生成 + 智能文案创作，一站式搞定小红书内容</p>
+      </div>
+      <div class="hero-stats" id="heroStats">
+        <div><strong id="statImageCount">0</strong><span>图片</span></div>
+        <div><strong id="statCopyCount">0</strong><span>文案</span></div>
+        <div><strong id="statTotalCount">0</strong><span>总计</span></div>
+      </div>
+    </div>
+
+    <!-- 双面板：图片生成 + 文案生成 -->
+    <div class="dual-panel">
+      <!-- 图片生成面板 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="header-icon">🖼</div>
+          <div>
+            <h2>AI 图片生成</h2>
+            <p>输入描述即可生成小红书风格配图</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>图片描述</label>
+          <textarea id="imgPrompt" placeholder="描述你想要生成的图片内容，越详细效果越好..." rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label>图片比例</label>
+          <div class="ratio-selector">
+            <div class="ratio-btn active" data-ratio="1:1">1:1 方形</div>
+            <div class="ratio-btn" data-ratio="3:4">3:4 竖版</div>
+            <div class="ratio-btn" data-ratio="4:3">4:3 横版</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>生成张数</label>
+          <input type="number" id="imageGenerateCount" min="1" max="4" value="1">
+          <div class="field-hint">每张图片消耗 10 积分，最多一次生成 4 张。</div>
+        </div>
+        <div class="form-group">
+          <label>风格预设</label>
+          <div class="style-presets">
+            <span class="preset-label">风格：</span>
+            <div class="preset-tag active" data-style="高清摄影">高清摄影</div>
+            <div class="preset-tag" data-style="电影质感">电影质感</div>
+            <div class="preset-tag" data-style="插画风格">插画风格</div>
+            <div class="preset-tag" data-style="极简设计">极简设计</div>
+            <div class="preset-tag" data-style="赛博朋克">赛博朋克</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>参考图（可选）</label>
+          <div class="drop-zone" id="dropZone">
+            <input type="file" id="referenceImage" accept="image/*">
+            <div class="drop-hint" id="dropHint">
+              <div class="upload-icon">+</div>
+              <p>拖拽图片到此处或点击上传</p>
+            </div>
+            <div id="previewRef"></div>
+          </div>
+        </div>
+        <button class="generate-btn" id="generateBtn"><span>立即生成图片</span></button>
+      </div>
+
+      <!-- 文案生成面板 -->
+      <div class="panel">
+        <div class="panel-header purple">
+          <div class="header-icon">✍</div>
+          <div>
+            <h2>AI 文案生成</h2>
+            <p>内置小红书爆款方法论，智能生成爆款笔记</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>内容主题</label>
+          <textarea id="copyTopic" placeholder="输入内容主题，比如：周末探店、护肤心得、旅行攻略..." rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label>文案类型</label>
+          <div class="copy-type-selector">
+            <div class="copy-type-btn active" data-type="种草">种草</div>
+            <div class="copy-type-btn" data-type="探店">探店</div>
+            <div class="copy-type-btn" data-type="穿搭">穿搭</div>
+            <div class="copy-type-btn" data-type="美食">美食</div>
+            <div class="copy-type-btn" data-type="旅行">旅行</div>
+            <div class="copy-type-btn" data-type="知识">知识</div>
+          </div>
+        </div>
+        <button class="generate-btn purple" id="generateCopyBtn"><span>生成文案</span></button>
+      </div>
+    </div>
+
+    <!-- 图文一体面板 -->
+    <div class="both-panel">
+      <div class="panel-header both">
+        <div class="header-icon">🎯</div>
+        <div>
+          <h2>图文一体生成</h2>
+          <p>输入一段描述，同时生成配图 + 小红书文案</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>内容描述</label>
+        <textarea id="bothPrompt" placeholder="描述你想要的内容主题，系统将同时生成图片和配套文案..." rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label>图片比例</label>
+        <div class="ratio-selector">
+          <div class="ratio-btn active" data-ratio="1:1">1:1 方形</div>
+          <div class="ratio-btn" data-ratio="3:4">3:4 竖版</div>
+          <div class="ratio-btn" data-ratio="4:3">4:3 横版</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>图片张数</label>
+        <input type="number" id="bothImageCount" min="1" max="4" value="1">
+        <div class="field-hint">图文一体按 5 积分文案 + 每张图片 10 积分计算。</div>
+      </div>
+      <button class="generate-btn both" id="generateBothBtn"><span>一键生成图文</span></button>
+    </div>
+
+    <!-- 文案改写面板 -->
+    <div class="rewrite-panel">
+      <div class="panel-header rewrite">
+        <div class="header-icon">🔄</div>
+        <div>
+          <h2>智能文案改写</h2>
+          <p>一键优化你的文案，提升完读率与互动</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>输入要改写的文案</label>
+        <textarea id="rewriteInput" placeholder="粘贴需要改写的文案..." rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label>改写模式</label>
+        <div class="rewrite-style-selector">
+          <div class="rewrite-style-btn active" data-style="原创改写">原创改写</div>
+          <div class="rewrite-style-btn" data-style="创新升级">创新升级</div>
+        </div>
+      </div>
+      <button class="generate-btn rewrite" id="rewriteBtn"><span>智能改写</span></button>
+    </div>
+
+    <!-- 任务区 -->
+    <div class="section-block" id="tasksSection" style="display:none;">
+      <div class="section-heading" style="margin-bottom:16px;">
+        <h2>当前任务</h2>
+        <p>正在处理的任务会显示在这里</p>
+      </div>
+      <div class="tasks-grid" id="tasksGrid"></div>
+    </div>
+
+    <!-- 历史记录区 -->
+    <div class="section-block" id="historySection" style="display:none;">
+      <div class="section-heading" style="margin-bottom:16px;">
+        <h2>历史记录</h2>
+        <p>所有生成的图片和文案自动保存</p>
+      </div>
+      <div class="history-wrapper">
+        <!-- 图片历史 -->
+        <div>
+          <div class="history-header">
+            <span class="history-title">图片记录</span>
+            <span class="history-count" id="imageCount">共 0 条</span>
+          </div>
+          <div class="history-grid" id="imageHistoryGrid"></div>
+          <div class="pagination" id="imagePagination"></div>
+        </div>
+        <!-- 文案历史 -->
+        <div>
+          <div class="history-header">
+            <span class="history-title purple">文案记录</span>
+            <span class="history-count" id="copyCount">共 0 条</span>
+          </div>
+          <div class="history-grid" id="copyHistoryGrid"></div>
+          <div class="pagination" id="copyPagination"></div>
+        </div>
+        <!-- 图文一体历史 -->
+        <div>
+          <div class="history-header">
+            <span class="history-title both-title">图文一体</span>
+            <span class="history-count" id="bothCount">共 0 条</span>
+          </div>
+          <div class="history-grid" id="bothHistoryGrid"></div>
+          <div class="pagination" id="bothPagination"></div>
+        </div>
+      </div>
+      <!-- 分页设置 -->
+      <div class="pagination-settings">
+        <span class="page-size-label">每页显示：</span>
+        <select class="page-size-select" id="pageSizeSelect">
+          <option value="6">6 条</option>
+          <option value="10" selected>10 条</option>
+          <option value="20">20 条</option>
+          <option value="50">50 条</option>
+        </select>
+        <button class="clear-history-btn" onclick="clearAllHistory('image')">清空图片记录</button>
+        <button class="clear-history-btn purple" onclick="clearAllHistory('copy')">清空文案记录</button>
+        <button class="clear-history-btn both-btn" onclick="clearAllHistory('both')">清空图文记录</button>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="cta-section" id="ctaSection">
+    <h2>准备开始创作了吗？</h2>
+    <p>注册后进入工作台，生成图片、文案、Prompt，并保存自己的历史资产。</p>
+    <a href="register.html" class="hero-btn hero-btn-primary">免费注册</a>
+    <a href="xhs.html" class="hero-btn hero-btn-secondary">进入小红书工作台</a>
+  </section>
+</div>
+
+<footer class="footer-main">
+  <div class="container" style="padding-top:0;padding-bottom:0;">
+    <div class="footer-grid">
+      <div class="footer-brand"><div class="brand-name">冰侠客</div><p>AI 驱动的小红书内容创作平台，帮助创作者高效产出优质笔记。</p></div>
+      <div class="footer-col"><h4>功能</h4><a href="xhs.html">小红书图片生成</a><a href="xi-image.html">gpt-image-2 生图</a><a href="xhs.html">小红书文案生成</a><a href="xhs.html">文案改写</a><a href="#" onclick="showRedeemModal()">卡密兑换</a></div>
+      <div class="footer-col"><h4>支持</h4><a href="help.html">帮助中心</a><a href="content-policy.html">内容规范</a><a href="profile.html">个人中心</a></div>
+      <div class="footer-col"><h4>关于</h4><a href="privacy.html">隐私政策</a><a href="terms.html">服务条款</a><a href="mailto:support@example.com">联系我们</a></div>
+    </div>
+    <div class="footer-bottom">&copy; 2026 冰侠客 AI 驱动内容创作 All Rights Reserved</div>
+  </div>
+</footer>
+
+<div class="redeem-modal" id="redeemModal">
+  <div class="redeem-modal-inner">
+    <h3>卡密兑换</h3>
+    <p>输入卡密即可兑换对应积分，每个卡密仅可使用一次</p>
+    <div class="error" id="redeemError"></div>
+    <div class="success-msg" id="redeemSuccess"></div>
+    <div class="form-group"><input type="text" id="cdkeyInput" placeholder="请输入卡密" maxlength="20" autocomplete="off"></div>
+    <div class="redeem-modal-actions">
+      <button class="btn-cancel" onclick="hideRedeemModal()">取消</button>
+      <button class="btn-confirm" id="redeemBtn" onclick="redeemCdkey()">兑换积分</button>
+    </div>
+  </div>
+</div>
+
+<div class="pay-modal" id="payModal">
+  <div class="pay-modal-inner">
+    <div class="pay-header">
+      <h3>充值积分</h3>
+      <div class="amount">&#165;<span id="payAmount">0</span></div>
+      <div class="points-got">获得 <span id="payPoints">0</span> 积分</div>
+    </div>
+    <div class="pay-channel-select">
+      <div class="pay-channel-btn active" data-channel="alipay" onclick="selectChannel('alipay')"><span class="icon">&#x1F4B3;</span><span class="name">支付宝</span></div>
+      <div class="pay-channel-btn" data-channel="wxpay" onclick="selectChannel('wxpay')"><span class="icon">&#x1F49A;</span><span class="name">微信支付</span></div>
+    </div>
+    <div class="pay-qr-area" id="payQrArea"><p style="color:var(--text-muted);font-size:14px;">请先选择积分套餐</p></div>
+    <div class="pay-status-bar" id="payStatusBar" style="display:none;"><div class="spinner"></div><span class="text">等待支付...</span></div>
+    <button class="pay-close-btn" onclick="hidePayModal()">关闭</button>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+
+async function initNav() {
+  if (token) {
+    try {
+      const r = await fetch('/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      const u = d.user || d;
+      document.getElementById('globalUserBar').style.display = 'flex';
+      document.getElementById('guestBar').style.display = 'none';
+      document.getElementById('navUsername').textContent = u.username;
+      document.getElementById('navPoints').textContent = (u.points ?? 0) + ' 积分';
+      if (u.role === 'admin') document.getElementById('navAdmin').style.display = 'inline';
+    } catch { localStorage.removeItem('token'); }
+  }
+}
+function logout() { localStorage.removeItem('token'); }
+
+async function loadStats() {
+  const counters = {
+    users: { el: document.getElementById('statUsers'), value: 1286, target: 1286, minStep: 1, maxStep: 3 },
+    images: { el: document.getElementById('statImages'), value: 38642, target: 38642, minStep: 2, maxStep: 8 },
+    copies: { el: document.getElementById('statCopies'), value: 21875, target: 21875, minStep: 1, maxStep: 6 }
+  };
+
+  function formatStat(value) {
+    return Math.floor(value).toLocaleString('zh-CN');
+  }
+
+  function renderCounter(counter) {
+    counter.el.textContent = formatStat(counter.value);
+  }
+
+  function animateTo(counter, nextTarget, duration = 900) {
+    counter.target = Math.max(nextTarget, counter.value);
+    const startValue = counter.value;
+    const delta = counter.target - startValue;
+    const startAt = performance.now();
+
+    function tick(now) {
+      const progress = Math.min((now - startAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      counter.value = startValue + delta * eased;
+      renderCounter(counter);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  Object.values(counters).forEach(counter => {
+    counter.value = Math.max(0, counter.target - randomInt(80, 320));
+    renderCounter(counter);
+    animateTo(counter, counter.target, 1400 + randomInt(0, 800));
+  });
+
+  try {
+    const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.ok) {
+      const s = await r.json();
+      if (Number.isFinite(Number(s.totalUsers))) {
+        animateTo(counters.users, Math.max(counters.users.target, Number(s.totalUsers) + 1200), 900);
+      }
+    }
+  } catch {}
+  try {
+    const r = await fetch('/api/admin/daily-stats?days=365', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.ok) {
+      const d = await r.json();
+      const t = d.stats.reduce((a,b) => a + b.count, 0);
+      const c = d.stats.filter(s => s.type === 'copy').reduce((a,b) => a + b.count, 0);
+      animateTo(counters.images, Math.max(counters.images.target, t + 36000), 900);
+      animateTo(counters.copies, Math.max(counters.copies.target, c + 20000), 900);
+    }
+  } catch {}
+
+  Object.values(counters).forEach(counter => {
+    const scheduleNext = () => {
+      const delay = randomInt(2600, 7200);
+      setTimeout(() => {
+        const increment = randomInt(counter.minStep, counter.maxStep);
+        animateTo(counter, counter.target + increment, randomInt(650, 1200));
+        scheduleNext();
+      }, delay);
+    };
+    scheduleNext();
+  });
+}
+
+async function loadShop() {
+  try {
+    const r = await fetch('/api/packages');
+    const d = await r.json();
+    document.getElementById('shopGrid').innerHTML = d.packages.map((p,i) =>
+      '<div class="shop-card' + (i===2?' featured':'') + '">' +
+      '<span class="points-num">' + escapeHtml(p.points) + '</span>' +
+      '<div class="points-label">积分</div>' +
+      '<div class="price">&#165;' + escapeHtml(p.price) + ' <small>' + escapeHtml((p.price/p.points*100).toFixed(1)) + '元/百积分</small></div>' +
+      '<button class="shop-btn buy" onclick="startPay(' + Number(p.points) + ',' + Number(p.price) + ')">立即购买</button></div>'
+    ).join('');
+  } catch {}
+}
+
+function showRedeemModal() {
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  document.getElementById('redeemModal').classList.add('show');
+  document.getElementById('cdkeyInput').value = '';
+  document.getElementById('redeemError').style.display = 'none';
+  document.getElementById('redeemSuccess').style.display = 'none';
+  document.getElementById('redeemBtn').disabled = false;
+  document.getElementById('cdkeyInput').focus();
+}
+function hideRedeemModal() { document.getElementById('redeemModal').classList.remove('show'); }
+
+async function redeemCdkey() {
+  const code = document.getElementById('cdkeyInput').value.trim();
+  if (!code) { document.getElementById('redeemError').textContent = '请输入卡密'; document.getElementById('redeemError').style.display = 'block'; return; }
+  const btn = document.getElementById('redeemBtn');
+  btn.disabled = true; btn.textContent = '兑换中...';
+  document.getElementById('redeemError').style.display = 'none';
+  document.getElementById('redeemSuccess').style.display = 'none';
+  try {
+    const r = await fetch('/api/cdkey/redeem', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({code}) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    document.getElementById('redeemSuccess').textContent = '兑换成功！获得 ' + d.points + ' 积分，当前余额：' + d.balance + ' 积分';
+    document.getElementById('redeemSuccess').style.display = 'block';
+    document.getElementById('navPoints').textContent = d.balance + ' 积分';
+    document.getElementById('cdkeyInput').value = '';
+  } catch(err) {
+    document.getElementById('redeemError').textContent = err.message;
+    document.getElementById('redeemError').style.display = 'block';
+  } finally { btn.disabled = false; btn.textContent = '兑换积分'; }
+}
+
+let selectedChannel = 'alipay', selectedPoints = 0, selectedPrice = 0;
+
+function showPayModal() {
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  document.getElementById('payModal').classList.add('show');
+  document.getElementById('payStatusBar').style.display = 'none';
+  document.getElementById('payQrArea').innerHTML = '<p style="color:var(--text-muted);font-size:14px;">请先选择积分套餐</p>';
+}
+function hidePayModal() { document.getElementById('payModal').classList.remove('show'); }
+function selectChannel(ch) {
+  selectedChannel = ch;
+  document.querySelectorAll('.pay-channel-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-channel="'+ch+'"]').classList.add('active');
+}
+function startPay(points, price) {
+  selectedPoints = points; selectedPrice = price;
+  document.getElementById('payAmount').textContent = price;
+  document.getElementById('payPoints').textContent = points;
+  showPayModal();
+  createPayment();
+}
+
+async function createPayment() {
+  document.getElementById('payStatusBar').style.display = 'flex';
+  document.getElementById('payQrArea').innerHTML = '<p style="color:var(--text-muted);font-size:14px;">正在创建订单...</p>';
+  try {
+    const r = await fetch('/api/payment/create', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body:JSON.stringify({points:selectedPoints, channel:selectedChannel}) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    document.getElementById('payQrArea').innerHTML =
+      '<img src="' + escapeHtml(d.qrCode) + '" alt="支付二维码">' +
+      '<div class="hint">请使用' + (selectedChannel==='alipay'?'支付宝':'微信') + '扫码支付</div>' +
+      '<div class="hint" style="font-size:12px;color:var(--text-dim);margin-top:4px;">订单号：' + escapeHtml(d.orderNo) + '</div>';
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const sr = await fetch('/api/payment/status/' + d.orderNo, { headers:{'Authorization':'Bearer '+token} });
+        const sd = await sr.json();
+        if (sd.order && sd.order.status === 'paid') {
+          clearInterval(poll);
+          document.getElementById('payStatusBar').style.display = 'none';
+          document.getElementById('payQrArea').innerHTML =
+            '<div style="color:var(--neon-green);font-size:48px;margin-bottom:12px;">&#x2705;</div>' +
+            '<div style="color:var(--text-primary);font-weight:800;font-size:18px;margin-bottom:4px;">支付成功！</div>' +
+            '<div style="color:var(--neon-cyan);font-weight:700;">获得 ' + escapeHtml(sd.order.points) + ' 积分</div>';
+          document.getElementById('navPoints').textContent = sd.order.points + ' 积分';
+          return;
+        }
+      } catch {}
+      if (attempts >= 30) {
+        clearInterval(poll);
+        document.getElementById('payStatusBar').style.display = 'none';
+        document.getElementById('payQrArea').innerHTML =
+          '<p style="color:var(--text-muted);font-size:14px;">支付超时，请重试</p>' +
+          '<button class="shop-btn buy" style="margin-top:12px;width:auto;padding:10px 24px;" onclick="createPayment()">重新支付</button>';
+      }
+    }, 3000);
+  } catch(err) {
+    document.getElementById('payStatusBar').style.display = 'none';
+    document.getElementById('payQrArea').innerHTML = '<p style="color:var(--neon-red);font-size:14px;">创建订单失败：' + escapeHtml(err.message) + '</p>';
+  }
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+function startCreating() {
+  window.location.href = 'xhs.html';
+}
+
+initNav(); loadStats(); loadShop();
+</script>
+</body>
+</html>

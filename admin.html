@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>管理后台 · 冰侠客</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-body { min-height: 100vh; background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .admin-body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,240,255,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.03)1px,transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+    .admin-body::after { content: ''; position: fixed; top: -300px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse,rgba(255,45,120,0.08)0%,transparent 70%); pointer-events: none; z-index: 0; }
+    .admin-header { position: sticky; top: 0; z-index: 10; background: rgba(10,14,23,0.85); border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); }
+    .admin-header-inner { width: min(1180px,calc(100% - 48px)); margin: 0 auto; min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 18px; position: relative; z-index: 1; }
+    .admin-header h1 { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .admin-user-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .admin-user-info a { color: var(--text-muted); text-decoration: none; border-radius: var(--radius-sm); padding: 8px 10px; font-weight: 700; font-size: 13px; transition: var(--base); }
+    .admin-user-info a:hover { background: var(--bg-card); color: var(--text-primary); }
+    #adminName { color: var(--neon-pink); font-weight: 900; }
+    .admin-container { position: relative; z-index: 1; width: min(1180px,calc(100% - 48px)); margin: 0 auto; padding: 28px 0 42px; }
+    .admin-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+    .admin-stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; transition: var(--base); }
+    .admin-stat-card:hover { border-color: rgba(255,45,120,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .admin-stat-label { color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .admin-stat-value { font-size: 30px; font-weight: 900; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .admin-tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 14px; }
+    .admin-tab { border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); padding: 10px 16px; cursor: pointer; font-weight: 700; font-size: 13px; transition: var(--base); }
+    .admin-tab:hover { color: var(--text-primary); background: var(--bg-surface); }
+    .admin-tab.active { background: linear-gradient(135deg, var(--neon-pink), #d92d6a); color: #fff; box-shadow: 0 4px 12px rgba(255,45,120,0.3); }
+    .admin-panel { display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-md); }
+    .admin-panel.active { display: block; }
+    .admin-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .admin-toolbar input[type="text"] { flex: 1; min-width: 220px; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; outline: none; transition: var(--base); }
+    .admin-toolbar input[type="text"]:focus { border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.15); }
+    .admin-toolbar input::placeholder { color: var(--text-dim); }
+    .admin-toolbar select { padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; outline: none; cursor: pointer; transition: var(--base); }
+    .admin-toolbar select:focus { border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.15); }
+    .admin-table-wrap { overflow-x: auto; }
+    .admin-table-wrap table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    .admin-table-wrap th, .admin-table-wrap td { padding: 13px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .admin-table-wrap th { color: var(--text-muted); background: var(--bg-surface); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; }
+    .admin-table-wrap tr:hover td { background: rgba(255,45,120,0.03); }
+    .admin-btn { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-primary); padding: 8px 12px; cursor: pointer; font-weight: 700; font-size: 13px; transition: var(--base); }
+    .admin-btn:hover { border-color: var(--border-light); background: var(--bg-card); }
+    .admin-btn-primary { background: linear-gradient(135deg, var(--neon-pink), #d92d6a); color: #fff; border: none; box-shadow: 0 4px 12px rgba(255,45,120,0.25); }
+    .admin-btn-primary:hover { box-shadow: 0 6px 20px rgba(255,45,120,0.35); transform: translateY(-1px); }
+    .admin-btn-danger { color: var(--neon-red); border-color: rgba(239,68,68,0.3); }
+    .admin-btn-danger:hover { background: rgba(239,68,68,0.08); border-color: var(--neon-red); }
+    .admin-btn-sm { padding: 6px 9px; font-size: 12px; margin-right: 6px; }
+    .admin-modal { position: fixed; inset: 0; background: rgba(10,14,23,0.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; backdrop-filter: blur(12px); }
+    .admin-modal-content { width: min(420px,100%); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 24px; }
+    .admin-modal-content h3 { font-size: 20px; font-weight: 800; margin-bottom: 14px; }
+    .admin-modal-content input { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; outline: none; margin-bottom: 10px; transition: var(--base); }
+    .admin-modal-content input:focus { border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.15); }
+    .admin-modal-content input::placeholder { color: var(--text-dim); }
+    .admin-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+    .admin-error { display: none; color: var(--neon-red); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); padding: 10px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 10px; }
+    .admin-history-item { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); padding: 14px; margin-bottom: 10px; transition: var(--base); }
+    .admin-history-item:hover { border-color: rgba(255,45,120,0.15); }
+    .admin-history-item .meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px; margin-bottom: 8px; }
+    .admin-history-item .meta span { padding: 2px 8px; background: var(--bg-card); border-radius: 4px; }
+    .admin-history-item .content { color: var(--text-secondary); line-height: 1.7; max-height: 72px; overflow: hidden; font-size: 13px; }
+    .admin-empty { text-align: center; color: var(--text-muted); padding: 40px; }
+    .log-type { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .log-type.recharge { color: var(--neon-green); background: rgba(34,211,160,0.1); }
+    .log-type.consume { color: var(--neon-red); background: rgba(239,68,68,0.1); }
+    .log-amount { font-weight: 700; }
+    .log-amount.positive { color: var(--neon-green); }
+    .log-amount.negative { color: var(--neon-red); }
+    .cdkey-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 16px; align-items: end; }
+    .cdkey-form label { display: block; font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+    .cdkey-form input, .cdkey-form select { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px; outline: none; transition: var(--base); }
+    .cdkey-form input:focus, .cdkey-form select:focus { border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.15); }
+    .cdkey-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+    .cdkey-stat { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; text-align: center; }
+    .cdkey-stat .num { font-size: 22px; font-weight: 900; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .cdkey-stat .lbl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .status-badge.used { color: var(--text-muted); background: rgba(100,116,139,0.15); }
+    .status-badge.unused { color: var(--neon-green); background: rgba(34,211,160,0.1); }
+    .status-badge.pending { color: #f59e0b; background: rgba(245,158,11,0.1); }
+    .status-badge.success { color: var(--neon-green); background: rgba(34,211,160,0.1); }
+    .status-badge.failed { color: var(--neon-red); background: rgba(239,68,68,0.1); }
+    .cdkey-code { font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 1px; color: var(--neon-cyan); }
+    .cdkey-copy-btn { cursor: pointer; color: var(--text-muted); margin-left: 4px; transition: var(--base); }
+    .cdkey-copy-btn:hover { color: var(--neon-cyan); }
+    .pay-channel-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .pay-channel-tag.alipay { color: #1677ff; background: rgba(22,119,255,0.1); }
+    .pay-channel-tag.wxpay { color: #07c160; background: rgba(7,193,96,0.1); }
+    @media (max-width: 820px) {
+      .admin-stats { grid-template-columns: repeat(2,1fr); }
+      .admin-header-inner, .admin-container { width: calc(100% - 24px); }
+    }
+    @media (max-width: 520px) {
+      .admin-stats { grid-template-columns: 1fr; }
+      .admin-header-inner { align-items: flex-start; flex-direction: column; padding: 14px 0; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <h1>管理后台</h1>
+      <div class="admin-user-info">
+        <span id="adminName"></span>
+        <a href="index.html">返回工具</a>
+        <a href="#" id="logoutBtn">退出</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <section class="admin-stats" id="stats">
+      <div class="admin-stat-card"><div class="admin-stat-label">总用户数</div><div class="admin-stat-value" id="totalUsers">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">总积分</div><div class="admin-stat-value" id="totalPoints">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日生成</div><div class="admin-stat-value" id="todayCount">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日消耗积分</div><div class="admin-stat-value" id="todayCost">-</div></div>
+    </section>
+
+    <nav class="admin-tabs">
+      <button class="admin-tab active" data-tab="users">用户管理</button>
+      <button class="admin-tab" data-tab="history">历史记录</button>
+      <button class="admin-tab" data-tab="charts">数据图表</button>
+      <button class="admin-tab" data-tab="pointlogs">积分流水</button>
+      <button class="admin-tab" data-tab="cdkeys">卡密管理</button>
+      <button class="admin-tab" data-tab="payment">支付订单</button>
+    </nav>
+
+    <section class="admin-panel active" id="usersPanel">
+      <div class="admin-toolbar">
+        <input type="text" id="searchUser" placeholder="搜索用户名...">
+      </div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>用户名</th>
+              <th>积分</th>
+              <th>角色</th>
+              <th>注册时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="usersList"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="historyPanel">
+      <div class="admin-toolbar">
+        <input type="text" id="searchHistory" placeholder="搜索内容...">
+        <select id="filterType">
+          <option value="">全部类型</option>
+          <option value="image">图片</option>
+          <option value="copy">文案</option>
+        </select>
+      </div>
+      <div id="historyList"></div>
+    </section>
+
+    <section class="admin-panel" id="chartsPanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <h3 style="font-size:15px;font-weight:700;">数据统计</h3>
+          <p style="color:var(--text-muted);font-size:12px;margin-top:2px;">包含图片、文案、图文一体的生成记录和积分消耗</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="admin-btn admin-btn-sm" onclick="loadChartData(7)" style="background:var(--neon-pink);color:#fff;border:none;">7天</button>
+          <button class="admin-btn admin-btn-sm" onclick="loadChartData(14)">14天</button>
+          <button class="admin-btn admin-btn-sm" onclick="loadChartData(30)">30天</button>
+        </div>
+      </div>
+      <div id="chartContainer" style="background:var(--bg-surface);border-radius:var(--radius-md);padding:20px;min-height:300px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">
+        点击"7天"加载图表数据
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px;" id="chartSummary"></div>
+    </section>
+
+    <section class="admin-panel" id="pointlogsPanel">
+      <div class="admin-toolbar">
+        <span style="color:var(--text-secondary);font-size:14px;font-weight:600;">全平台积分流水</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>用户</th>
+              <th>类型</th>
+              <th>金额</th>
+              <th>余额</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody id="pointLogsList"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 卡密管理面板 -->
+    <section class="admin-panel" id="cdkeysPanel">
+      <div class="cdkey-form">
+        <div>
+          <label>生成数量</label>
+          <input type="number" id="cdkeyCount" value="10" min="1" max="100">
+        </div>
+        <div>
+          <label>单卡密积分</label>
+          <input type="number" id="cdkeyPoints" value="100" min="10" max="100000">
+        </div>
+        <div>
+          <label>状态</label>
+          <select id="cdkeyUsedFilter">
+            <option value="">全部</option>
+            <option value="0">未使用</option>
+            <option value="1">已使用</option>
+          </select>
+        </div>
+        <button class="admin-btn admin-btn-primary" onclick="generateCdkeys()" style="height:42px;">生成卡密</button>
+      </div>
+
+      <div class="cdkey-stats" id="cdkeyStats">
+        <div class="cdkey-stat"><div class="num" id="cdkeyTotal">-</div><div class="lbl">总卡密</div></div>
+        <div class="cdkey-stat"><div class="num" id="cdkeyUnused">-</div><div class="lbl">未使用</div></div>
+        <div class="cdkey-stat"><div class="num" id="cdkeyUsed">-</div><div class="lbl">已使用</div></div>
+        <div class="cdkey-stat"><div class="num" id="cdkeyTotalPoints">-</div><div class="lbl">总积分</div></div>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>卡密</th>
+              <th>积分</th>
+              <th>状态</th>
+              <th>使用者</th>
+              <th>使用时间</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="cdkeysList"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 支付订单面板 -->
+    <section class="admin-panel" id="paymentPanel">
+      <div class="admin-toolbar">
+        <span style="color:var(--text-secondary);font-size:14px;font-weight:600;">支付订单管理</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>用户</th>
+              <th>金额</th>
+              <th>积分</th>
+              <th>渠道</th>
+              <th>状态</th>
+              <th>支付时间</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="paymentOrdersList"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="admin-modal" id="rechargeModal" style="display:none;">
+    <div class="admin-modal-content">
+      <h3>积分充值</h3>
+      <div class="admin-error" id="rechargeError"></div>
+      <p id="rechargeUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
+      <input type="number" id="rechargeAmount" placeholder="充值积分数量">
+      <input type="text" id="rechargeDesc" placeholder="备注（可选）">
+      <div class="admin-modal-actions">
+        <button class="admin-btn" onclick="closeRechargeModal()">取消</button>
+        <button class="admin-btn admin-btn-primary" onclick="confirmRecharge()">确认充值</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 改密码弹窗 -->
+  <div class="admin-modal" id="resetPasswordModal" style="display:none;">
+    <div class="admin-modal-content">
+      <h3>重置用户密码</h3>
+      <div class="admin-error" id="resetPwdError"></div>
+      <p id="resetPwdUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
+      <input type="password" id="newPassword" placeholder="新密码（至少8位，需含大小写字母+数字）" style="margin-bottom:8px;">
+      <input type="password" id="confirmPassword" placeholder="确认新密码">
+      <div class="admin-modal-actions">
+        <button class="admin-btn" onclick="closeResetPasswordModal()">取消</button>
+        <button class="admin-btn admin-btn-primary" onclick="confirmResetPassword()">确认重置</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+
+    let currentUserId = null;
+    let users = [];
+
+    async function checkAdmin() {
+      try {
+        const res = await fetch('/api/user/me', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const u = data.user || data;
+        if (u.role !== 'admin') {
+          alert('需要管理员权限');
+          window.location.href = 'index.html';
+        }
+        document.getElementById('adminName').textContent = u.username;
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = 'login.html';
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('totalUsers').textContent = data.totalUsers;
+        document.getElementById('totalPoints').textContent = data.totalPoints;
+        document.getElementById('todayCount').textContent = data.todayCount;
+        document.getElementById('todayCost').textContent = data.todayCost || 0;
+      } catch (err) {
+        console.error('加载统计失败', err);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        users = data.users;
+        renderUsers(users);
+      } catch (err) {
+        console.error('加载用户失败', err);
+      }
+    }
+
+    function renderUsers(list) {
+      const tbody = document.getElementById('usersList');
+      tbody.innerHTML = list.map(u => `
+        <tr>
+          <td>${escapeHtml(u.id)}</td>
+          <td>${escapeHtml(u.username)}</td>
+          <td>${escapeHtml(u.points)}</td>
+          <td>${u.role === 'admin' ? '管理员' : '用户'}</td>
+          <td>${escapeHtml(u.created_at)}</td>
+          <td>
+            <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openRechargeModal(${Number(u.id)}, decodeURIComponent('${encodeURIComponent(u.username || '')}'))">充值</button>
+            <button class="admin-btn admin-btn-sm" onclick="openResetPasswordModal(${Number(u.id)}, decodeURIComponent('${encodeURIComponent(u.username || '')}'))">改密码</button>
+            ${u.role !== 'admin' ? `<button class="admin-btn admin-btn-danger admin-btn-sm" onclick="deleteUser(${Number(u.id)})">删除</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('searchUser').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase();
+      renderUsers(users.filter(u => u.username.toLowerCase().includes(keyword)));
+    });
+
+    function openRechargeModal(userId, username) {
+      currentUserId = userId;
+      document.getElementById('rechargeUser').textContent = `为 ${username} 充值积分`;
+      document.getElementById('rechargeAmount').value = '';
+      document.getElementById('rechargeDesc').value = '';
+      document.getElementById('rechargeError').style.display = 'none';
+      document.getElementById('rechargeModal').style.display = 'flex';
+    }
+
+    function closeRechargeModal() {
+      document.getElementById('rechargeModal').style.display = 'none';
+    }
+
+    async function confirmRecharge() {
+      const amount = parseInt(document.getElementById('rechargeAmount').value, 10);
+      const desc = document.getElementById('rechargeDesc').value;
+
+      if (!amount || amount <= 0) {
+        document.getElementById('rechargeError').textContent = '请输入正确的积分数量';
+        document.getElementById('rechargeError').style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/users/recharge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ userId: currentUserId, amount, description: desc })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        closeRechargeModal();
+        loadUsers();
+        loadStats();
+        alert(`充值成功！当前积分：${data.balance}`);
+      } catch (err) {
+        document.getElementById('rechargeError').textContent = err.message;
+        document.getElementById('rechargeError').style.display = 'block';
+      }
+    }
+
+    function openResetPasswordModal(userId, username) {
+      currentUserId = userId;
+      document.getElementById('resetPwdUser').textContent = `重置用户 ${username} 的密码`;
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+      document.getElementById('resetPwdError').style.display = 'none';
+      document.getElementById('resetPasswordModal').style.display = 'flex';
+    }
+
+    function closeResetPasswordModal() {
+      document.getElementById('resetPasswordModal').style.display = 'none';
+    }
+
+    async function confirmResetPassword() {
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!newPassword) {
+        document.getElementById('resetPwdError').textContent = '请输入新密码';
+        document.getElementById('resetPwdError').style.display = 'block';
+        return;
+      }
+      if (newPassword.length < 8) {
+        document.getElementById('resetPwdError').textContent = '密码长度至少8位';
+        document.getElementById('resetPwdError').style.display = 'block';
+        return;
+      }
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+        document.getElementById('resetPwdError').textContent = '密码需包含大小写字母和数字';
+        document.getElementById('resetPwdError').style.display = 'block';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        document.getElementById('resetPwdError').textContent = '两次密码输入不一致';
+        document.getElementById('resetPwdError').style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/users/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ userId: currentUserId, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        closeResetPasswordModal();
+        alert('密码重置成功！');
+      } catch (err) {
+        document.getElementById('resetPwdError').textContent = err.message;
+        document.getElementById('resetPwdError').style.display = 'block';
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm('确定要删除该用户吗？该操作不可恢复。')) return;
+      try {
+        const res = await fetch(`/api/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error);
+        }
+        loadUsers();
+        loadStats();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function loadHistory() {
+      const keyword = document.getElementById('searchHistory').value;
+      const type = document.getElementById('filterType').value;
+      try {
+        const params = new URLSearchParams();
+        if (keyword) params.append('keyword', keyword);
+        if (type) params.append('type', type);
+        const res = await fetch(`/api/admin/history?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        renderHistory(data.history);
+      } catch (err) {
+        console.error('加载历史失败', err);
+      }
+    }
+
+    function renderHistory(list) {
+      const container = document.getElementById('historyList');
+      if (list.length === 0) {
+        container.innerHTML = '<div class="admin-empty">暂无记录</div>';
+        return;
+      }
+      container.innerHTML = list.map(h => `
+        <div class="admin-history-item">
+          <div class="meta">
+            <span>用户：${escapeHtml(h.username || '未知')}</span>
+            <span>类型：${h.type === 'image' ? '图片' : '文案'}</span>
+            <span>消耗：${escapeHtml(h.cost_points || 0)} 积分</span>
+            <span>时间：${escapeHtml(h.created_at)}</span>
+          </div>
+          <div class="content">${escapeHtml(h.content || h.prompt || h.image_url || '')}</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('searchHistory').addEventListener('input', loadHistory);
+    document.getElementById('filterType').addEventListener('change', loadHistory);
+
+    // 图表功能
+    async function loadChartData(days) {
+      const container = document.getElementById('chartContainer');
+      const summary = document.getElementById('chartSummary');
+      container.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+      summary.innerHTML = '';
+
+      try {
+        const res = await fetch(`/api/admin/daily-stats?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        const stats = data.stats || [];
+
+        if (stats.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted);">暂无数据</div>';
+          return;
+        }
+
+        // 构建图表
+        const days_list = [...new Set(stats.map(s => s.day))];
+        const imageData = days_list.map(d => {
+          const img = stats.find(s => s.day === d && s.type === 'image');
+          const both = stats.find(s => s.day === d && s.type === 'both');
+          return (img ? img.count : 0) + (both ? both.count : 0);
+        });
+        const copyData = days_list.map(d => {
+          const cp = stats.find(s => s.day === d && s.type === 'copy');
+          const both = stats.find(s => s.day === d && s.type === 'both');
+          return (cp ? cp.count : 0) + (both ? both.count : 0);
+        });
+        const costData = days_list.map(d => { const r = stats.find(s => s.day === d); return r ? (r.cost || 0) : 0; });
+
+        // 用纯CSS柱状图
+        const maxVal = Math.max(...imageData, ...copyData, 1);
+        let chartHtml = '<div style="display:flex;align-items:flex-end;gap:8px;height:240px;padding:0 10px;">';
+        days_list.forEach((day, i) => {
+          const imgH = (imageData[i] / maxVal) * 200;
+          const cpH = (copyData[i] / maxVal) * 200;
+          const label = day.slice(5);
+          chartHtml += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:240px;justify-content:flex-end;">
+            <div style="font-size:10px;color:var(--text-muted);">${imageData[i]}</div>
+            <div style="width:60%;height:${Math.max(imgH, 2)}px;background:linear-gradient(180deg,var(--neon-pink),rgba(255,45,120,0.4));border-radius:4px 4px 0 0;transition:var(--base);" title="图片: ${imageData[i]}"></div>
+            <div style="width:60%;height:${Math.max(cpH, 2)}px;background:linear-gradient(180deg,var(--neon-cyan),rgba(0,240,255,0.4));border-radius:4px 4px 0 0;transition:var(--base);" title="文案: ${copyData[i]}"></div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">${label}</div>
+          </div>`;
+        });
+        chartHtml += '</div>';
+        chartHtml += '<div style="display:flex;gap:20px;justify-content:center;margin-top:12px;font-size:12px;"><span><span style="display:inline-block;width:12px;height:12px;background:var(--neon-pink);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>图片</span><span><span style="display:inline-block;width:12px;height:12px;background:var(--neon-cyan);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>文案</span></div>';
+        container.innerHTML = chartHtml;
+
+        // 汇总
+        const totalImages = imageData.reduce((a, b) => a + b, 0);
+        const totalCopies = copyData.reduce((a, b) => a + b, 0);
+        const totalCost = costData.reduce((a, b) => a + b, 0);
+        summary.innerHTML = `
+          <div class="admin-stat-card"><div class="admin-stat-label">${days}天图片总数</div><div class="admin-stat-value" style="font-size:22px;">${totalImages}</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-label">${days}天文案总数</div><div class="admin-stat-value" style="font-size:22px;">${totalCopies}</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-label">${days}天总消耗积分</div><div class="admin-stat-value" style="font-size:22px;background:linear-gradient(135deg,var(--neon-red),var(--neon-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${totalCost}</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-label">${days}天日均消耗</div><div class="admin-stat-value" style="font-size:22px;">${Math.round(totalCost / Math.max(days_list.length, 1))}</div></div>
+        `;
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--neon-red);">加载失败</div>';
+      }
+    }
+    window.loadChartData = loadChartData;
+
+    // 积分流水
+    async function loadPointLogs() {
+      try {
+        const res = await fetch('/api/admin/point-logs', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        const tbody = document.getElementById('pointLogsList');
+        if (!data.logs || data.logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.logs.map(log => {
+          const typeLabel = log.type === 'recharge' ? '充值' : '消费';
+          const typeClass = log.type === 'recharge' ? 'recharge' : 'consume';
+          const amountClass = log.type === 'recharge' ? 'positive' : 'negative';
+          const amount = log.type === 'recharge' ? `+${log.amount}` : `${log.amount}`;
+          return `<tr>
+            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(log.created_at)}</td>
+            <td>${escapeHtml(log.username || '未知')}</td>
+            <td><span class="log-type ${typeClass}">${typeLabel}</span></td>
+            <td class="log-amount ${amountClass}">${escapeHtml(amount)}</td>
+            <td>${escapeHtml(log.balance)}</td>
+            <td style="color:var(--text-secondary);">${escapeHtml(log.description || '-')}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        document.getElementById('pointLogsList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--neon-red);padding:40px;">加载失败</td></tr>';
+      }
+    }
+
+    // 卡密管理
+    async function generateCdkeys() {
+      const count = parseInt(document.getElementById('cdkeyCount').value, 10);
+      const points = parseInt(document.getElementById('cdkeyPoints').value, 10);
+      if (!count || count < 1 || count > 100) { alert('数量范围 1-100'); return; }
+      if (!points || points < 10 || points > 100000) { alert('积分范围 10-100000'); return; }
+      try {
+        const res = await fetch('/api/admin/cdkeys/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ count, points })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert(`成功生成 ${data.keys.length} 张卡密`);
+        loadCdkeys();
+        loadCdkeyStats();
+      } catch (err) { alert('生成失败: ' + err.message); }
+    }
+    window.generateCdkeys = generateCdkeys;
+
+    async function loadCdkeyStats() {
+      try {
+        const res = await fetch('/api/admin/cdkeys/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('cdkeyTotal').textContent = data.total || 0;
+        document.getElementById('cdkeyUnused').textContent = data.unused || 0;
+        document.getElementById('cdkeyUsed').textContent = data.used || 0;
+        document.getElementById('cdkeyTotalPoints').textContent = data.totalPoints || 0;
+      } catch (e) { console.error('加载卡密统计失败', e); }
+    }
+
+    async function loadCdkeys() {
+      const used = document.getElementById('cdkeyUsedFilter').value;
+      try {
+        const params = new URLSearchParams();
+        if (used) params.append('used', used);
+        const res = await fetch(`/api/admin/cdkeys?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        const tbody = document.getElementById('cdkeysList');
+        const list = data.list || [];
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无卡密</td></tr>';
+          return;
+        }
+        tbody.innerHTML = list.map(c => {
+          const statusClass = c.used ? 'used' : 'unused';
+          const statusLabel = c.used ? '已使用' : '未使用';
+          return `<tr>
+            <td><span class="cdkey-code">${escapeHtml(c.code)}</span><span class="cdkey-copy-btn" onclick="copyCdkey('${escapeJsString(c.code)}')">复制</span></td>
+            <td>${escapeHtml(c.points)}</td>
+            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+            <td>${escapeHtml(c.used_by_name || '-')}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.used_at || '-')}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.created_at)}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error('加载卡密失败', e); }
+    }
+
+    function copyCdkey(code) {
+      navigator.clipboard.writeText(code).then(() => {
+        alert('卡密已复制: ' + code);
+      }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('卡密已复制: ' + code);
+      });
+    }
+    window.copyCdkey = copyCdkey;
+
+    document.getElementById('cdkeyUsedFilter').addEventListener('change', loadCdkeys);
+
+    // 支付订单管理
+    async function loadPaymentOrders() {
+      try {
+        const res = await fetch('/api/admin/payment-orders', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        const tbody = document.getElementById('paymentOrdersList');
+        if (!data.orders || data.orders.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.orders.map(o => {
+          const channelLabel = o.channel === 'alipay' ? '支付宝' : '微信支付';
+          const channelClass = o.channel === 'alipay' ? 'alipay' : 'wxpay';
+          const statusLabel = o.status === 'paid' ? '已支付' : (o.status === 'pending' ? '待支付' : '已关闭');
+          const statusClass = o.status === 'paid' ? 'success' : (o.status === 'pending' ? 'pending' : 'failed');
+          return `<tr>
+            <td style="font-size:12px;font-family:monospace;">${escapeHtml(o.order_no)}</td>
+            <td>${escapeHtml(o.username || '未知')}</td>
+            <td style="font-weight:700;">${escapeHtml(o.amount)} 元</td>
+            <td>${escapeHtml(o.points)}</td>
+            <td><span class="pay-channel-tag ${channelClass}">${channelLabel}</span></td>
+            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.paid_at || '-')}</td>
+            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.created_at)}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error('加载支付订单失败', e); }
+    }
+
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
+        if (tab.dataset.tab === 'history') loadHistory();
+        if (tab.dataset.tab === 'charts') loadChartData(7);
+        if (tab.dataset.tab === 'pointlogs') loadPointLogs();
+        if (tab.dataset.tab === 'cdkeys') { loadCdkeys(); loadCdkeyStats(); }
+        if (tab.dataset.tab === 'payment') loadPaymentOrders();
+      });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    });
+
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = value == null ? '' : String(value);
+      return div.innerHTML;
+    }
+
+    function escapeJsString(value) {
+      return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    checkAdmin();
+    loadStats();
+    loadUsers();
+  </script>
+</body>
+</html>
