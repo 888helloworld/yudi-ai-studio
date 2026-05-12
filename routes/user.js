@@ -16,6 +16,12 @@ const {
 } = require('../db');
 const { authMiddleware } = require('../middleware/auth');
 
+function parsePositiveInt(value, fallback, max) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
+
 // 获取积分余额
 router.get('/points', authMiddleware, (req, res) => {
   const points = getUserPoints(req.userId);
@@ -30,13 +36,15 @@ router.get('/points/logs', authMiddleware, (req, res) => {
 
 // 获取历史记录
 router.get('/history', authMiddleware, (req, res) => {
-  const { type, keyword, page = 1, limit = 20 } = req.query;
+  const { type, keyword } = req.query;
+  const page = parsePositiveInt(req.query.page, 1, 100000);
+  const limit = parsePositiveInt(req.query.limit, 20, 100);
   
-  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const offset = (page - 1) * limit;
   const history = getUserHistory(req.userId, {
     type,
     keyword,
-    limit: parseInt(limit),
+    limit,
     offset
   });
   
@@ -45,9 +53,9 @@ router.get('/history', authMiddleware, (req, res) => {
   res.json({
     history,
     total,
-    page: parseInt(page),
-    limit: parseInt(limit),
-    totalPages: Math.ceil(total / parseInt(limit))
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
   });
 });
 

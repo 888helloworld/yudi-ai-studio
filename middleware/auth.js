@@ -2,7 +2,10 @@ const jwt = require('jsonwebtoken');
 const { getUserById } = require('../db');
 const crypto = require('crypto');
 
-// 如果环境变量未设置，生成随机密钥（每次重启都会失效，迫使设置环境变量）
+// 生产环境必须显式配置 JWT_SECRET；开发环境才允许临时随机密钥。
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('生产环境必须配置 JWT_SECRET');
+}
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 

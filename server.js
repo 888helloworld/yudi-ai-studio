@@ -89,7 +89,7 @@ app.get('/:filename', (req, res, next) => {
 const imageLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请求过于频繁，请稍后再试' } });
 const xiImageLimiter = rateLimit({
   windowMs: 60000,
-  max: Number(process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || 1000),
+  max: Number(process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || 30),
   message: { error: 'gpt-image-2 生图请求过于频繁，请降低并发或稍后再试' }
 });
 const copyLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请求过于频繁，请稍后再试' } });
@@ -603,7 +603,15 @@ const SIZE_MAP = {
 // 图片本地存储
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-app.use('/uploads', express.static(UPLOAD_DIR));
+app.use('/uploads', express.static(UPLOAD_DIR, {
+  index: false,
+  fallthrough: false,
+  setHeaders(res) {
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  }
+}));
 
 async function downloadAndSaveImage(url, prefix) {
   const controller = new AbortController();
@@ -2267,21 +2275,18 @@ app.post('/api/payment/create', authMiddleware, async (req, res) => {
 
 // 模拟支付回调 - 实际应替换为支付平台异步通知和平台验签
 app.post('/api/payment/callback', authMiddleware, async (req, res) => {
-  const isProduction = process.env.NODE_ENV === 'production';
   const mockPaymentEnabled = process.env.ENABLE_MOCK_PAYMENT === 'true';
   const mockPaymentToken = process.env.MOCK_PAYMENT_TOKEN;
 
-  if (isProduction && !mockPaymentEnabled) {
-    return res.status(403).json({ error: '生产环境已禁用模拟支付回调，请配置真实支付平台回调和验签' });
+  if (!mockPaymentEnabled) {
+    return res.status(403).json({ error: '模拟支付回调已禁用，请接入真实支付平台回调和验签' });
   }
-  if (isProduction && !mockPaymentToken) {
+  if (!mockPaymentToken) {
     return res.status(500).json({ error: '模拟支付回调缺少服务端保护令牌配置' });
   }
-  if (mockPaymentToken) {
-    const providedToken = req.get('X-Mock-Payment-Token') || req.body.mockPaymentToken;
-    if (!safeCompareSecret(providedToken, mockPaymentToken)) {
-      return res.status(403).json({ error: '模拟支付回调令牌无效' });
-    }
+  const providedToken = req.get('X-Mock-Payment-Token') || req.body.mockPaymentToken;
+  if (!safeCompareSecret(providedToken, mockPaymentToken)) {
+    return res.status(403).json({ error: '模拟支付回调令牌无效' });
   }
 
   const { orderNo, tradeNo } = req.body;

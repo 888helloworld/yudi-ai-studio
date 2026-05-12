@@ -3,6 +3,12 @@ const router = express.Router();
 const { getAllUsers, deleteUser, rechargePoints, getAllHistory, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
+function parsePositiveInt(value, fallback, max) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
+
 // 所有路由需要管理员权限
 router.use(authMiddleware, adminMiddleware);
 
@@ -65,13 +71,15 @@ router.delete('/users/:id', (req, res) => {
 
 // 获取所有历史记录
 router.get('/history', (req, res) => {
-  const { type, keyword, page = 1, limit = 50 } = req.query;
+  const { type, keyword } = req.query;
+  const page = parsePositiveInt(req.query.page, 1, 100000);
+  const limit = parsePositiveInt(req.query.limit, 50, 200);
   
-  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const offset = (page - 1) * limit;
   const history = getAllHistory({
     type,
     keyword,
-    limit: parseInt(limit),
+    limit,
     offset
   });
   
@@ -111,8 +119,8 @@ router.get('/daily-stats', (req, res) => {
 
 // 获取积分流水
 router.get('/point-logs', (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 50;
+  const page = parsePositiveInt(req.query.page, 1, 100000);
+  const limit = parsePositiveInt(req.query.limit, 50, 200);
   const offset = (page - 1) * limit;
   const logs = getAllPointLogs(limit, offset);
   res.json({ logs });
@@ -139,7 +147,11 @@ router.post('/cdkeys/generate', (req, res) => {
 // 获取卡密列表
 router.get('/cdkeys', (req, res) => {
   const { used, page, limit } = req.query;
-  const result = getAllCdkeys({ used, page: parseInt(page) || 1, limit: parseInt(limit) || 50 });
+  const result = getAllCdkeys({
+    used,
+    page: parsePositiveInt(page, 1, 100000),
+    limit: parsePositiveInt(limit, 50, 200)
+  });
   res.json(result);
 });
 
@@ -156,7 +168,10 @@ router.get('/cdkeys/stats', (req, res) => {
 // 获取支付订单列表
 router.get('/payment-orders', (req, res) => {
   const { page, limit } = req.query;
-  const result = getAllPaymentOrders({ page: parseInt(page) || 1, limit: parseInt(limit) || 50 });
+  const result = getAllPaymentOrders({
+    page: parsePositiveInt(page, 1, 100000),
+    limit: parsePositiveInt(limit, 50, 200)
+  });
   res.json({ ...result, orders: result.list });
 });
 
