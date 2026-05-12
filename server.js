@@ -89,7 +89,7 @@ const imageLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '�
 const xiImageLimiter = rateLimit({
   windowMs: 60000,
   max: Number(process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || 1000),
-  message: { error: 'Xi-Xu 生图请求过于频繁，请降低并发或稍后再试' }
+  message: { error: 'gpt-image-2 生图请求过于频繁，请降低并发或稍后再试' }
 });
 const copyLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请求过于频繁，请稍后再试' } });
 const authLimiter = rateLimit({ windowMs: 60000, max: 20, message: { error: '请求过于频繁，请稍后再试' } });
@@ -487,7 +487,7 @@ function isTransientXiXuError(err) {
 
 function logXiXuGenerateError(err, details = {}) {
   const cause = err?.cause || {};
-  console.error('Xi-Xu 生图请求失败:', JSON.stringify({
+  console.error('gpt-image-2 生图请求失败:', JSON.stringify({
     message: err?.message || String(err),
     name: err?.name || '',
     code: err?.code || '',
@@ -1353,7 +1353,7 @@ recoverStaleXiJobHistories();
 
 async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
   const apiKey = getRequiredEnv('XI_XU_API_KEY');
-  if (!apiKey) throw new Error('Xi-Xu 图片服务未配置');
+  if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
 
   const controller = new AbortController();
   const timeoutMs = Math.max(XI_XU_GENERATE_TIMEOUT_MS, 30000);
@@ -1373,11 +1373,11 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
         n: count,
         quality
       })
-    }), timeoutMs, `Xi-Xu 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
+    }), timeoutMs, `gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
     const text = await withTimeout(
       response.text(),
       timeoutMs,
-      `Xi-Xu 生图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`,
+      `gpt-image-2 生图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`,
       () => controller.abort()
     );
     let data = {};
@@ -1391,7 +1391,7 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
     return saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`);
   } catch (err) {
     const normalizedErr = err.name === 'AbortError'
-      ? new Error(`Xi-Xu 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
+      ? new Error(`gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
       : err;
     logXiXuGenerateError(normalizedErr, {
       attempt,
@@ -1417,7 +1417,7 @@ async function callXiXuGenerate(job) {
       lastErr = err;
       if (attempt >= maxAttempts || !isTransientXiXuError(err)) break;
       const waitMs = Math.min(1000 * attempt, 3000);
-      console.warn('Xi-Xu 生图瞬时故障，准备重试:', JSON.stringify({
+      console.warn('gpt-image-2 生图瞬时故障，准备重试:', JSON.stringify({
         attempt,
         nextAttempt: attempt + 1,
         waitMs,
@@ -1542,7 +1542,7 @@ function summarizeImageFiles(files = []) {
 
 function logXiXuEditError(err, files = [], context = {}) {
   const cause = err?.cause || {};
-  console.error('Xi-Xu 改图请求失败:', JSON.stringify({
+  console.error('gpt-image-2 改图请求失败:', JSON.stringify({
     message: err?.message || String(err),
     name: err?.name || '',
     causeCode: cause.code || '',
@@ -1559,7 +1559,7 @@ function logXiXuEditError(err, files = [], context = {}) {
 function getXiXuEditCircuitMessage() {
   const remainingMs = xiXuEditCircuit.openUntilMs - Date.now();
   if (remainingMs <= 0) return '';
-  return `Xi-Xu 改图暂时不稳定，${Math.ceil(remainingMs / 1000)}秒内直接走备用通道`;
+  return `gpt-image-2 改图暂时不稳定，${Math.ceil(remainingMs / 1000)}秒内直接走备用通道`;
 }
 
 function markXiXuEditSuccess() {
@@ -1571,7 +1571,7 @@ function markXiXuEditFailure(err) {
   xiXuEditCircuit.failures += 1;
   if (XI_XU_EDIT_CIRCUIT_BREAKER_MS > 0 && xiXuEditCircuit.failures >= 2) {
     xiXuEditCircuit.openUntilMs = Date.now() + Math.max(XI_XU_EDIT_CIRCUIT_BREAKER_MS, 60000);
-    console.error('Xi-Xu 改图临时熔断:', JSON.stringify({
+    console.error('gpt-image-2 改图临时熔断:', JSON.stringify({
       failures: xiXuEditCircuit.failures,
       seconds: Math.round((xiXuEditCircuit.openUntilMs - Date.now()) / 1000),
       reason: err?.message || String(err)
@@ -1674,8 +1674,8 @@ function createReferenceBoardFile(sourceFiles = []) {
 
 async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, promptOverride }, attempt = 1) {
   const apiKey = getRequiredEnv('XI_XU_API_KEY');
-  if (!apiKey) throw new Error('Xi-Xu 图片服务未配置');
-  if (XI_XU_EDIT_FORCE_FALLBACK) throw new Error('Xi-Xu 改图已临时切到备用通道');
+  if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
+  if (XI_XU_EDIT_FORCE_FALLBACK) throw new Error('gpt-image-2 改图已临时切到备用通道');
   const circuitMessage = getXiXuEditCircuitMessage();
   if (circuitMessage) throw new Error(circuitMessage);
 
@@ -1698,11 +1698,11 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
       signal: controller.signal,
       headers: { 'Authorization': `Bearer ${apiKey}` },
       body: form
-    }), timeoutMs, `Xi-Xu 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
+    }), timeoutMs, `gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
     const text = await withTimeout(
       response.text(),
       timeoutMs,
-      `Xi-Xu 改图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`,
+      `gpt-image-2 改图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`,
       () => controller.abort()
     );
     let data = {};
@@ -1718,7 +1718,7 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
     return localUrls;
   } catch (err) {
     const normalizedErr = err.name === 'AbortError'
-      ? new Error(`Xi-Xu 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
+      ? new Error(`gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
       : err;
     logXiXuEditError(normalizedErr, sourceFiles, { attempt });
     markXiXuEditFailure(normalizedErr);
@@ -1738,7 +1738,7 @@ async function callXiXuEdit(job) {
       lastErr = err;
       if (attempt >= maxAttempts || !isTransientXiXuError(err)) break;
       const waitMs = Math.min(1000 * attempt, 3000);
-      console.warn('Xi-Xu 改图瞬时故障，准备重试:', JSON.stringify({
+      console.warn('gpt-image-2 改图瞬时故障，准备重试:', JSON.stringify({
         attempt,
         nextAttempt: attempt + 1,
         waitMs,
@@ -1756,7 +1756,7 @@ async function callXiEditWithFallback(job) {
     const localUrls = await callXiXuEdit(job);
     return { localUrls, provider: 'xixu', fallbackReason: '' };
   } catch (err) {
-    const fallbackReason = err.message || 'Xi-Xu 改图失败';
+    const fallbackReason = err.message || 'gpt-image-2 改图失败';
     if (!ARK_FALLBACK_ENABLED) {
       const error = new Error(formatUpstreamError(fallbackReason, '图片服务暂时不可用，请稍后重试。本次没有生成图片，积分已退回。'));
       error.fallbackReason = fallbackReason;
@@ -1800,7 +1800,7 @@ async function runXiJob(job) {
         localUrls = await callXiXuGenerate(job);
         job.provider = 'xixu';
       } catch (err) {
-        job.fallbackReason = err.message || 'Xi-Xu 生图失败';
+        job.fallbackReason = err.message || 'gpt-image-2 生图失败';
         if (!ARK_FALLBACK_ENABLED) {
           throw new Error(formatUpstreamError(job.fallbackReason, '图片服务暂时不可用，请稍后重试。本次没有生成图片，积分已退回。'));
         }
@@ -1934,7 +1934,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   res.json({ success: true, job: serializeXiJob(job) });
 });
 
-// Xi-Xu OpenAI兼容生图接口
+// gpt-image-2 OpenAI兼容生图接口
 app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
@@ -1954,7 +1954,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
   const apiKey = getRequiredEnv('XI_XU_API_KEY');
   if (!apiKey) {
     refundPoints(req.userId, totalCost, 'gpt-image-2 生图失败退款');
-    return res.status(500).json({ error: 'Xi-Xu 图片服务未配置' });
+    return res.status(500).json({ error: 'gpt-image-2 图片服务未配置' });
   }
 
   const startedAtMs = Date.now();
@@ -2034,7 +2034,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
   }
 });
 
-// Xi-Xu OpenAI兼容改图接口：上传原图后按用户提示词编辑
+// gpt-image-2 OpenAI兼容改图接口：上传原图后按用户提示词编辑
 app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('image', 4), validateUploadedImageFiles, async (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
@@ -2120,7 +2120,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
   }
 });
 
-// Xi-Xu gpt-5.5 识图反推绘图提示词
+// gpt-image-2 gpt-5.5 识图反推绘图提示词
 app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.single('image'), validateUploadedImageFiles, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '请上传要反推的图片' });
 
@@ -2136,7 +2136,7 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
   const apiKey = getRequiredEnv('XI_XU_API_KEY');
   if (!apiKey) {
     refundPoints(req.userId, totalCost, '看图写 Prompt 失败退款');
-    return res.status(500).json({ error: 'Xi-Xu 服务未配置' });
+    return res.status(500).json({ error: 'gpt-image-2 服务未配置' });
   }
 
   const startedAtMs = Date.now();
@@ -2328,3 +2328,4 @@ app.listen(PORT, HOST, () => {
   console.log(`服务已启动：http://${HOST}:${PORT}`);
   console.log('Administrator account is ready.');
 });
+
