@@ -16,6 +16,7 @@ let copyPage = 1;
 let bothPage = 1;
 
 let currentUser = null;
+let referencePreviewUrl = '';
 
 // =============================================
 // 宸ュ叿鍑芥暟
@@ -247,6 +248,8 @@ function initDropZone() {
   const dropHint = document.getElementById('dropHint');
   const previewRef = document.getElementById('previewRef');
   const referenceInput = document.getElementById('referenceImage');
+  const promptInput = document.getElementById('imgPrompt');
+  if (!dropZone || !dropHint || !previewRef || !referenceInput) return;
 
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -262,10 +265,7 @@ function initDropZone() {
     dropZone.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      referenceInput.files = dt.files;
-      showPreview(file);
+      setReferenceFile(file);
     }
   });
 
@@ -274,17 +274,61 @@ function initDropZone() {
     if (file) showPreview(file);
   });
 
+  dropZone.addEventListener('click', () => {
+    dropZone.classList.add('paste-ready');
+    setTimeout(() => dropZone.classList.remove('paste-ready'), 1800);
+  });
+
+  document.addEventListener('paste', (e) => {
+    const file = getImageFileFromClipboard(e.clipboardData);
+    if (!file) return;
+    const active = document.activeElement;
+    const shouldPasteToReference = dropZone.contains(active)
+      || active === promptInput
+      || active === referenceInput
+      || active === document.body;
+    if (!shouldPasteToReference) return;
+    e.preventDefault();
+    setReferenceFile(file);
+    dropZone.classList.add('paste-ready');
+    setTimeout(() => dropZone.classList.remove('paste-ready'), 900);
+  });
+
+  function setReferenceFile(file) {
+    const namedFile = file.name
+      ? file
+      : new File([file], `pasted-reference-${Date.now()}.png`, { type: file.type || 'image/png' });
+    const dt = new DataTransfer();
+    dt.items.add(namedFile);
+    referenceInput.files = dt.files;
+    showPreview(namedFile);
+  }
+
   function showPreview(file) {
+    if (referencePreviewUrl) URL.revokeObjectURL(referencePreviewUrl);
     const url = URL.createObjectURL(file);
+    referencePreviewUrl = url;
     previewRef.innerHTML = `<img src="${url}" alt="参考图"><button class="remove-ref" onclick="removeRef()">×</button>`;
     dropHint.style.display = 'none';
   }
+}
+
+function getImageFileFromClipboard(clipboardData) {
+  const items = Array.from(clipboardData?.items || []);
+  for (const item of items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      return item.getAsFile();
+    }
+  }
+  return null;
 }
 
 window.removeRef = function() {
   const previewRef = document.getElementById('previewRef');
   const dropHint = document.getElementById('dropHint');
   const referenceInput = document.getElementById('referenceImage');
+  if (referencePreviewUrl) URL.revokeObjectURL(referencePreviewUrl);
+  referencePreviewUrl = '';
   previewRef.innerHTML = '';
   dropHint.style.display = 'flex';
   referenceInput.value = '';
