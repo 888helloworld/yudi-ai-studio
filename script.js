@@ -137,8 +137,37 @@ function initToolScript() {
   initGenerateCopy();
   initRewrite();
   initGenerateBoth();
+  initXhsToolTabs();
   initXhsReversePrompt();
   initPagination();
+}
+
+function initXhsToolTabs() {
+  const switcher = document.getElementById('xhsToolSwitcher');
+  if (!switcher) return;
+  const tabs = Array.from(switcher.querySelectorAll('[data-xhs-tool]'));
+  const panels = Array.from(document.querySelectorAll('[data-xhs-panel]'));
+  if (!tabs.length || !panels.length) return;
+
+  window.switchXhsTool = function(tool, shouldScroll = true) {
+    const nextTool = tool || 'image';
+    tabs.forEach(tab => {
+      const active = tab.dataset.xhsTool === nextTool;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach(panel => {
+      panel.hidden = panel.dataset.xhsPanel !== nextTool;
+    });
+    if (shouldScroll) {
+      switcher.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  tabs.forEach(tab => {
+    tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
+    tab.addEventListener('click', () => window.switchXhsTool(tab.dataset.xhsTool));
+  });
 }
 
 // 动态加载时 DOMContentLoaded 可能已触发，兜底处理
@@ -1866,6 +1895,7 @@ function addPromptBlock(targetEl, title, text) {
 function usePromptForXhsImage(text, title = 'Prompt') {
   const promptEl = document.getElementById('imgPrompt');
   if (!promptEl) return;
+  if (typeof window.switchXhsTool === 'function') window.switchXhsTool('image', false);
   promptEl.value = text;
   const modal = document.querySelector('.modal-overlay');
   if (modal) modal.remove();

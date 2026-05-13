@@ -25,6 +25,11 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
 #toolSection .section-block{margin-top:0}
 .xhs-workspace-layout{display:grid;grid-template-columns:minmax(520px,0.88fr) minmax(440px,1.12fr);gap:20px;align-items:start}
 .xhs-tools-column{display:grid;gap:16px;min-width:0}
+.xhs-tool-switcher{position:sticky;top:12px;z-index:20;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:10px;background:rgba(10,14,25,.88);border:1px solid var(--border);border-radius:var(--radius-md);backdrop-filter:blur(16px);box-shadow:var(--shadow-card)}
+.xhs-tool-tab{min-height:42px;padding:8px 10px;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:13px;font-weight:900;line-height:1.2;transition:var(--base)}
+.xhs-tool-tab:hover{border-color:rgba(0,240,255,.25);color:var(--neon-cyan);background:rgba(0,240,255,.05)}
+.xhs-tool-tab.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(255,45,120,.2),rgba(0,240,255,.14));box-shadow:0 0 0 1px rgba(0,240,255,.12)}
+.xhs-tool-panel[hidden]{display:none!important}
 .xhs-history-column{position:sticky;top:88px;display:grid;gap:16px;max-height:calc(100vh - 108px);overflow:auto;padding-right:4px;min-width:0}
 .xhs-history-column::-webkit-scrollbar{width:6px}
 .xhs-history-column::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px}
@@ -177,7 +182,7 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
 .footer-bottom{text-align:center;padding-top:20px;border-top:1px solid var(--border);color:var(--text-dim);font-size:12px}
 @media(max-width:1180px){.xhs-workspace-layout{grid-template-columns:1fr}.xhs-history-column{position:relative;top:auto;max-height:none;overflow:visible;padding-right:0}#toolSection .dual-panel,#toolSection .history-wrapper{grid-template-columns:1fr}}
 @media(max-width:900px){.features-grid,.shop-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:680px){#toolSection .history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xhs-reverse-grid{grid-template-columns:1fr}}
+@media(max-width:680px){#toolSection .history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xhs-reverse-grid{grid-template-columns:1fr}.xhs-tool-switcher{grid-template-columns:repeat(2,minmax(0,1fr));top:8px}.xhs-tool-tab{font-size:12px}}
 @media(max-width:560px){body .container{width:calc(100% - 20px)}.features-grid,.shop-grid,.footer-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:1fr}.hero-actions{flex-direction:column;align-items:center}.hero-btn{width:100%;justify-content:center}.pay-channel-select{grid-template-columns:1fr}}
 </style>
 </head>
@@ -354,10 +359,17 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
 
     <div class="xhs-workspace-layout">
       <div class="xhs-tools-column">
+        <div class="xhs-tool-switcher" id="xhsToolSwitcher" aria-label="工具切换">
+          <button class="xhs-tool-tab active" type="button" data-xhs-tool="image">AI 图片生成</button>
+          <button class="xhs-tool-tab" type="button" data-xhs-tool="reverse">看图写 Prompt</button>
+          <button class="xhs-tool-tab" type="button" data-xhs-tool="copy">AI 文案生成</button>
+          <button class="xhs-tool-tab" type="button" data-xhs-tool="both">图文一体生成</button>
+          <button class="xhs-tool-tab" type="button" data-xhs-tool="rewrite">智能文案改写</button>
+        </div>
         <!-- 双面板：图片生成 + 文案生成 -->
         <div class="dual-panel">
           <!-- 图片生成面板 -->
-          <div class="panel">
+          <div class="panel xhs-tool-panel" data-xhs-panel="image">
         <div class="panel-header">
           <div class="header-icon">🖼</div>
           <div>
@@ -407,7 +419,7 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
         <button class="generate-btn" id="generateBtn"><span>立即生成图片</span></button>
           </div>
 
-          <div class="panel">
+          <div class="panel xhs-tool-panel" data-xhs-panel="reverse" hidden>
         <div class="panel-header">
           <div class="header-icon">🔎</div>
           <div>
@@ -442,7 +454,7 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
           </div>
 
           <!-- 文案生成面板 -->
-          <div class="panel">
+          <div class="panel xhs-tool-panel" data-xhs-panel="copy" hidden>
         <div class="panel-header purple">
           <div class="header-icon">✍</div>
           <div>
@@ -470,7 +482,7 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
         </div>
 
         <!-- 图文一体面板 -->
-        <div class="both-panel">
+        <div class="both-panel xhs-tool-panel" data-xhs-panel="both" hidden>
       <div class="panel-header both">
         <div class="header-icon">🎯</div>
         <div>
@@ -499,7 +511,7 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
         </div>
 
         <!-- 文案改写面板 -->
-        <div class="rewrite-panel">
+        <div class="rewrite-panel xhs-tool-panel" data-xhs-panel="rewrite" hidden>
       <div class="panel-header rewrite">
         <div class="header-icon">🔄</div>
         <div>
