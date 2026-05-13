@@ -355,11 +355,6 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
         <h1>开始做一篇<br>更像样的内容</h1>
         <p class="subtitle">配图、正文、改写和历史记录都在这里，不用来回切工具。</p>
       </div>
-      <div class="hero-stats" id="heroStats">
-        <div><strong id="statImageCount">0</strong><span>图片</span></div>
-        <div><strong id="statCopyCount">0</strong><span>文案</span></div>
-        <div><strong id="statTotalCount">0</strong><span>总计</span></div>
-      </div>
     </div>
 
     <div class="xhs-workspace-layout">
@@ -608,9 +603,9 @@ body .user-bar{width:min(1760px,calc(100% - 40px))}
         <span class="page-size-label">每页显示：</span>
         <select class="page-size-select" id="pageSizeSelect">
           <option value="6">6 条</option>
-          <option value="10" selected>10 条</option>
+          <option value="10">10 条</option>
           <option value="20">20 条</option>
-          <option value="50">50 条</option>
+          <option value="50" selected>50 条</option>
         </select>
         <button class="clear-history-btn" onclick="clearAllHistory('image')">清空图片记录</button>
         <button class="clear-history-btn purple" onclick="clearAllHistory('copy')">清空文案记录</button>
