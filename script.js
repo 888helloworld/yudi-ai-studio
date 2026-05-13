@@ -14,9 +14,22 @@ let pageSize = 10;
 let imagePage = 1;
 let copyPage = 1;
 let bothPage = 1;
+let reversePage = 1;
 
 let currentUser = null;
 let referencePreviewUrl = '';
+let xhsReverseFile = null;
+let xhsReversePreviewUrl = '';
+let selectedReverseMode = 'general';
+
+const REVERSE_TEMPLATE_HINTS = {
+  general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
+  amazon: '适合袜子、足袋袜、抹布、家居类产品主图，重点输出专业棚拍和亚马逊白底主图提示词。',
+  outfit: '适合模特穿搭、电商场景图，重点拆解姿势、腿部动作、袜子纹理、日系氛围和白底主图要求。',
+  'style-only': '只提取风格、构图、光线、色彩和商业摄影感觉，不复制人物、品牌、logo 或独特设计。',
+  structured: '按主体、背景、构图、镜头、光线、颜色、材质、风格、细节和画质关键词结构化拆图。',
+  'tabi-socks': '足袋袜主图专用，强调分趾结构、罗纹织物、脚部穿着效果、纯白背景和亚马逊主图限制。'
+};
 
 // =============================================
 // 宸ュ叿鍑芥暟
@@ -125,6 +138,7 @@ function initToolScript() {
   initGenerateCopy();
   initRewrite();
   initGenerateBoth();
+  initXhsReversePrompt();
   initPagination();
 }
 
@@ -283,6 +297,7 @@ function initDropZone() {
     const file = getImageFileFromClipboard(e.clipboardData);
     if (!file) return;
     const active = document.activeElement;
+    if (active?.closest?.('#xhsReverseDropZone') || active?.closest?.('#xhsReverseModeGrid')) return;
     const shouldPasteToReference = dropZone.contains(active)
       || active === promptInput
       || active === referenceInput
@@ -333,6 +348,176 @@ window.removeRef = function() {
   dropHint.style.display = 'flex';
   referenceInput.value = '';
 };
+
+function initXhsReversePrompt() {
+  const dropZone = document.getElementById('xhsReverseDropZone');
+  const input = document.getElementById('xhsReverseImage');
+  const btn = document.getElementById('xhsReverseBtn');
+  const modeGrid = document.getElementById('xhsReverseModeGrid');
+  if (!dropZone || !input || !btn || !modeGrid) return;
+  dropZone.tabIndex = 0;
+
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (file) setXhsReverseFile(file);
+  });
+
+  ['dragenter', 'dragover'].forEach((eventName) => {
+    dropZone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach((eventName) => {
+    dropZone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('drag-over');
+    });
+  });
+
+  dropZone.addEventListener('drop', (event) => {
+    const file = event.dataTransfer?.files?.[0];
+    if (file) setXhsReverseFile(file);
+  });
+
+  dropZone.addEventListener('click', () => {
+    dropZone.focus();
+    dropZone.classList.add('paste-ready');
+    setTimeout(() => dropZone.classList.remove('paste-ready'), 1800);
+  });
+
+  document.addEventListener('paste', (event) => {
+    const file = getImageFileFromClipboard(event.clipboardData);
+    if (!file) return;
+    const active = document.activeElement;
+    const shouldPaste = dropZone.contains(active) || active === document.body;
+    if (!shouldPaste) return;
+    event.preventDefault();
+    setXhsReverseFile(file.name ? file : new File([file], `pasted-reverse-${Date.now()}.png`, { type: file.type || 'image/png' }));
+    dropZone.classList.add('paste-ready');
+    setTimeout(() => dropZone.classList.remove('paste-ready'), 900);
+  });
+
+  modeGrid.addEventListener('click', (event) => {
+    const modeBtn = event.target.closest('[data-reverse-mode]');
+    if (!modeBtn) return;
+    selectedReverseMode = modeBtn.dataset.reverseMode || 'general';
+    modeGrid.querySelectorAll('[data-reverse-mode]').forEach(item => item.classList.toggle('active', item === modeBtn));
+    const hint = document.getElementById('xhsReverseHint');
+    if (hint) hint.textContent = REVERSE_TEMPLATE_HINTS[selectedReverseMode] || REVERSE_TEMPLATE_HINTS.general;
+  });
+
+  btn.addEventListener('click', runXhsReversePrompt);
+}
+
+function setXhsReverseFile(file) {
+  if (!file.type.startsWith('image/')) {
+    setXhsReverseStatus('只能上传图片文件。', 'error');
+    return false;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    setXhsReverseStatus('图片不能超过 10MB。', 'error');
+    return false;
+  }
+
+  xhsReverseFile = file;
+  const input = document.getElementById('xhsReverseImage');
+  if (input && window.DataTransfer && (!input.files || input.files[0] !== file)) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+  }
+  if (xhsReversePreviewUrl) URL.revokeObjectURL(xhsReversePreviewUrl);
+  xhsReversePreviewUrl = URL.createObjectURL(file);
+  const hint = document.getElementById('xhsReverseDropHint');
+  const preview = document.getElementById('xhsReversePreview');
+  if (hint) hint.style.display = 'none';
+  if (preview) {
+    preview.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = xhsReversePreviewUrl;
+    img.alt = '反推参考图';
+    const name = document.createElement('div');
+    name.className = 'xhs-reverse-file';
+    name.textContent = file.name || '粘贴图片';
+    const remove = document.createElement('button');
+    remove.className = 'remove-ref';
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearXhsReverseFile();
+    });
+    preview.append(img, name, remove);
+  }
+  document.getElementById('xhsReverseBtn').disabled = false;
+  setXhsReverseStatus('图片已放入，可以反推 Prompt。', 'ok');
+  return true;
+}
+
+function clearXhsReverseFile() {
+  xhsReverseFile = null;
+  const input = document.getElementById('xhsReverseImage');
+  const hint = document.getElementById('xhsReverseDropHint');
+  const preview = document.getElementById('xhsReversePreview');
+  if (input) input.value = '';
+  if (xhsReversePreviewUrl) URL.revokeObjectURL(xhsReversePreviewUrl);
+  xhsReversePreviewUrl = '';
+  if (preview) preview.innerHTML = '';
+  if (hint) hint.style.display = 'flex';
+  const btn = document.getElementById('xhsReverseBtn');
+  if (btn) btn.disabled = true;
+  setXhsReverseStatus('已移除图片。', '');
+}
+
+async function runXhsReversePrompt() {
+  if (!localStorage.getItem('token')) {
+    alert('请先登录');
+    return;
+  }
+  if (!xhsReverseFile) {
+    setXhsReverseStatus('请先上传或粘贴图片。', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('xhsReverseBtn');
+  const span = btn?.querySelector('span');
+  if (btn) btn.disabled = true;
+  if (span) span.textContent = '反推中...';
+  setXhsReverseStatus('正在识图并生成 Prompt...', '');
+
+  try {
+    const form = new FormData();
+    form.append('image', xhsReverseFile, xhsReverseFile.name || 'reverse.png');
+    form.append('reverseMode', selectedReverseMode || 'general');
+    const res = await fetch('/api/xi-image/reverse-prompt', {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: form
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || '反推失败');
+    if (data.remainingPoints !== undefined) updatePoints(data.remainingPoints);
+    clearXhsReverseFile();
+    openReversePromptModal(data);
+    await loadServerHistory();
+    setXhsReverseStatus('Prompt 已生成，已保存到反推记录。', 'ok');
+  } catch (err) {
+    setXhsReverseStatus(err.message || '反推失败', 'error');
+  } finally {
+    if (span) span.textContent = '反推提示词';
+    if (btn) btn.disabled = !xhsReverseFile;
+  }
+}
+
+function setXhsReverseStatus(text, type) {
+  const status = document.getElementById('xhsReverseStatus');
+  if (!status) return;
+  status.textContent = text || '';
+  status.className = 'xhs-reverse-status' + (type ? ' ' + type : '');
+}
 
 // =============================================
 // 鍥剧墖鐢熸垚
@@ -949,6 +1134,16 @@ function getHistoryCopyContent(item) {
   return item?.content || item?.copy || '';
 }
 
+function safeParseJson(value, fallback = null) {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(String(value));
+  } catch (err) {
+    return fallback;
+  }
+}
+
 function isRewriteHistory(item) {
   return item?.sub_type === 'rewrite' || item?.copyType === '改写';
 }
@@ -969,11 +1164,52 @@ function getCopySummary(content) {
 }
 
 function isXiToolHistory(item) {
-  return item?.sub_type === 'xi-generate' || item?.sub_type === 'xi-edit' || item?.sub_type === 'xi-reverse' || item?.type === 'reverse';
+  return item?.sub_type === 'xi-reverse' || item?.type === 'reverse';
 }
 
 function getXhsHistory() {
   return serverHistory.filter(item => !isXiToolHistory(item));
+}
+
+function getReverseHistory() {
+  return serverHistory.filter(item => item?.sub_type === 'xi-reverse' || item?.type === 'reverse');
+}
+
+function getDisplayHistory() {
+  return [...getXhsHistory(), ...getReverseHistory()];
+}
+
+function getReverseMeta(item) {
+  return safeParseJson(item?.content, {}) || {};
+}
+
+function getReversePromptDataFromHistory(item) {
+  const meta = getReverseMeta(item);
+  return {
+    success: true,
+    model: meta.model || item?.model || '',
+    result: meta.result || null,
+    raw: meta.raw || '',
+    historyId: getHistoryId(item),
+    reverseMode: meta.reverse_mode || item?.reverseMode || 'general',
+    previewUrl: meta.preview_url || item?.previewUrl || '',
+    durationMs: meta.duration_ms || item?.durationMs || 0,
+    createdAt: getHistoryCreatedAt(item)
+  };
+}
+
+function getReversePromptSummary(item) {
+  const data = item?.result ? item : getReversePromptDataFromHistory(item);
+  const result = data?.result || {};
+  return result.polished_prompt_zh
+    || result.polished_prompt_en
+    || result.universal_prompt_zh
+    || result.universal_prompt_en
+    || result.faithful_prompt_zh
+    || result.dalle_prompt
+    || result.midjourney_prompt
+    || data?.raw
+    || '';
 }
 
 document.addEventListener('click', (e) => {
@@ -981,10 +1217,12 @@ document.addEventListener('click', (e) => {
   if (!card) return;
   
   const id = Number(card.dataset.id);
-  const item = getXhsHistory().find(h => getHistoryId(h) === id);
+  const item = getDisplayHistory().find(h => getHistoryId(h) === id);
   if (!item) return;
   
-  if (item.type === 'image' && getHistoryImageUrl(item)) {
+  if (item.type === 'reverse' || item.sub_type === 'xi-reverse') {
+    openReversePromptModal(getReversePromptDataFromHistory(item));
+  } else if (item.type === 'image' && getHistoryImageUrl(item)) {
     // 图片预览弹窗：大图 + 下载按钮
     const imgUrl = getHistoryImageUrl(item);
     const body = document.createElement('div');
@@ -1155,10 +1393,12 @@ async function clearAllHistory(type) {
   
   try {
     // 鑾峰彇璇ョ被鍨嬬殑鎵€鏈夊巻鍙茶褰旾D
-    const typeHistory = getXhsHistory().filter(h => {
+    const targetHistory = type === 'reverse' ? getReverseHistory() : getXhsHistory();
+    const typeHistory = targetHistory.filter(h => {
       if (type === 'image') return h.type === 'image';
       if (type === 'copy') return h.type === 'copy';
       if (type === 'both') return h.type === 'both';
+      if (type === 'reverse') return h.type === 'reverse' || h.sub_type === 'xi-reverse';
       return false;
     });
     for (const item of typeHistory) {
@@ -1175,6 +1415,7 @@ async function clearAllHistory(type) {
     if (type === 'image') imagePage = 1;
     else if (type === 'copy') copyPage = 1;
     else if (type === 'both') bothPage = 1;
+    else if (type === 'reverse') reversePage = 1;
     renderHistory();
     loadUserStats();
   } catch (e) {
@@ -1189,9 +1430,11 @@ function renderHistory() {
   const imageHistoryGrid = document.getElementById('imageHistoryGrid');
   const copyHistoryGrid = document.getElementById('copyHistoryGrid');
   const bothHistoryGrid = document.getElementById('bothHistoryGrid');
+  const reverseHistoryGrid = document.getElementById('reverseHistoryGrid');
   
   const xhsHistory = getXhsHistory();
-  if (xhsHistory.length === 0) {
+  const reverseHistory = getReverseHistory();
+  if (xhsHistory.length === 0 && reverseHistory.length === 0) {
     historySection.style.display = 'none';
     return;
   }
@@ -1200,6 +1443,7 @@ function renderHistory() {
   imageHistoryGrid.innerHTML = '';
   copyHistoryGrid.innerHTML = '';
   if (bothHistoryGrid) bothHistoryGrid.innerHTML = '';
+  if (reverseHistoryGrid) reverseHistoryGrid.innerHTML = '';
   
   const imageHistory = xhsHistory.filter(item => item.type === 'image' && getHistoryImageUrl(item));
   const copyHistory = xhsHistory.filter(item => item.type === 'copy' && getHistoryCopyContent(item));
@@ -1209,17 +1453,21 @@ function renderHistory() {
   const imageTotalPages = Math.ceil(imageHistory.length / pageSize);
   const copyTotalPages = Math.ceil(copyHistory.length / pageSize);
   const bothTotalPages = Math.ceil(bothHistory.length / pageSize);
+  const reverseTotalPages = Math.ceil(reverseHistory.length / pageSize);
   
   // 纭繚椤电爜鍦ㄦ湁鏁堣寖鍥村唴
   if (imagePage > imageTotalPages && imageTotalPages > 0) imagePage = imageTotalPages;
   if (copyPage > copyTotalPages && copyTotalPages > 0) copyPage = copyTotalPages;
   if (bothPage > bothTotalPages && bothTotalPages > 0) bothPage = bothTotalPages;
+  if (reversePage > reverseTotalPages && reverseTotalPages > 0) reversePage = reverseTotalPages;
   
   // 鏇存柊璁℃暟
   document.getElementById('imageCount').textContent = `共 ${imageHistory.length} 条`;
   document.getElementById('copyCount').textContent = `共 ${copyHistory.length} 条`;
   const bothCountEl = document.getElementById('bothCount');
   if (bothCountEl) bothCountEl.textContent = `共 ${bothHistory.length} 条`;
+  const reverseCountEl = document.getElementById('reverseCount');
+  if (reverseCountEl) reverseCountEl.textContent = `共 ${reverseHistory.length} 条`;
   
   const imageStart = (imagePage - 1) * pageSize;
   const imageEnd = imageStart + pageSize;
@@ -1241,6 +1489,13 @@ function renderHistory() {
     const card = createHistoryCard(item);
     if (bothHistoryGrid) bothHistoryGrid.appendChild(card);
   });
+
+  const reverseStart = (reversePage - 1) * pageSize;
+  const reverseEnd = reverseStart + pageSize;
+  reverseHistory.slice(reverseStart, reverseEnd).forEach(item => {
+    const card = createHistoryCard(item);
+    if (reverseHistoryGrid) reverseHistoryGrid.appendChild(card);
+  });
   
   // 娓叉煋鍒嗛〉鎺т欢
   renderPagination('imagePagination', imagePage, imageTotalPages, imageHistory.length, (page) => {
@@ -1260,6 +1515,14 @@ function renderHistory() {
       renderHistory();
     });
   }
+
+  const reversePagination = document.getElementById('reversePagination');
+  if (reversePagination) {
+    renderPagination('reversePagination', reversePage, reverseTotalPages, reverseHistory.length, (page) => {
+      reversePage = page;
+      renderHistory();
+    });
+  }
 }
 
 function createHistoryCard(item) {
@@ -1267,7 +1530,61 @@ function createHistoryCard(item) {
   card.className = 'history-card';
   card.dataset.id = getHistoryId(item);
   
-  if (item.type === 'image' && getHistoryImageUrl(item)) {
+  if (item.type === 'reverse' || item.sub_type === 'xi-reverse') {
+    const meta = getReverseMeta(item);
+    const previewUrl = meta.preview_url || item.previewUrl || '';
+    const summary = getReversePromptSummary(item);
+    const thumb = previewUrl
+      ? document.createElement('img')
+      : document.createElement('div');
+
+    if (previewUrl) {
+      thumb.src = previewUrl;
+      thumb.alt = '反推参考图';
+    } else {
+      thumb.className = 'copy-thumb';
+      thumb.textContent = 'P';
+    }
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'history-info';
+
+    const typeSpan = document.createElement('span');
+    typeSpan.className = 'history-type copy-type';
+    typeSpan.textContent = '看图写 Prompt';
+
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'history-date';
+    dateSpan.textContent = getHistoryCreatedAt(item);
+
+    infoDiv.appendChild(typeSpan);
+    infoDiv.appendChild(dateSpan);
+
+    if (item.prompt) {
+      const title = document.createElement('p');
+      title.className = 'history-title-text';
+      title.textContent = item.prompt.length > 18 ? item.prompt.substring(0, 18) + '...' : item.prompt;
+      title.title = item.prompt;
+      infoDiv.appendChild(title);
+    }
+
+    if (summary) {
+      const summaryP = document.createElement('p');
+      summaryP.className = 'history-copy-summary';
+      summaryP.textContent = getCopySummary(summary);
+      summaryP.title = summary;
+      infoDiv.appendChild(summaryP);
+    }
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.dataset.id = getHistoryId(item);
+    deleteBtn.textContent = '×';
+
+    card.appendChild(thumb);
+    card.appendChild(infoDiv);
+    card.appendChild(deleteBtn);
+  } else if (item.type === 'image' && getHistoryImageUrl(item)) {
     const img = document.createElement('img');
     img.src = getHistoryImageUrl(item);
     img.alt = '历史图片';
@@ -1277,7 +1594,11 @@ function createHistoryCard(item) {
     
     const typeSpan = document.createElement('span');
     typeSpan.className = 'history-type';
-    typeSpan.textContent = item.ratio || '1:1';
+    typeSpan.textContent = item.sub_type === 'xi-generate'
+      ? '画面工坊'
+      : item.sub_type === 'xi-edit'
+        ? '参考图改图'
+        : (item.ratio || '1:1');
     
     const dateSpan = document.createElement('span');
     dateSpan.className = 'history-date';
@@ -1290,6 +1611,8 @@ function createHistoryCard(item) {
       const p = document.createElement('p');
       p.className = 'history-info-text';
       p.textContent = item.prompt.substring(0, 20) + '...';
+      p.title = item.prompt;
+      infoDiv.appendChild(p);
     }
     
     const deleteBtn = document.createElement('button');
@@ -1458,8 +1781,117 @@ function initPagination() {
     pageSize = parseInt(select.value);
     imagePage = 1;
     copyPage = 1;
+    bothPage = 1;
+    reversePage = 1;
     renderHistory();
   });
+}
+
+function openReversePromptModal(data) {
+  const body = document.createElement('div');
+  const result = data?.result || {};
+  const zhPrompt = result.polished_prompt_zh
+    || result.universal_prompt_zh
+    || result.faithful_prompt_zh
+    || '';
+  const enPrompt = result.polished_prompt_en
+    || result.universal_prompt_en
+    || result.dalle_prompt
+    || result.midjourney_prompt
+    || data?.raw
+    || '';
+
+  if (data?.previewUrl) {
+    const preview = document.createElement('img');
+    preview.src = data.previewUrl;
+    preview.alt = '反推参考图';
+    preview.style.cssText = 'width:100%;max-height:220px;object-fit:contain;border-radius:var(--radius-md);background:var(--bg-input);margin-bottom:14px;';
+    body.appendChild(preview);
+  }
+
+  addPromptBlock(body, '中文 Prompt', zhPrompt);
+  addPromptBlock(body, '英文 Prompt', enPrompt);
+
+  if (!zhPrompt && !enPrompt) {
+    const empty = document.createElement('div');
+    empty.className = 'prompt-content';
+    empty.textContent = '没有解析到可用 Prompt。';
+    body.appendChild(empty);
+  }
+
+  showModal(result.title || '看图写 Prompt', body);
+}
+
+function addPromptBlock(targetEl, title, text) {
+  if (!text) return;
+  const block = document.createElement('section');
+  block.className = 'prompt-block';
+
+  const header = document.createElement('div');
+  header.className = 'prompt-block-header';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = title;
+  header.appendChild(h3);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-btn';
+  copyBtn.type = 'button';
+  copyBtn.textContent = '复制';
+  copyBtn.addEventListener('click', () => {
+    copyTextToClipboard(text).then(() => {
+      copyBtn.textContent = '已复制';
+      setTimeout(() => { copyBtn.textContent = '复制'; }, 1400);
+    }).catch(() => alert('复制失败，请手动选择文本复制。'));
+  });
+  header.appendChild(copyBtn);
+
+  const content = document.createElement('div');
+  content.className = 'prompt-content';
+  content.textContent = text;
+
+  const actions = document.createElement('div');
+  actions.className = 'prompt-block-actions';
+
+  const useBtn = document.createElement('button');
+  useBtn.className = 'prompt-use-btn';
+  useBtn.type = 'button';
+  useBtn.textContent = '用它生图';
+  useBtn.addEventListener('click', () => usePromptForXhsImage(text, title));
+  actions.appendChild(useBtn);
+
+  block.append(header, content, actions);
+  targetEl.appendChild(block);
+}
+
+function usePromptForXhsImage(text, title = 'Prompt') {
+  const promptEl = document.getElementById('imgPrompt');
+  if (!promptEl) return;
+  promptEl.value = text;
+  const modal = document.querySelector('.modal-overlay');
+  if (modal) modal.remove();
+  promptEl.focus();
+  promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setXhsReverseStatus(`已填入${title}，可以直接开始生成图片。`, 'ok');
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) throw new Error('copy failed');
 }
 
 // =============================================
