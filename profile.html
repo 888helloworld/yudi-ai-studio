@@ -63,10 +63,14 @@
     .account-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
     .account-header h2 { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
     .account-header-note { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-top: 4px; }
-    .profile-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 18px 0 18px; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
-    .profile-tab { min-height: 38px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 800; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; background: transparent; transition: var(--base); white-space: nowrap; }
-    .profile-tab:hover { color: var(--text-primary); background: var(--bg-surface); }
+    .account-quick-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .account-quick-actions .profile-btn { min-height: 34px; padding: 8px 12px; font-size: 12px; box-shadow: none; }
+    .account-workspace { display: grid; grid-template-columns: 164px minmax(0,1fr); gap: 16px; align-items: start; margin-top: 16px; }
+    .profile-tabs { display: grid; gap: 8px; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .profile-tab { width: 100%; min-height: 42px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 800; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; background: transparent; transition: var(--base); text-align: left; white-space: nowrap; }
+    .profile-tab:hover { color: var(--text-primary); background: var(--bg-card); }
     .profile-tab.active { color: #fff; background: linear-gradient(135deg, var(--neon-pink), #d92d6a); border-color: transparent; box-shadow: 0 4px 12px rgba(255,45,120,0.24); }
+    .account-content { min-width: 0; padding: 16px; background: rgba(15,20,33,0.45); border: 1px solid var(--border); border-radius: var(--radius-md); }
     .profile-tab-content { display: none; }
     .profile-tab-content.active { display: block; }
     .invite-panel { display: grid; gap: 14px; }
@@ -94,8 +98,6 @@
     .order-main { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
     .order-no { color: var(--neon-cyan); font-family: "Courier New", monospace; font-size: 12px; font-weight: 800; }
     .order-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px; }
-    .profile-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 14px 0 16px; }
-    .profile-actions .profile-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; text-align: center; }
     .recent-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 12px; }
     .recent-item { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
     .recent-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--bg-input); }
@@ -109,8 +111,11 @@
       .profile-stats { grid-template-columns: repeat(2,1fr); }
       .account-summary { grid-template-columns: 1fr; }
       .account-header { flex-direction: column; gap: 8px; }
-      .profile-actions { grid-template-columns: 1fr; }
+      .account-quick-actions { width: 100%; justify-content: stretch; }
+      .account-quick-actions .profile-btn { flex: 1; justify-content: center; }
+      .account-workspace { grid-template-columns: 1fr; }
       .profile-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .profile-tab { text-align: center; }
       .redeem-row { grid-template-columns: 1fr; }
       .invite-copy-row { align-items: stretch; flex-direction: column; }
     }
@@ -144,6 +149,10 @@
             <h2>账号设置</h2>
             <div class="account-header-note">管理密码、积分兑换、订单和邀请入口</div>
           </div>
+          <div class="account-quick-actions">
+            <a class="profile-btn secondary" href="index.html">购买积分</a>
+            <a class="profile-btn secondary" href="help.html">查看帮助</a>
+          </div>
         </div>
         <div class="account-summary">
           <div class="account-summary-item">
@@ -159,57 +168,57 @@
             <div class="account-summary-value" id="accountCreatedAt">-</div>
           </div>
         </div>
-        <div class="profile-actions">
-          <a class="profile-btn secondary" href="index.html">购买积分</a>
-          <a class="profile-btn secondary" href="help.html">查看帮助</a>
-        </div>
-        <div class="profile-tabs">
-          <button class="profile-tab active" data-tab="password">修改密码</button>
-          <button class="profile-tab" data-tab="redeem">卡密兑换</button>
-          <button class="profile-tab" data-tab="orders">支付订单</button>
-          <button class="profile-tab" data-tab="invite">邀请注册</button>
-        </div>
-        <div class="profile-tab-content active" id="passwordTab">
-          <div class="profile-msg" id="pwMsg"></div>
-          <div class="profile-form-group">
-            <label for="oldPassword">当前密码</label>
-            <input type="password" id="oldPassword" placeholder="输入当前密码">
+        <div class="account-workspace">
+          <div class="profile-tabs">
+            <button class="profile-tab active" data-tab="password">修改密码</button>
+            <button class="profile-tab" data-tab="redeem">卡密兑换</button>
+            <button class="profile-tab" data-tab="orders">支付订单</button>
+            <button class="profile-tab" data-tab="invite">邀请注册</button>
           </div>
-          <div class="profile-form-group">
-            <label for="newPassword">新密码</label>
-            <input type="password" id="newPassword" placeholder="至少6个字符" minlength="6">
-          </div>
-          <div class="profile-form-group">
-            <label for="confirmPassword">确认新密码</label>
-            <input type="password" id="confirmPassword" placeholder="再次输入新密码">
-          </div>
-          <button class="profile-btn" id="changePwBtn">修改密码</button>
-        </div>
-        <div class="profile-tab-content" id="redeemTab">
-          <div class="profile-msg" id="redeemMsg"></div>
-          <div class="redeem-row">
-            <div class="profile-form-group" style="margin-bottom:0;">
-              <label for="redeemCode">卡密兑换码</label>
-              <input type="text" id="redeemCode" placeholder="输入管理员发放的卡密">
+          <div class="account-content">
+            <div class="profile-tab-content active" id="passwordTab">
+              <div class="profile-msg" id="pwMsg"></div>
+              <div class="profile-form-group">
+                <label for="oldPassword">当前密码</label>
+                <input type="password" id="oldPassword" placeholder="输入当前密码">
+              </div>
+              <div class="profile-form-group">
+                <label for="newPassword">新密码</label>
+                <input type="password" id="newPassword" placeholder="至少6个字符" minlength="6">
+              </div>
+              <div class="profile-form-group">
+                <label for="confirmPassword">确认新密码</label>
+                <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+              </div>
+              <button class="profile-btn" id="changePwBtn">修改密码</button>
             </div>
-            <button class="profile-btn" id="redeemBtn" type="button">兑换积分</button>
-          </div>
-          <p class="invite-note" style="margin-top:12px;">卡密只能使用一次，兑换成功后积分会立即进入余额，并写入积分明细。</p>
-        </div>
-        <div class="profile-tab-content" id="ordersTab">
-          <div class="order-list" id="ordersList">
-            <div class="log-empty">加载中...</div>
-          </div>
-        </div>
-        <div class="profile-tab-content" id="inviteTab">
-          <div class="profile-msg" id="inviteMsg"></div>
-          <div class="invite-panel">
-            <div class="invite-actions">
-              <button class="profile-btn" id="generateInviteBtn" type="button">生成邀请码</button>
-              <span class="invite-note">每个邀请码只能注册 1 个新账号，新用户注册送 1000 积分。</span>
+            <div class="profile-tab-content" id="redeemTab">
+              <div class="profile-msg" id="redeemMsg"></div>
+              <div class="redeem-row">
+                <div class="profile-form-group" style="margin-bottom:0;">
+                  <label for="redeemCode">卡密兑换码</label>
+                  <input type="text" id="redeemCode" placeholder="输入管理员发放的卡密">
+                </div>
+                <button class="profile-btn" id="redeemBtn" type="button">兑换积分</button>
+              </div>
+              <p class="invite-note" style="margin-top:12px;">卡密只能使用一次，兑换成功后积分会立即进入余额，并写入积分明细。</p>
             </div>
-            <div class="invite-list" id="inviteList">
-              <div class="log-empty">加载中...</div>
+            <div class="profile-tab-content" id="ordersTab">
+              <div class="order-list" id="ordersList">
+                <div class="log-empty">加载中...</div>
+              </div>
+            </div>
+            <div class="profile-tab-content" id="inviteTab">
+              <div class="profile-msg" id="inviteMsg"></div>
+              <div class="invite-panel">
+                <div class="invite-actions">
+                  <button class="profile-btn" id="generateInviteBtn" type="button">生成邀请码</button>
+                  <span class="invite-note">每个邀请码只能注册 1 个新账号，新用户注册送 1000 积分。</span>
+                </div>
+                <div class="invite-list" id="inviteList">
+                  <div class="log-empty">加载中...</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
