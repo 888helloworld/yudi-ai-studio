@@ -18,8 +18,9 @@
     .profile-nav a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm); transition: var(--base); }
     .profile-nav a:hover { color: var(--text-primary); background: var(--bg-card); }
     .profile-container { position: relative; z-index: 1; width: min(1000px,calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; }
-    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .profile-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 20px; align-items: start; }
     .profile-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+    .profile-card.profile-wide { grid-column: 1 / -1; }
     .profile-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
     .profile-stats { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
     .profile-stat { text-align: center; padding: 16px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border); }
@@ -55,7 +56,11 @@
     .log-page-btn { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-secondary); font-size: 13px; font-weight: 700; cursor: pointer; transition: var(--base); }
     .log-page-btn:hover:not(:disabled) { border-color: var(--neon-pink); color: var(--neon-pink); }
     .log-page-btn:disabled { opacity: .45; cursor: not-allowed; }
-    .profile-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .account-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+    .account-summary-item { padding: 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; }
+    .account-summary-label { color: var(--text-muted); font-size: 11px; font-weight: 800; margin-bottom: 6px; }
+    .account-summary-value { color: var(--text-primary); font-size: 14px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
     .profile-tab { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: var(--base); }
     .profile-tab:hover { color: var(--text-primary); background: var(--bg-surface); }
     .profile-tab.active { color: var(--neon-pink); background: rgba(255,45,120,0.08); }
@@ -76,9 +81,30 @@
     .invite-link { flex: 1; min-width: 0; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .profile-btn.secondary { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border); box-shadow: none; }
     .profile-btn.secondary:hover { color: var(--neon-pink); border-color: var(--neon-pink); box-shadow: 0 0 0 3px rgba(255,45,120,0.12); }
+    .redeem-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+    .profile-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; }
+    .profile-badge.paid, .profile-badge.success { color: var(--neon-green); background: rgba(34,211,160,0.1); }
+    .profile-badge.pending { color: #f59e0b; background: rgba(245,158,11,0.1); }
+    .profile-badge.closed { color: var(--text-muted); background: rgba(148,163,184,0.12); }
+    .order-list { display: grid; gap: 10px; }
+    .order-item { display: grid; gap: 8px; padding: 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .order-main { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .order-no { color: var(--neon-cyan); font-family: "Courier New", monospace; font-size: 12px; font-weight: 800; }
+    .order-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px; }
+    .profile-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 16px; }
+    .recent-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 12px; }
+    .recent-item { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
+    .recent-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--bg-input); }
+    .recent-copy-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; color: var(--neon-green); background: rgba(34,211,160,0.08); font-size: 32px; font-weight: 900; }
+    .recent-body { padding: 12px; display: grid; gap: 8px; }
+    .recent-title { color: var(--text-primary); font-size: 13px; line-height: 1.6; max-height: 42px; overflow: hidden; }
+    .recent-meta { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: 12px; }
+    .recent-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     @media (max-width: 768px) {
       .profile-grid { grid-template-columns: 1fr; }
       .profile-stats { grid-template-columns: repeat(2,1fr); }
+      .account-summary { grid-template-columns: 1fr; }
+      .redeem-row { grid-template-columns: 1fr; }
       .invite-copy-row { align-items: stretch; flex-direction: column; }
     }
   </style>
@@ -106,16 +132,29 @@
 
     <div class="profile-grid">
       <div class="profile-card">
-        <h2>积分明细</h2>
-        <div id="logsContainer">
-          <div class="log-empty">加载中...</div>
-        </div>
-      </div>
-
-      <div class="profile-card">
         <h2>账号设置</h2>
+        <div class="account-summary">
+          <div class="account-summary-item">
+            <div class="account-summary-label">用户名</div>
+            <div class="account-summary-value" id="accountUsername">-</div>
+          </div>
+          <div class="account-summary-item">
+            <div class="account-summary-label">账号身份</div>
+            <div class="account-summary-value" id="accountRole">-</div>
+          </div>
+          <div class="account-summary-item">
+            <div class="account-summary-label">注册时间</div>
+            <div class="account-summary-value" id="accountCreatedAt">-</div>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <a class="profile-btn secondary" href="index.html">购买积分</a>
+          <a class="profile-btn secondary" href="help.html">查看帮助</a>
+        </div>
         <div class="profile-tabs">
           <button class="profile-tab active" data-tab="password">修改密码</button>
+          <button class="profile-tab" data-tab="redeem">卡密兑换</button>
+          <button class="profile-tab" data-tab="orders">支付订单</button>
           <button class="profile-tab" data-tab="invite">邀请注册</button>
         </div>
         <div class="profile-tab-content active" id="passwordTab">
@@ -134,6 +173,22 @@
           </div>
           <button class="profile-btn" id="changePwBtn">修改密码</button>
         </div>
+        <div class="profile-tab-content" id="redeemTab">
+          <div class="profile-msg" id="redeemMsg"></div>
+          <div class="redeem-row">
+            <div class="profile-form-group" style="margin-bottom:0;">
+              <label for="redeemCode">卡密兑换码</label>
+              <input type="text" id="redeemCode" placeholder="输入管理员发放的卡密">
+            </div>
+            <button class="profile-btn" id="redeemBtn" type="button">兑换积分</button>
+          </div>
+          <p class="invite-note" style="margin-top:12px;">卡密只能使用一次，兑换成功后积分会立即进入余额，并写入积分明细。</p>
+        </div>
+        <div class="profile-tab-content" id="ordersTab">
+          <div class="order-list" id="ordersList">
+            <div class="log-empty">加载中...</div>
+          </div>
+        </div>
         <div class="profile-tab-content" id="inviteTab">
           <div class="profile-msg" id="inviteMsg"></div>
           <div class="invite-panel">
@@ -145,6 +200,20 @@
               <div class="log-empty">加载中...</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <h2>积分明细</h2>
+        <div id="logsContainer">
+          <div class="log-empty">加载中...</div>
+        </div>
+      </div>
+
+      <div class="profile-card profile-wide">
+        <h2>最近创作</h2>
+        <div id="recentHistoryContainer">
+          <div class="log-empty">加载中...</div>
         </div>
       </div>
     </div>
@@ -160,6 +229,8 @@
     let logPage = 1;
     let logPageSize = 10;
     let invitesLoaded = false;
+    let ordersLoaded = false;
+    let recentHistory = [];
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('token');
@@ -272,8 +343,134 @@
         tab.classList.add('active');
         document.getElementById(`${tabName}Tab`)?.classList.add('active');
         if (tabName === 'invite' && !invitesLoaded) loadInvites();
+        if (tabName === 'orders' && !ordersLoaded) loadOrders();
       });
     });
+
+    async function loadMe() {
+      try {
+        const res = await fetch('/api/user/me', { headers: authHeaders });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '加载失败');
+        const user = data.user || data;
+        document.getElementById('profileUserName').textContent = user.username || '';
+        document.getElementById('accountUsername').textContent = user.username || '-';
+        document.getElementById('accountRole').textContent = user.role === 'admin' ? '管理员' : '普通用户';
+        document.getElementById('accountCreatedAt').textContent = user.created_at || '-';
+      } catch (e) {
+        document.getElementById('accountUsername').textContent = '加载失败';
+      }
+    }
+
+    async function loadOrders() {
+      const listEl = document.getElementById('ordersList');
+      try {
+        const res = await fetch('/api/payment/orders', { headers: authHeaders });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '加载失败');
+        ordersLoaded = true;
+        renderOrders(data.orders || []);
+      } catch (err) {
+        listEl.innerHTML = `<div class="log-empty">${escapeHtml(err.message || '加载失败')}</div>`;
+      }
+    }
+
+    function renderOrders(orders) {
+      const listEl = document.getElementById('ordersList');
+      if (!orders.length) {
+        listEl.innerHTML = '<div class="log-empty">暂无支付订单</div>';
+        return;
+      }
+      listEl.innerHTML = orders.map(order => {
+        const statusText = order.status === 'paid' ? '已支付' : (order.status === 'pending' ? '待支付' : '已关闭');
+        const channelText = order.channel === 'alipay' ? '支付宝' : (order.channel === 'wxpay' ? '微信支付' : order.channel);
+        return `<div class="order-item">
+          <div class="order-main">
+            <div>
+              <div class="order-no">${escapeHtml(order.order_no || '-')}</div>
+              <div class="order-meta" style="margin-top:6px;">
+                <span>${escapeHtml(channelText || '-')}</span>
+                <span>${escapeHtml(order.amount || 0)} 元</span>
+                <span>${escapeHtml(order.points || 0)} 积分</span>
+              </div>
+            </div>
+            <span class="profile-badge ${escapeHtml(order.status || 'closed')}">${escapeHtml(statusText)}</span>
+          </div>
+          <div class="order-meta">
+            <span>创建：${escapeHtml(order.created_at || '-')}</span>
+            <span>支付：${escapeHtml(order.paid_at || '-')}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function loadRecentHistory() {
+      const container = document.getElementById('recentHistoryContainer');
+      try {
+        const params = new URLSearchParams({ page: '1', limit: '6' });
+        const res = await fetch(`/api/user/history?${params}`, { headers: authHeaders });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '加载失败');
+        recentHistory = data.history || [];
+        renderRecentHistory();
+      } catch (err) {
+        container.innerHTML = `<div class="log-empty">${escapeHtml(err.message || '加载失败')}</div>`;
+      }
+    }
+
+    function firstImageUrl(value) {
+      if (!value) return '';
+      const text = String(value);
+      if (text.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) return parsed.find(Boolean) || '';
+        } catch (e) {}
+      }
+      return text;
+    }
+
+    function renderRecentHistory() {
+      const container = document.getElementById('recentHistoryContainer');
+      if (!recentHistory.length) {
+        container.innerHTML = '<div class="log-empty">暂无创作记录</div>';
+        return;
+      }
+      container.innerHTML = `<div class="recent-grid">${recentHistory.map(item => {
+        const imageUrl = firstImageUrl(item.image_url);
+        const title = item.content || item.prompt || '图片创作';
+        const typeText = item.type === 'image' ? '图片' : (item.type === 'copy' ? '文案' : '图文');
+        const thumb = imageUrl
+          ? `<img class="recent-thumb" src="${escapeHtml(imageUrl)}" alt="创作图片">`
+          : '<div class="recent-copy-thumb">文</div>';
+        return `<div class="recent-item">
+          ${thumb}
+          <div class="recent-body">
+            <div class="recent-meta"><span>${escapeHtml(typeText)}</span><span>${escapeHtml(item.created_at || '-')}</span></div>
+            <div class="recent-title">${escapeHtml(title)}</div>
+            <div class="recent-actions">
+              <button class="profile-btn secondary" type="button" onclick="deleteRecentHistory(${Number(item.id)})">删除</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+
+    async function deleteRecentHistory(id) {
+      if (!confirm('确定删除这条创作记录吗？')) return;
+      try {
+        const res = await fetch(`/api/user/history/${id}`, {
+          method: 'DELETE',
+          headers: authHeaders
+        });
+        if (!res.ok) throw new Error('删除失败');
+        await loadRecentHistory();
+        await loadStats();
+      } catch (err) {
+        alert(err.message || '删除失败');
+      }
+    }
+    window.deleteRecentHistory = deleteRecentHistory;
 
     async function loadInvites() {
       const listEl = document.getElementById('inviteList');
@@ -359,6 +556,41 @@
       }
     });
 
+    document.getElementById('redeemBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('redeemBtn');
+      const msgEl = document.getElementById('redeemMsg');
+      const codeEl = document.getElementById('redeemCode');
+      const code = codeEl.value.trim();
+      msgEl.className = 'profile-msg';
+      if (!code) {
+        msgEl.textContent = '请输入卡密兑换码';
+        msgEl.className = 'profile-msg error';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '兑换中...';
+      try {
+        const res = await fetch('/api/cdkey/redeem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '兑换失败');
+        msgEl.textContent = `兑换成功，获得 ${data.points} 积分，当前余额 ${data.balance} 积分`;
+        msgEl.className = 'profile-msg success';
+        codeEl.value = '';
+        await loadStats();
+        await loadLogs(1);
+      } catch (err) {
+        msgEl.textContent = err.message || '兑换失败';
+        msgEl.className = 'profile-msg error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '兑换积分';
+      }
+    });
+
     // 修改密码
     document.getElementById('changePwBtn').addEventListener('click', async () => {
       const oldPw = document.getElementById('oldPassword').value;
@@ -390,14 +622,10 @@
       }
     });
 
-    // 加载用户名
-    try {
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      document.getElementById('profileUserName').textContent = userData.username || '';
-    } catch (e) {}
-
+    loadMe();
     loadStats();
     loadLogs();
+    loadRecentHistory();
   </script>
 </body>
 </html>

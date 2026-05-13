@@ -12,43 +12,99 @@
     <section class="content-hero">
       <div class="eyebrow">Help Center</div>
       <h1>帮助中心</h1>
-      <p class="subtitle">了解积分、创作、卡密和常见问题，快速恢复创作节奏。</p>
+      <p class="subtitle">这里整理了账号、积分、图片生成、看图写 Prompt、卡密兑换和支付订单的常见用法。遇到问题时，先按页面里的排查步骤处理，通常能更快恢复创作。</p>
+      <div class="content-meta">
+        <span class="content-pill">适用：图文创作</span>
+        <span class="content-pill">适用：图片工坊</span>
+        <span class="content-pill">适用：看图写 Prompt</span>
+      </div>
     </section>
 
-    <section class="content-section">
-      <h2>如何开始创作</h2>
-      <p>登录后进入首页，系统会自动展开创作工作台。你可以选择图片生成、文案生成、文案改写或图文一体生成。</p>
-      <ul>
-        <li>图片生成：输入画面描述，选择比例、张数和风格，可上传参考图。</li>
-        <li>文案生成：输入主题，选择种草、探店、穿搭、美食、旅行或知识类型。</li>
-        <li>文案改写：粘贴已有文案，选择原创改写或创新升级。</li>
-        <li>图文一体：输入内容主题，选择图片张数，同时生成配图和配套文案。</li>
-      </ul>
-    </section>
+    <div class="content-layout">
+      <aside class="content-toc">
+        <strong>目录</strong>
+        <a href="#start">快速开始</a>
+        <a href="#points">积分规则</a>
+        <a href="#image">图片创作</a>
+        <a href="#prompt">看图写 Prompt</a>
+        <a href="#account">账号与订单</a>
+        <a href="#trouble">故障排查</a>
+      </aside>
 
-    <section class="content-section">
-      <h2>积分规则</h2>
-      <ul>
-        <li>图片生成：10 积分/张，最多一次生成 4 张。</li>
-        <li>文案生成：5 积分/次。</li>
-        <li>文案改写：3 积分/次。</li>
-        <li>图文一体：5 积分文案 + 每张图片 10 积分。</li>
-        <li>生成失败会自动退回对应积分，并写入积分流水。</li>
-      </ul>
-    </section>
+      <div class="content-sections">
+        <section class="content-section" id="start">
+          <h2>快速开始</h2>
+          <p>登录后可以从首页进入小红书图文创作，也可以进入图片工坊做通用出图、参考图改图、批量测试和提示词复用。建议先明确用途，再选择工具。</p>
+          <div class="content-grid">
+            <div class="content-callout"><strong>做小红书内容</strong><br>使用小红书 AI 图片生成页面，输入主题、产品卖点、人群、语气和图片需求，适合种草、探店、穿搭、美食、家居等内容。</div>
+            <div class="content-callout"><strong>做商品图或通用图</strong><br>使用图片工坊，适合亚马逊主图、产品图、参考图改图、批量测试不同提示词和比例。</div>
+            <div class="content-callout"><strong>分析参考图</strong><br>使用看图写 Prompt，上传或粘贴图片，选择反推模板，再把中文或英文 Prompt 一键送到画面工坊。</div>
+            <div class="content-callout"><strong>管理账号</strong><br>进入个人中心查看剩余积分、积分流水、支付订单、卡密兑换、邀请码和密码设置。</div>
+          </div>
+        </section>
 
-    <section class="content-section">
-      <h2>常见问题</h2>
-      <h3>为什么登录后还是提示登录？</h3>
-      <p>请刷新页面后重新登录。如果仍然出现，清理浏览器缓存并重新访问首页。</p>
-      <h3>为什么图片或文案生成失败？</h3>
-      <p>可能是模型服务超时、积分不足、内容不符合规范或网络异常。失败时积分会退回。</p>
-      <h3>历史记录在哪里？</h3>
-      <p>生成成功后会保存在首页下方的历史记录，也可以在个人中心查看统计和积分流水。</p>
-      <h3>卡密怎么使用？</h3>
-      <p>在首页点击卡密兑换，输入管理员发放的卡密即可兑换积分。每个卡密只能使用一次。</p>
-    </section>
+        <section class="content-section" id="points">
+          <h2>积分规则</h2>
+          <ul>
+            <li>图片生成按张扣积分，实际扣除以生成按钮旁边的提示和后台配置为准。</li>
+            <li>文案生成、文案改写、图文一体生成会按任务类型扣除积分。</li>
+            <li>生成失败、模型超时或服务端异常时，系统会尝试自动退回已扣积分，并写入积分流水。</li>
+            <li>卡密兑换成功后，积分会立即进入余额；每个卡密只能兑换一次。</li>
+            <li>支付订单成功后，到账积分会记录到个人中心的积分明细和支付订单中。</li>
+          </ul>
+          <div class="content-note">积分是站内创作额度，不等同现金。请在提交任务前确认提示词、比例、张数和参考图是否正确。</div>
+        </section>
+
+        <section class="content-section" id="image">
+          <h2>图片创作建议</h2>
+          <h3>提示词怎么写更稳定</h3>
+          <p>一个稳定的图片 Prompt 通常包含主体、场景、构图、光线、材质、风格、比例和负面提示词。商品图要明确产品材质、颜色、结构和背景；人物图要明确姿势、服饰、镜头角度和光线。</p>
+          <h3>参考图怎么用</h3>
+          <p>参考图适合提供构图、姿势、产品结构或画面氛围。不要上传未授权的品牌图、带 logo 的同行素材或涉及隐私的人像。需要做原创商用图时，应提取风格和结构，不要照搬独特设计。</p>
+          <h3>亚马逊主图注意事项</h3>
+          <ul>
+            <li>优先使用纯白背景 RGB 255,255,255。</li>
+            <li>产品占画面主体，避免文字、水印、logo、杂乱道具。</li>
+            <li>袜子、服装、家居产品要强调材质纹理、真实阴影和自然比例。</li>
+          </ul>
+        </section>
+
+        <section class="content-section" id="prompt">
+          <h2>看图写 Prompt</h2>
+          <p>看图写 Prompt 适合把参考图拆解成可复用的 AI 生图提示词。推荐选择对应模板，而不是直接让模型“原样反推”。</p>
+          <ul>
+            <li>通用反推：适合风格图、海报图、普通商业摄影。</li>
+            <li>亚马逊产品主图：适合袜子、足袋袜、魔力抹布、家居用品等产品图。</li>
+            <li>模特穿搭图：适合袜子、裙装、鞋袜搭配和日系电商图。</li>
+            <li>只要风格不要复制内容：适合参考同行图的高级感，同时规避侵权风险。</li>
+          </ul>
+          <div class="content-note">反推后请把主体改成自己的产品卖点。例如足袋袜要明确 split toe tabi socks、分趾结构、罗纹纹理、棉混纺材质和纯白背景。</div>
+        </section>
+
+        <section class="content-section" id="account">
+          <h2>账号、订单和卡密</h2>
+          <ul>
+            <li>个人中心可以查看剩余积分、生成统计、积分明细、支付订单和账号设置。</li>
+            <li>如果你有卡密，进入个人中心的“卡密兑换”输入兑换码即可。</li>
+            <li>支付订单如果长时间待支付，可以返回首页重新选择套餐创建新订单。</li>
+            <li>邀请码用于邀请新用户注册，每个邀请码只能注册一个账号。</li>
+            <li>忘记密码时请联系管理员重置；已登录用户可以在个人中心自行修改密码。</li>
+          </ul>
+        </section>
+
+        <section class="content-section" id="trouble">
+          <h2>常见问题</h2>
+          <h3>为什么生成失败？</h3>
+          <p>常见原因包括提示词触发内容规范、模型服务超时、参考图过大、网络异常、积分不足或并发任务过多。建议减少张数、简化提示词、换一张参考图后重试。</p>
+          <h3>为什么图片不好看？</h3>
+          <p>不要只写“好看、高级”。请补充镜头、光线、材质、主体细节和背景限制。电商图尤其要写清楚产品结构、真实材质、白底、干净阴影和不要文字 logo。</p>
+          <h3>为什么积分没变？</h3>
+          <p>刷新个人中心或重新登录后查看。如果支付已成功但积分未到账，请保留订单号，让管理员在后台核对支付状态和积分流水。</p>
+          <h3>为什么粘贴图片没有反应？</h3>
+          <p>请先点击参考图上传区域，再使用 Ctrl+V 粘贴。浏览器需要允许页面读取剪贴板图片。</p>
+        </section>
+      </div>
+    </div>
   </main>
 </body>
 </html>
-

@@ -10,31 +10,89 @@
   <main class="content-page">
     <a class="content-back" href="index.html">返回首页</a>
     <section class="content-hero">
-      <div class="eyebrow">Privacy</div>
+      <div class="eyebrow">Privacy Policy</div>
       <h1>隐私政策</h1>
-      <p class="subtitle">本页面说明御弟哥哥在提供创作服务时如何处理账号、创作和订单相关数据。</p>
+      <p class="subtitle">本政策说明御弟哥哥在提供 AI 图文创作、积分、卡密、支付订单和账号管理服务时，如何处理与保护用户数据。</p>
+      <div class="content-meta">
+        <span class="content-pill">最小必要</span>
+        <span class="content-pill">用于服务</span>
+        <span class="content-pill">用户自主管理</span>
+      </div>
     </section>
 
-    <section class="content-section">
-      <h2>我们会处理的数据</h2>
-      <ul>
-        <li>账号信息：用户名、密码加密结果、角色、创建时间。</li>
-        <li>创作信息：提示词、生成结果、图片地址、消耗积分和创建时间。</li>
-        <li>积分信息：充值、消费、退款、卡密兑换等流水。</li>
-        <li>订单信息：订单号、积分套餐、支付渠道、订单状态。</li>
-      </ul>
-    </section>
+    <div class="content-layout">
+      <aside class="content-toc">
+        <strong>目录</strong>
+        <a href="#data">收集的数据</a>
+        <a href="#use">使用目的</a>
+        <a href="#storage">存储和保护</a>
+        <a href="#third-party">第三方服务</a>
+        <a href="#rights">用户权利</a>
+        <a href="#tips">安全建议</a>
+      </aside>
 
-    <section class="content-section">
-      <h2>使用目的</h2>
-      <p>这些数据用于登录鉴权、生成内容、展示历史记录、计算积分、处理订单和保障服务安全。</p>
-    </section>
+      <div class="content-sections">
+        <section class="content-section" id="data">
+          <h2>我们会处理哪些数据</h2>
+          <ul>
+            <li>账号信息：用户名、加密后的密码、角色、注册时间和更新时间。</li>
+            <li>创作数据：提示词、参考图地址、生成图片地址、文案结果、比例、任务类型和创建时间。</li>
+            <li>积分数据：充值、消费、退款、卡密兑换、变更后余额和说明。</li>
+            <li>订单数据：订单号、套餐金额、积分数量、支付渠道、订单状态、支付时间。</li>
+            <li>邀请码和卡密数据：兑换码、积分面值、使用状态、创建者、使用者和使用时间。</li>
+            <li>基础技术数据：请求时间、接口错误、必要的安全日志和浏览器访问状态。</li>
+          </ul>
+        </section>
 
-    <section class="content-section">
-      <h2>用户建议</h2>
-      <p>请不要在提示词中提交身份证号、手机号、银行卡号、住址、他人隐私或未授权素材。发布生成内容前，请自行确认内容合规和授权情况。</p>
-    </section>
+        <section class="content-section" id="use">
+          <h2>数据使用目的</h2>
+          <p>我们使用这些数据，是为了完成登录鉴权、生成内容、保存历史记录、计算积分、处理订单、兑换卡密、展示个人中心、排查故障和防止滥用。</p>
+          <div class="content-grid">
+            <div class="content-callout"><strong>账号数据</strong><br>用于识别用户身份、区分普通用户和管理员，并保护账号不被未授权访问。</div>
+            <div class="content-callout"><strong>创作数据</strong><br>用于向模型服务发起生成请求、展示历史记录、帮助用户复用 Prompt。</div>
+            <div class="content-callout"><strong>积分和订单</strong><br>用于计算余额、显示流水、核对支付状态和处理异常订单。</div>
+            <div class="content-callout"><strong>安全日志</strong><br>用于定位错误、限制异常请求、防止接口被滥用。</div>
+          </div>
+        </section>
+
+        <section class="content-section" id="storage">
+          <h2>数据存储和保护</h2>
+          <ul>
+            <li>密码不会以明文保存，系统保存的是加密后的密码结果。</li>
+            <li>运行密钥、模型密钥和支付配置应保存在服务端环境变量中，不会展示在前端页面。</li>
+            <li>管理员后台只应提供给授权人员使用，并应使用强密码。</li>
+            <li>上传图片、生成结果和历史记录会保留在服务端，用于用户查看和复用。</li>
+            <li>如需要清理历史记录，可在历史记录或后台管理中删除对应内容。</li>
+          </ul>
+        </section>
+
+        <section class="content-section" id="third-party">
+          <h2>第三方服务</h2>
+          <p>为完成 AI 生成、支付或基础运维，系统可能调用模型服务、支付服务、云服务器、对象存储或网络安全组件。提交给模型服务的内容可能包含你的提示词和参考图，因此请不要提交敏感个人信息或未授权素材。</p>
+          <div class="content-note">如果你用本工具生成商业素材，仍需自行确认图片、文案、商标、肖像和商品信息是否具备发布授权。</div>
+        </section>
+
+        <section class="content-section" id="rights">
+          <h2>用户可进行的操作</h2>
+          <ul>
+            <li>在个人中心查看剩余积分、积分明细和支付订单。</li>
+            <li>在个人中心修改自己的登录密码。</li>
+            <li>删除自己的生成记录，或联系管理员处理异常数据。</li>
+            <li>如发现积分、订单或卡密异常，可以提供订单号或流水说明，由管理员核对。</li>
+          </ul>
+        </section>
+
+        <section class="content-section" id="tips">
+          <h2>安全建议</h2>
+          <ul>
+            <li>不要在提示词中提交身份证号、手机号、银行卡号、详细住址、账号密码或客户隐私。</li>
+            <li>不要上传包含未授权人脸、合同、聊天记录、订单截图或后台截图的图片。</li>
+            <li>不要把管理员账号、卡密列表、支付密钥或模型密钥发给任何无关人员。</li>
+            <li>公共电脑使用后请退出登录，并避免让浏览器保存密码。</li>
+          </ul>
+        </section>
+      </div>
+    </div>
   </main>
 </body>
 </html>
-
