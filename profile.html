@@ -17,8 +17,8 @@
     .profile-nav h1 { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .profile-nav a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm); transition: var(--base); }
     .profile-nav a:hover { color: var(--text-primary); background: var(--bg-card); }
-    .profile-container { position: relative; z-index: 1; width: min(1000px,calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; }
-    .profile-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 20px; align-items: start; }
+    .profile-container { position: relative; z-index: 1; width: min(1080px,calc(100% - 48px)); margin: 0 auto; padding: 32px 0 48px; }
+    .profile-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
     .profile-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
     .profile-card.profile-wide { grid-column: 1 / -1; }
     .profile-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
@@ -65,12 +65,12 @@
     .account-header-note { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-top: 4px; }
     .account-quick-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .account-quick-actions .profile-btn { min-height: 34px; padding: 8px 12px; font-size: 12px; box-shadow: none; }
-    .account-workspace { display: grid; grid-template-columns: 164px minmax(0,1fr); gap: 16px; align-items: start; margin-top: 16px; }
-    .profile-tabs { display: grid; gap: 8px; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
-    .profile-tab { width: 100%; min-height: 42px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 800; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; background: transparent; transition: var(--base); text-align: left; white-space: nowrap; }
+    .account-workspace { margin-top: 18px; }
+    .profile-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; }
+    .profile-tab { width: 100%; min-height: 42px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 800; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; background: transparent; transition: var(--base); text-align: center; white-space: nowrap; }
     .profile-tab:hover { color: var(--text-primary); background: var(--bg-card); }
     .profile-tab.active { color: #fff; background: linear-gradient(135deg, var(--neon-pink), #d92d6a); border-color: transparent; box-shadow: 0 4px 12px rgba(255,45,120,0.24); }
-    .account-content { min-width: 0; padding: 16px; background: rgba(15,20,33,0.45); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .account-content { min-width: 0; padding: 18px; background: rgba(15,20,33,0.45); border: 1px solid var(--border); border-radius: var(--radius-md); }
     .profile-tab-content { display: none; }
     .profile-tab-content.active { display: block; }
     .invite-panel { display: grid; gap: 14px; }
@@ -107,15 +107,12 @@
     .recent-meta { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: 12px; }
     .recent-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     @media (max-width: 768px) {
-      .profile-grid { grid-template-columns: 1fr; }
       .profile-stats { grid-template-columns: repeat(2,1fr); }
       .account-summary { grid-template-columns: 1fr; }
       .account-header { flex-direction: column; gap: 8px; }
       .account-quick-actions { width: 100%; justify-content: stretch; }
       .account-quick-actions .profile-btn { flex: 1; justify-content: center; }
-      .account-workspace { grid-template-columns: 1fr; }
       .profile-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
-      .profile-tab { text-align: center; }
       .redeem-row { grid-template-columns: 1fr; }
       .invite-copy-row { align-items: stretch; flex-direction: column; }
     }
