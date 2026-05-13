@@ -681,6 +681,14 @@ function paySuccess(orderNo, tradeNo) {
   return { success: true, balance: result.balance };
 }
 
+function closePaymentOrder(orderNo) {
+  const order = db.prepare('SELECT * FROM payment_orders WHERE order_no = ?').get(orderNo);
+  if (!order) return { success: false, error: '订单不存在' };
+  if (order.status !== 'pending') return { success: false, error: '只有待支付订单可以关闭' };
+  db.prepare("UPDATE payment_orders SET status = 'closed' WHERE order_no = ?").run(orderNo);
+  return { success: true };
+}
+
 // 获取用户支付订单
 function getUserPaymentOrders(userId, limit = 20) {
   return db.prepare('SELECT * FROM payment_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?').all(userId, limit);
@@ -764,6 +772,7 @@ module.exports = {
   // 支付
   createPaymentOrder,
   paySuccess,
+  closePaymentOrder,
   getUserPaymentOrders,
   getAllPaymentOrders,
   getPaymentStats

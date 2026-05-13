@@ -1,12 +1,58 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats } = require('../db');
+const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats, paySuccess, closePaymentOrder } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 function parsePositiveInt(value, fallback, max) {
   const parsed = parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed < 1) return fallback;
   return Math.min(parsed, max);
+}
+
+const DEFAULT_POINT_PACKAGES = [
+  { points: 100, price: 9.9, label: '100积分' },
+  { points: 300, price: 24.9, label: '300积分' },
+  { points: 500, price: 39.9, label: '500积分' },
+  { points: 1000, price: 69.9, label: '1000积分' },
+  { points: 3000, price: 179.9, label: '3000积分' },
+  { points: 5000, price: 269.9, label: '5000积分' },
+];
+
+function hasEnv(name) {
+  return Boolean(String(process.env[name] || '').trim());
+}
+
+function getPaymentIntegrationStatus(req) {
+  const provider = String(process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
+  const publicOrigin = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+  const callbackBase = publicOrigin.replace(/\/+$/, '');
+  const channels = [
+    {
+      key: 'alipay',
+      name: '支付宝',
+      configured: hasEnv('ALIPAY_APP_ID') && hasEnv('ALIPAY_PRIVATE_KEY') && hasEnv('ALIPAY_PUBLIC_KEY'),
+      required: ['ALIPAY_APP_ID', 'ALIPAY_PRIVATE_KEY', 'ALIPAY_PUBLIC_KEY'],
+      callbackUrl: `${callbackBase}/api/payment/alipay/notify`
+    },
+    {
+      key: 'wxpay',
+      name: '微信支付',
+      configured: hasEnv('WXPAY_APP_ID') && hasEnv('WXPAY_MCH_ID') && hasEnv('WXPAY_PRIVATE_KEY') && hasEnv('WXPAY_API_V3_KEY'),
+      required: ['WXPAY_APP_ID', 'WXPAY_MCH_ID', 'WXPAY_PRIVATE_KEY', 'WXPAY_API_V3_KEY'],
+      callbackUrl: `${callbackBase}/api/payment/wxpay/notify`
+    }
+  ];
+
+  return {
+    provider,
+    modeLabel: provider === 'mock' ? '模拟/人工确认' : '真实支付待接入',
+    mockPaymentEnabled: process.env.ENABLE_MOCK_PAYMENT === 'true',
+    mockPaymentTokenConfigured: hasEnv('MOCK_PAYMENT_TOKEN'),
+    publicBaseUrlConfigured: hasEnv('PUBLIC_BASE_URL'),
+    publicBaseUrl: publicOrigin,
+    packages: DEFAULT_POINT_PACKAGES,
+    channels
+  };
 }
 
 // 所有路由需要管理员权限
@@ -208,6 +254,27 @@ router.get('/payment-orders', (req, res) => {
 router.get('/payment-orders/stats', (req, res) => {
   const stats = getPaymentStats();
   res.json(stats);
+});
+
+// 获取支付对接状态。只返回配置状态，不返回任何密钥明文。
+router.get('/payment-config', (req, res) => {
+  res.json(getPaymentIntegrationStatus(req));
+});
+
+// 管理员人工确认到账，用于真实支付未完全自动化或线下核对后补单。
+router.post('/payment-orders/:orderNo/mark-paid', (req, res) => {
+  const { orderNo } = req.params;
+  const tradeNo = String(req.body.tradeNo || '').trim() || `ADMIN-${Date.now()}`;
+  const result = paySuccess(orderNo, tradeNo);
+  if (!result.success) return res.status(400).json({ error: result.error });
+  res.json({ success: true, balance: result.balance });
+});
+
+router.post('/payment-orders/:orderNo/close', (req, res) => {
+  const { orderNo } = req.params;
+  const result = closePaymentOrder(orderNo);
+  if (!result.success) return res.status(400).json({ error: result.error });
+  res.json({ success: true });
 });
 
 module.exports = router;

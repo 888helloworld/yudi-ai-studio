@@ -2301,6 +2301,17 @@ app.post('/api/payment/callback', authMiddleware, async (req, res) => {
   res.json({ success: true, balance: result.balance });
 });
 
+// 真实支付回调占位：密钥和验签逻辑未完成前，不自动入账，避免被伪造回调刷积分。
+app.post('/api/payment/alipay/notify', async (req, res) => {
+  console.warn('收到支付宝回调，但真实支付验签尚未接入。');
+  res.status(501).json({ error: '支付宝回调验签尚未接入，请在管理后台人工核对订单后确认到账' });
+});
+
+app.post('/api/payment/wxpay/notify', async (req, res) => {
+  console.warn('收到微信支付回调，但真实支付验签尚未接入。');
+  res.status(501).json({ error: '微信支付回调验签尚未接入，请在管理后台人工核对订单后确认到账' });
+});
+
 // 查询订单状态
 app.get('/api/payment/status/:orderNo', authMiddleware, (req, res) => {
   const order = db.db.prepare('SELECT * FROM payment_orders WHERE order_no = ? AND user_id = ?').get(req.params.orderNo, req.userId);

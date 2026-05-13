@@ -56,6 +56,14 @@
     .admin-panel-title h2 { font-size: 16px; font-weight: 800; }
     .admin-panel-title p { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
     .payment-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; margin-bottom: 14px; }
+    .payment-config { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; margin-bottom: 14px; }
+    .payment-config-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; }
+    .payment-config-card h3 { font-size: 14px; font-weight: 800; margin-bottom: 10px; }
+    .payment-config-list { display: grid; gap: 8px; }
+    .payment-config-row { display: flex; justify-content: space-between; gap: 12px; color: var(--text-secondary); font-size: 13px; padding-bottom: 8px; border-bottom: 1px solid rgba(148,163,184,0.08); }
+    .payment-config-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .payment-config-row span:first-child { color: var(--text-muted); }
+    .payment-code { font-family: "Courier New", monospace; color: var(--neon-cyan); font-size: 12px; word-break: break-all; }
     .admin-modal { position: fixed; inset: 0; background: rgba(10,14,23,0.7); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000; backdrop-filter: blur(12px); }
     .admin-modal-content { width: min(420px,100%); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 24px; }
     .admin-modal-content h3 { font-size: 20px; font-weight: 800; margin-bottom: 14px; }
@@ -99,6 +107,7 @@
     @media (max-width: 820px) {
       .admin-stats { grid-template-columns: repeat(2,1fr); }
       .admin-header-inner, .admin-container { width: calc(100% - 24px); }
+      .payment-config { grid-template-columns: 1fr; }
     }
     @media (max-width: 520px) {
       .admin-stats { grid-template-columns: 1fr; }
@@ -272,6 +281,20 @@
       <div class="admin-panel-title">
         <div><h2>支付订单</h2><p>查看支付订单、支付成功金额与到账积分。</p></div>
       </div>
+      <div class="payment-config" id="paymentConfig">
+        <div class="payment-config-card">
+          <h3>支付对接状态</h3>
+          <div class="payment-config-list" id="paymentConfigStatus">
+            <div class="admin-empty" style="padding:20px;">加载中...</div>
+          </div>
+        </div>
+        <div class="payment-config-card">
+          <h3>积分套餐</h3>
+          <div class="payment-config-list" id="paymentPackages">
+            <div class="admin-empty" style="padding:20px;">加载中...</div>
+          </div>
+        </div>
+      </div>
       <div class="payment-stats" id="paymentStats"></div>
       <div class="admin-table-wrap">
         <table>
@@ -285,6 +308,7 @@
               <th>状态</th>
               <th>支付时间</th>
               <th>创建时间</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="paymentOrdersList"></tbody>
@@ -817,6 +841,36 @@
     document.getElementById('cdkeyUsedFilter').addEventListener('change', () => loadCdkeys(1));
 
     // 支付订单管理
+    async function loadPaymentConfig() {
+      try {
+        const res = await fetch('/api/admin/payment-config', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '加载失败');
+        const configuredCount = (data.channels || []).filter(c => c.configured).length;
+        document.getElementById('paymentConfigStatus').innerHTML = `
+          <div class="payment-config-row"><span>支付模式</span><strong>${escapeHtml(data.modeLabel || data.provider || '-')}</strong></div>
+          <div class="payment-config-row"><span>公网地址</span><span class="payment-code">${escapeHtml(data.publicBaseUrl || '-')}</span></div>
+          <div class="payment-config-row"><span>模拟回调</span><span>${data.mockPaymentEnabled ? '已开启' : '已关闭'}${data.mockPaymentTokenConfigured ? '，令牌已配置' : ''}</span></div>
+          <div class="payment-config-row"><span>通道配置</span><span>${configuredCount} / ${(data.channels || []).length} 个已配置</span></div>
+          ${(data.channels || []).map(channel => `<div class="payment-config-row">
+            <span>${escapeHtml(channel.name)}</span>
+            <span>
+              <span class="status-badge ${channel.configured ? 'success' : 'pending'}">${channel.configured ? '已配置' : '待配置'}</span>
+              <div class="payment-code" style="margin-top:6px;">${escapeHtml(channel.callbackUrl || '-')}</div>
+            </span>
+          </div>`).join('')}
+        `;
+        document.getElementById('paymentPackages').innerHTML = (data.packages || []).map(pkg => `
+          <div class="payment-config-row">
+            <span>${escapeHtml(pkg.label || `${pkg.points}积分`)}</span>
+            <strong>${escapeHtml(pkg.points)} 积分 / ${escapeHtml(formatMoney(pkg.price))} 元</strong>
+          </div>
+        `).join('') || '<div class="admin-empty" style="padding:20px;">暂无套餐</div>';
+      } catch (e) {
+        document.getElementById('paymentConfigStatus').innerHTML = '<div class="admin-empty" style="padding:20px;color:var(--neon-red);">支付配置加载失败</div>';
+      }
+    }
+
     async function loadPaymentStats() {
       try {
         const res = await fetch('/api/admin/payment-orders/stats', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -840,7 +894,7 @@
         const data = await res.json();
         const tbody = document.getElementById('paymentOrdersList');
         if (!data.orders || data.orders.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
           document.getElementById('paymentOrdersPager').innerHTML = '';
           return;
         }
@@ -858,6 +912,12 @@
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
             <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.paid_at || '-')}</td>
             <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.created_at)}</td>
+            <td>
+              ${o.status === 'pending' ? `
+                <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="markPaymentPaid('${escapeJsString(o.order_no)}')">确认到账</button>
+                <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="closePaymentOrder('${escapeJsString(o.order_no)}')">关闭</button>
+              ` : '<span style="color:var(--text-muted);font-size:12px;">-</span>'}
+            </td>
           </tr>`;
         }).join('');
         renderPager('paymentOrdersPager', {
@@ -872,6 +932,46 @@
       } catch (e) { console.error('加载支付订单失败', e); }
     }
 
+    async function markPaymentPaid(orderNo) {
+      const tradeNo = prompt('请输入支付平台交易号或备注', `ADMIN-${Date.now()}`);
+      if (tradeNo === null) return;
+      if (!confirm(`确认订单 ${orderNo} 已到账并给用户充值积分？`)) return;
+      try {
+        const res = await fetch(`/api/admin/payment-orders/${encodeURIComponent(orderNo)}/mark-paid`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ tradeNo })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '确认失败');
+        alert(`已确认到账，用户当前余额：${data.balance}`);
+        loadPaymentStats();
+        loadPaymentOrders(paymentPage);
+        loadStats();
+        loadUsers();
+      } catch (err) {
+        alert(err.message || '确认失败');
+      }
+    }
+    window.markPaymentPaid = markPaymentPaid;
+
+    async function closePaymentOrder(orderNo) {
+      if (!confirm(`确定关闭订单 ${orderNo}？`)) return;
+      try {
+        const res = await fetch(`/api/admin/payment-orders/${encodeURIComponent(orderNo)}/close`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '关闭失败');
+        loadPaymentOrders(paymentPage);
+        loadPaymentStats();
+      } catch (err) {
+        alert(err.message || '关闭失败');
+      }
+    }
+    window.closePaymentOrder = closePaymentOrder;
+
     document.querySelectorAll('.admin-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
@@ -882,7 +982,7 @@
         if (tab.dataset.tab === 'charts') loadChartData(7);
         if (tab.dataset.tab === 'pointlogs') loadPointLogs(1);
         if (tab.dataset.tab === 'cdkeys') { loadCdkeys(1); loadCdkeyStats(); }
-        if (tab.dataset.tab === 'payment') { loadPaymentStats(); loadPaymentOrders(1); }
+        if (tab.dataset.tab === 'payment') { loadPaymentConfig(); loadPaymentStats(); loadPaymentOrders(1); }
       });
     });
 
