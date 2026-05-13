@@ -60,10 +60,13 @@
     .account-summary-item { padding: 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; }
     .account-summary-label { color: var(--text-muted); font-size: 11px; font-weight: 800; margin-bottom: 6px; }
     .account-summary-value { color: var(--text-primary); font-size: 14px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .profile-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
-    .profile-tab { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: var(--base); }
+    .account-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .account-header h2 { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+    .account-header-note { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-top: 4px; }
+    .profile-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 18px 0 18px; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .profile-tab { min-height: 38px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 800; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; background: transparent; transition: var(--base); white-space: nowrap; }
     .profile-tab:hover { color: var(--text-primary); background: var(--bg-surface); }
-    .profile-tab.active { color: var(--neon-pink); background: rgba(255,45,120,0.08); }
+    .profile-tab.active { color: #fff; background: linear-gradient(135deg, var(--neon-pink), #d92d6a); border-color: transparent; box-shadow: 0 4px 12px rgba(255,45,120,0.24); }
     .profile-tab-content { display: none; }
     .profile-tab-content.active { display: block; }
     .invite-panel { display: grid; gap: 14px; }
@@ -91,7 +94,8 @@
     .order-main { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
     .order-no { color: var(--neon-cyan); font-family: "Courier New", monospace; font-size: 12px; font-weight: 800; }
     .order-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px; }
-    .profile-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 16px; }
+    .profile-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 14px 0 16px; }
+    .profile-actions .profile-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; text-align: center; }
     .recent-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 12px; }
     .recent-item { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
     .recent-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--bg-input); }
@@ -104,6 +108,9 @@
       .profile-grid { grid-template-columns: 1fr; }
       .profile-stats { grid-template-columns: repeat(2,1fr); }
       .account-summary { grid-template-columns: 1fr; }
+      .account-header { flex-direction: column; gap: 8px; }
+      .profile-actions { grid-template-columns: 1fr; }
+      .profile-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
       .redeem-row { grid-template-columns: 1fr; }
       .invite-copy-row { align-items: stretch; flex-direction: column; }
     }
@@ -132,7 +139,12 @@
 
     <div class="profile-grid">
       <div class="profile-card">
-        <h2>账号设置</h2>
+        <div class="account-header">
+          <div>
+            <h2>账号设置</h2>
+            <div class="account-header-note">管理密码、积分兑换、订单和邀请入口</div>
+          </div>
+        </div>
         <div class="account-summary">
           <div class="account-summary-item">
             <div class="account-summary-label">用户名</div>
