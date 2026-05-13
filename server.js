@@ -342,7 +342,7 @@ function normalizeReversePromptResult(parsed) {
   };
 }
 
-const REVERSE_PROMPT_MODES = new Set(['general', 'amazon', 'outfit', 'style-only', 'structured', 'tabi-socks']);
+const REVERSE_PROMPT_MODES = new Set(['general', 'amazon', 'outfit', 'style-only', 'structured']);
 
 function getReversePromptMode(mode) {
   return REVERSE_PROMPT_MODES.has(mode) ? mode : 'general';
@@ -355,13 +355,11 @@ function buildReversePromptInstruction(mode) {
     amazon: `当前模式：亚马逊产品主图。
 请作为专业亚马逊产品摄影师分析图片，重点判断产品主体、摆放方式、背景是否纯白、光线方向和阴影、材质纹理颜色、1:1 主图构图、是否符合亚马逊主图风格、应该保留和去掉的元素。输出要更真实、更像专业棚拍，适合电商主图。`,
     outfit: `当前模式：模特穿搭电商图。
-请重点拆解模特姿势、腿部动作、服装风格、袜子长度、袜子颜色、袜子纹理、鞋子或赤脚状态、背景、光线、构图、日系氛围和画面高级感。要求保留产品为主体，背景可优化为纯白 RGB 255 255 255，画面比例适合 1:1，日本亚马逊产品主图风格，不要杂乱背景、文字或 logo。`,
+请重点拆解模特姿势、身体动作、服装风格、产品材质、颜色纹理、鞋履或配饰状态、背景、光线、构图、日系氛围和画面高级感。要求保留产品为主体，背景可优化为纯白 RGB 255 255 255，画面比例适合 1:1，日本亚马逊产品主图风格，不要杂乱背景、文字或 logo。`,
     'style-only': `当前模式：只取风格，不复制内容。
 请不要复制图片中的具体人物、品牌、logo、独特设计或可识别版权元素。只提取视觉风格、构图方式、光线、色彩、镜头语言和商业摄影感觉，并生成可用于原创电商图片的提示词。提示词要能替换成用户自己的产品，避免侵权元素。`,
     structured: `当前模式：精准拆图。
-请把图片拆成结构化 AI 生图提示词：主体、背景、构图、镜头、光线、颜色、材质、风格、细节、画质关键词、负面提示词，并最后整合成完整英文 prompt。`,
-    'tabi-socks': `当前模式：足袋袜主图。
-请围绕日本 split toe tabi socks / 足袋袜生成电商主图提示词。重点突出分趾结构、脚趾分离可见、罗纹或织物纹理、棉混纺材质、脚踝和脚面的自然贴合、纯白 RGB 255 255 255 背景、1:1 构图、日系极简、高端亚马逊主图、无文字、无 logo、无道具。负面提示词必须避免 deformed toes, extra toes, fused toes, distorted feet, shoes covering toes。`
+请把图片拆成结构化 AI 生图提示词：主体、背景、构图、镜头、光线、颜色、材质、风格、细节、画质关键词、负面提示词，并最后整合成完整英文 prompt。`
   }[getReversePromptMode(mode)];
 
   return `你是一名高级图像生成提示词工程师、商业摄影美术指导和视觉分析师。请分析用户上传的图片，并反推出能让生图模型生成“更好看、更精致、更有审美”的提示词。
