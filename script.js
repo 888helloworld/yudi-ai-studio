@@ -492,6 +492,7 @@ async function runXhsReversePrompt() {
     const form = new FormData();
     form.append('image', xhsReverseFile, xhsReverseFile.name || 'reverse.png');
     form.append('reverseMode', selectedReverseMode || 'general');
+    form.append('historySource', 'xhs');
     const res = await fetch('/api/xi-image/reverse-prompt', {
       method: 'POST',
       headers: getAuthHeader(),
@@ -1164,7 +1165,10 @@ function getCopySummary(content) {
 }
 
 function isXiToolHistory(item) {
-  return item?.sub_type === 'xi-reverse' || item?.type === 'reverse';
+  return item?.sub_type === 'xi-generate'
+    || item?.sub_type === 'xi-edit'
+    || item?.sub_type === 'xi-reverse'
+    || item?.type === 'reverse';
 }
 
 function getXhsHistory() {
@@ -1172,7 +1176,7 @@ function getXhsHistory() {
 }
 
 function getReverseHistory() {
-  return serverHistory.filter(item => item?.sub_type === 'xi-reverse' || item?.type === 'reverse');
+  return serverHistory.filter(item => item?.sub_type === 'xhs-reverse');
 }
 
 function getDisplayHistory() {
@@ -1220,7 +1224,7 @@ document.addEventListener('click', (e) => {
   const item = getDisplayHistory().find(h => getHistoryId(h) === id);
   if (!item) return;
   
-  if (item.type === 'reverse' || item.sub_type === 'xi-reverse') {
+  if (item.type === 'reverse' || item.sub_type === 'xhs-reverse') {
     openReversePromptModal(getReversePromptDataFromHistory(item));
   } else if (item.type === 'image' && getHistoryImageUrl(item)) {
     // 图片预览弹窗：大图 + 下载按钮
@@ -1398,7 +1402,7 @@ async function clearAllHistory(type) {
       if (type === 'image') return h.type === 'image';
       if (type === 'copy') return h.type === 'copy';
       if (type === 'both') return h.type === 'both';
-      if (type === 'reverse') return h.type === 'reverse' || h.sub_type === 'xi-reverse';
+      if (type === 'reverse') return h.sub_type === 'xhs-reverse';
       return false;
     });
     for (const item of typeHistory) {
@@ -1530,7 +1534,7 @@ function createHistoryCard(item) {
   card.className = 'history-card';
   card.dataset.id = getHistoryId(item);
   
-  if (item.type === 'reverse' || item.sub_type === 'xi-reverse') {
+  if (item.type === 'reverse' || item.sub_type === 'xhs-reverse') {
     const meta = getReverseMeta(item);
     const previewUrl = meta.preview_url || item.previewUrl || '';
     const summary = getReversePromptSummary(item);
@@ -1594,11 +1598,7 @@ function createHistoryCard(item) {
     
     const typeSpan = document.createElement('span');
     typeSpan.className = 'history-type';
-    typeSpan.textContent = item.sub_type === 'xi-generate'
-      ? '画面工坊'
-      : item.sub_type === 'xi-edit'
-        ? '参考图改图'
-        : (item.ratio || '1:1');
+    typeSpan.textContent = item.ratio || '1:1';
     
     const dateSpan = document.createElement('span');
     dateSpan.className = 'history-date';

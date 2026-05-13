@@ -2156,6 +2156,7 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
   const reverseMode = getReversePromptMode(sanitizeInput(req.body.reverseMode, 40));
+  const historySource = sanitizeInput(req.body.historySource, 20) === 'xhs' ? 'xhs' : 'xi';
 
   const reversePromptInstruction = buildReversePromptInstruction(reverseMode);
 
@@ -2210,7 +2211,7 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
     const createdAt = formatBeijingDateTime();
     const previewUrl = saveUploadedSourceImages([req.file], 'xixu_reverse')[0] || '';
     const historyId = db.addHistory(req.userId, 'reverse', {
-      sub_type: 'xi-reverse',
+      sub_type: historySource === 'xhs' ? 'xhs-reverse' : 'xi-reverse',
       content: JSON.stringify({
         model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
         result: parsed || null,
