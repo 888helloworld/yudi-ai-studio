@@ -138,6 +138,7 @@ function initToolScript() {
   initRewrite();
   initGenerateBoth();
   initXhsToolTabs();
+  initXhsWorkStats();
   initXhsReversePrompt();
   initPagination();
 }
@@ -168,6 +169,18 @@ function initXhsToolTabs() {
     tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
     tab.addEventListener('click', () => window.switchXhsTool(tab.dataset.xhsTool));
   });
+}
+
+function initXhsWorkStats() {
+  const concurrency = document.getElementById('xhsStatConcurrency');
+  if (concurrency) {
+    concurrency.addEventListener('input', () => {
+      const value = Math.max(Math.floor(Number(concurrency.value || 1)), 1);
+      concurrency.value = value;
+      updateXhsWorkStats();
+    });
+  }
+  updateXhsWorkStats();
 }
 
 // 动态加载时 DOMContentLoaded 可能已触发，兜底处理
@@ -860,6 +873,7 @@ function createTaskCard(id, type, message) {
   const card = document.createElement('div');
   card.className = 'task-card';
   card.id = id;
+  card.dataset.status = 'running';
   card.innerHTML = `
     <div class="task-header">
       <span class="task-type ${type}">${typeLabel}</span>
@@ -881,6 +895,7 @@ function addTask(card) {
   tasksSection.style.display = 'block';
   tasksGrid.appendChild(card);
   activeTasks.push(card.id);
+  updateXhsWorkStats();
   
   tasksSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -892,11 +907,14 @@ function updateTaskCard(taskId, data) {
   const body = card.querySelector('.task-body');
 
   if (data.error) {
+    card.dataset.status = 'failed';
     body.innerHTML = `<div class="task-error">${escapeHtml(data.error)}</div>`;
+    updateXhsWorkStats();
     return;
   }
 
   if (data.type === 'image') {
+    card.dataset.status = 'done';
     const imageUrls = Array.isArray(data.imageUrls) && data.imageUrls.length ? data.imageUrls : [data.imageUrl].filter(Boolean);
     const imageHtml = imageUrls.map(url => `<img src="${escapeForAttr(url)}" alt="生成的图片" class="task-image">`).join('');
     const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
@@ -912,6 +930,7 @@ function updateTaskCard(taskId, data) {
       </div>
     `;
   } else if (data.type === 'copy') {
+    card.dataset.status = 'done';
     const typeLabel = data.isRewrite ? '改写' : (data.copyType || '生成');
     const header = card.querySelector('.task-header');
     const typeSpan = header.querySelector('.task-type');
@@ -925,6 +944,7 @@ function updateTaskCard(taskId, data) {
       </div>
     `;
   } else if (data.type === 'both' || (data.imageUrl && data.copy)) {
+    card.dataset.status = 'done';
     const header = card.querySelector('.task-header');
     const typeSpan = header.querySelector('.task-type');
     if (typeSpan) typeSpan.textContent = '图文';
@@ -946,6 +966,7 @@ function updateTaskCard(taskId, data) {
       </div>
     `;
   }
+  updateXhsWorkStats();
 
   // 3绉掑悗鑷姩绉诲埌鍘嗗彶
   setTimeout(() => {
@@ -977,6 +998,7 @@ function removeTask(taskId) {
   if (tasksGrid.children.length === 0) {
     tasksSection.style.display = 'none';
   }
+  updateXhsWorkStats();
 }
 
 window.removeTask = removeTask;
@@ -1083,6 +1105,33 @@ function updateHeroStatsFromHistory() {
     item.type === 'copy' || (item.type === 'both' && getHistoryCopyContent(item))
   )).length;
   setHeroStats(totalImages, totalCopies, xhsHistory.length);
+  updateXhsWorkStats();
+}
+
+function setStatText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = Number(value) || 0;
+}
+
+function updateXhsWorkStats() {
+  const xhsHistory = getXhsHistory();
+  const reverseHistory = typeof getReverseHistory === 'function' ? getReverseHistory() : [];
+  const taskCards = Array.from(document.querySelectorAll('.task-card'));
+  const running = taskCards.filter(card => card.dataset.status === 'running').length;
+  const failed = taskCards.filter(card => card.dataset.status === 'failed').length;
+  const doneTasks = taskCards.filter(card => card.dataset.status === 'done').length;
+  const done = xhsHistory.length + reverseHistory.length + doneTasks;
+  const total = done + failed;
+  const images = xhsHistory.reduce((sum, item) => {
+    if (item.type === 'image' || item.type === 'both') return sum + getHistoryImageUrls(item).length;
+    return sum;
+  }, 0);
+  setStatText('xhsStatQueued', 0);
+  setStatText('xhsStatRunning', running);
+  setStatText('xhsStatDone', done);
+  setStatText('xhsStatTotal', total);
+  setStatText('xhsStatImages', images);
+  setStatText('xhsStatFailed', failed);
 }
 
 async function loadUserStats() {
