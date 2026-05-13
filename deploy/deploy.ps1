@@ -1,8 +1,12 @@
 param(
-  [string]$HostName = "your-server.example",
-  [string]$User = "deploy-user",
-  [string]$KeyPath = "C:\path\to\private-key.pem",
-  [string]$RemoteDir = "/var/www/your-app",
+  [Parameter(Mandatory=$true)]
+  [string]$HostName,
+  [Parameter(Mandatory=$true)]
+  [string]$User,
+  [Parameter(Mandatory=$true)]
+  [string]$KeyPath,
+  [Parameter(Mandatory=$true)]
+  [string]$RemoteDir,
   [string]$AppName = "xiaohongshu-image-tool",
   [string]$NodePath = "/root/.nvm/versions/node/v22.22.2/bin",
   [switch]$IncludeRuntimeData

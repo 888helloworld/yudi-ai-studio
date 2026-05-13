@@ -8,13 +8,9 @@ This project uses a simple source-of-truth rule:
 
 ## Server Configuration
 
-- Deployment URL: `https://your-domain.example/`
-- SSH user: `deploy-user`
-- App directory: `/var/www/your-app`
-- PM2 app: `your-pm2-app`
-- App port: `3001`
-- nginx site proxies `https://your-domain.example/` to `127.0.0.1:3001`
-- nginx site can include `client_max_body_size 25m;` for image uploads used by "看图写 Prompt"
+Do not commit real server addresses, SSH users, private paths, or production ports.
+
+Use placeholders in documentation and pass real deployment values only through local commands, private notes, or server-side environment variables.
 
 ## Deploy Code
 
@@ -24,7 +20,7 @@ Run from the project root on Windows:
 .\deploy\deploy.ps1
 ```
 
-The script packages and uploads code, then runs `npm ci --omit=dev` and restarts only the `xiaohongshu-image-tool` PM2 app.
+The script packages and uploads code, then runs `npm ci --omit=dev` and restarts the configured PM2 app.
 
 By default it excludes:
 
@@ -42,7 +38,7 @@ The server `.env` must contain:
 
 ```env
 PORT=3001
-ALLOWED_ORIGIN=https://your-domain.example,https://your-domain.example:3001,http://your-domain.example
+ALLOWED_ORIGIN=https://your-domain.example
 ARK_API_KEY=...
 DEEPSEEK_API_KEY=...
 DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
@@ -74,5 +70,5 @@ This can overwrite or mix server data, so avoid it for normal updates.
 
 ```powershell
 curl.exe -I https://your-domain.example/
-ssh -i C:\path\to\private-key.pem user@your-server.example "sudo env PATH=/root/.nvm/versions/node/v22.22.2/bin:\$PATH pm2 list"
+ssh -i C:\path\to\private-key.pem user@your-server "pm2 list"
 ```
