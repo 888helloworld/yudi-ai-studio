@@ -9,7 +9,7 @@ ini_set('display_errors', '0');
 $proxyToken = 'CHANGE_ME_TO_A_LONG_RANDOM_TOKEN';
 $upstreamBase = 'https://api.xi-xu.me';
 $maxBodyBytes = 25 * 1024 * 1024;
-$timeoutSeconds = 1800;
+$timeoutSeconds = 600;
 
 function respond_json($status, $data) {
     http_response_code($status);

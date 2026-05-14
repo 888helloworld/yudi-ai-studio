@@ -97,13 +97,14 @@ const copyLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请
 const authLimiter = rateLimit({ windowMs: 60000, max: 20, message: { error: '请求过于频繁，请稍后再试' } });
 const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请求过于频繁，请稍后再试' } });
 const registerLimiter = rateLimit({ windowMs: 3600000, max: 5, message: { error: '注册过于频繁，请稍后再试' } });
-const XI_XU_IMAGE_TIMEOUT_MS = 300000;
-const XI_XU_GENERATE_TIMEOUT_MS = Number(process.env.XI_XU_GENERATE_TIMEOUT_MS || 1800000);
+const TEN_MINUTES_MS = 10 * 60 * 1000;
+const XI_XU_IMAGE_TIMEOUT_MS = Number(process.env.XI_XU_IMAGE_TIMEOUT_MS || TEN_MINUTES_MS);
+const XI_XU_GENERATE_TIMEOUT_MS = Number(process.env.XI_XU_GENERATE_TIMEOUT_MS || TEN_MINUTES_MS);
 const configuredXiGenerateRetries = Number(process.env.XI_XU_GENERATE_RETRIES || 1);
 const XI_XU_GENERATE_RETRIES = Number.isFinite(configuredXiGenerateRetries)
   ? Math.max(0, Math.min(Math.floor(configuredXiGenerateRetries), 2))
   : 1;
-const XI_XU_EDIT_TIMEOUT_MS = Number(process.env.XI_XU_EDIT_TIMEOUT_MS || 1800000);
+const XI_XU_EDIT_TIMEOUT_MS = Number(process.env.XI_XU_EDIT_TIMEOUT_MS || TEN_MINUTES_MS);
 const configuredXiEditRetries = Number(process.env.XI_XU_EDIT_RETRIES || 1);
 const XI_XU_EDIT_RETRIES = Number.isFinite(configuredXiEditRetries)
   ? Math.max(0, Math.min(Math.floor(configuredXiEditRetries), 2))
