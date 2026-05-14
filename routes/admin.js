@@ -28,6 +28,13 @@ function getXiXuBaseUrl() {
   return String(process.env.XI_XU_API_BASE_URL || 'https://api.xi-xu.me').replace(/\/+$/, '');
 }
 
+function getXiXuDiagnosticHeaders() {
+  const headers = {};
+  if (hasEnv('XI_XU_API_KEY')) headers.Authorization = `Bearer ${process.env.XI_XU_API_KEY}`;
+  if (hasEnv('XI_XU_PROXY_TOKEN')) headers['X-XiXu-Proxy-Token'] = process.env.XI_XU_PROXY_TOKEN;
+  return headers;
+}
+
 async function checkHttpReachable(url, headers = {}) {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -115,9 +122,7 @@ router.get('/stats', (req, res) => {
 router.get('/image-service-diagnostics', async (req, res) => {
   const xiXuBaseUrl = getXiXuBaseUrl();
   const apiKeyConfigured = hasEnv('XI_XU_API_KEY');
-  const modelsReachability = await checkHttpReachable(`${xiXuBaseUrl}/v1/models`, apiKeyConfigured ? {
-    Authorization: `Bearer ${process.env.XI_XU_API_KEY}`
-  } : {});
+  const modelsReachability = await checkHttpReachable(`${xiXuBaseUrl}/v1/models`, getXiXuDiagnosticHeaders());
 
   res.json({
     node: {
@@ -133,6 +138,7 @@ router.get('/image-service-diagnostics', async (req, res) => {
       xiXuApiKeyConfigured: apiKeyConfigured,
       xiXuImageModel: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
       xiXuVisionModel: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+      xiXuProxyTokenConfigured: hasEnv('XI_XU_PROXY_TOKEN'),
       xiXuMaxActiveJobs: process.env.XI_XU_MAX_ACTIVE_JOBS || '1',
       xiXuRateLimitPerMin: process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || '30',
       arkFallbackEnabled: /^true$/i.test(process.env.ARK_FALLBACK_ENABLED || ''),

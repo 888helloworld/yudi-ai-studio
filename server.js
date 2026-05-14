@@ -237,6 +237,13 @@ function buildXiXuUrl(pathname) {
   return `${baseUrl}${pathname}`;
 }
 
+function buildXiXuHeaders(headers = {}) {
+  const proxyToken = String(process.env.XI_XU_PROXY_TOKEN || '').trim();
+  return proxyToken
+    ? { ...headers, 'X-XiXu-Proxy-Token': proxyToken }
+    : headers;
+}
+
 function parseXiXuImages(data) {
   const urls = [];
   const addImage = (item) => {
@@ -1372,10 +1379,10 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
     const response = await withTimeout(fetch(buildXiXuUrl('/v1/images/generations'), {
       method: 'POST',
       signal: controller.signal,
-      headers: {
+      headers: buildXiXuHeaders({
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify({
         model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
         prompt,
@@ -1706,7 +1713,7 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
     const response = await withTimeout(fetch(buildXiXuUrl('/v1/images/edits'), {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+      headers: buildXiXuHeaders({ 'Authorization': `Bearer ${apiKey}` }),
       body: form
     }), timeoutMs, `gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
     const text = await withTimeout(
@@ -1975,10 +1982,10 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
     const response = await fetch(buildXiXuUrl('/v1/images/generations'), {
       method: 'POST',
       signal: controller.signal,
-      headers: {
+      headers: buildXiXuHeaders({
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify({
         model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
         prompt,
@@ -2162,10 +2169,10 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
     const response = await fetch(buildXiXuUrl('/v1/chat/completions'), {
       method: 'POST',
       signal: controller.signal,
-      headers: {
+      headers: buildXiXuHeaders({
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify({
         model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
         messages: [
