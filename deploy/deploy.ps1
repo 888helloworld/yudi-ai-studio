@@ -18,6 +18,20 @@ $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $Archive = Join-Path $env:TEMP "$AppName-deploy.tgz"
 $RemoteArchive = "/tmp/$AppName-deploy.tgz"
 $Remote = "$User@$HostName"
+$SshOptions = @("-i", $KeyPath, "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes")
+
+function Invoke-NativeChecked {
+  param(
+    [Parameter(Mandatory=$true)]
+    [string]$FilePath,
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]]$Arguments
+  )
+  & $FilePath @Arguments
+  if ($LASTEXITCODE -ne 0) {
+    throw "$FilePath failed with exit code $LASTEXITCODE"
+  }
+}
 
 if (-not (Test-Path -LiteralPath $KeyPath)) {
   throw "SSH key not found: $KeyPath"
@@ -62,7 +76,7 @@ $ArchiveInfo = Get-Item -LiteralPath $Archive
 Write-Host ("Archive: {0:N1} MB" -f ($ArchiveInfo.Length / 1MB))
 
 Write-Host "Uploading to ${Remote}:$RemoteArchive"
-scp -i $KeyPath -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes $Archive $Remote`:$RemoteArchive
+Invoke-NativeChecked scp @SshOptions $Archive $Remote`:$RemoteArchive
 
 $RemoteScript = @'
 set -e
@@ -104,6 +118,9 @@ $RemoteScript = $RemoteScript.
 $RemoteScript = $RemoteScript -replace "`r`n", "`n"
 
 Write-Host "Deploying on remote host"
-$RemoteScript | ssh -i $KeyPath -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes $Remote "bash -s"
+$RemoteScript | ssh @SshOptions $Remote "bash -s"
+if ($LASTEXITCODE -ne 0) {
+  throw "ssh failed with exit code $LASTEXITCODE"
+}
 
 Write-Host "Done. Deployment URL: http://$HostName/"
