@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats, paySuccess, closePaymentOrder } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
@@ -20,6 +22,52 @@ const DEFAULT_POINT_PACKAGES = [
 
 function hasEnv(name) {
   return Boolean(String(process.env[name] || '').trim());
+}
+
+function getXiXuBaseUrl() {
+  return String(process.env.XI_XU_API_BASE_URL || 'https://api.xi-xu.me').replace(/\/+$/, '');
+}
+
+async function checkHttpReachable(url, headers = {}) {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers
+    });
+    return {
+      ok: true,
+      status: res.status,
+      durationMs: Date.now() - startedAt
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err.code || err.name || 'REQUEST_FAILED',
+      message: err.message || String(err),
+      durationMs: Date.now() - startedAt
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function checkUploadDirectory() {
+  const uploadDir = path.join(__dirname, '..', 'uploads');
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    fs.accessSync(uploadDir, fs.constants.R_OK | fs.constants.W_OK);
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err.code || 'UPLOAD_DIR_ERROR',
+      message: err.message || String(err)
+    };
+  }
 }
 
 function getPaymentIntegrationStatus(req) {
@@ -62,6 +110,41 @@ router.use(authMiddleware, adminMiddleware);
 router.get('/stats', (req, res) => {
   const stats = getStats();
   res.json(stats);
+});
+
+router.get('/image-service-diagnostics', async (req, res) => {
+  const xiXuBaseUrl = getXiXuBaseUrl();
+  const apiKeyConfigured = hasEnv('XI_XU_API_KEY');
+  const modelsReachability = await checkHttpReachable(`${xiXuBaseUrl}/v1/models`, apiKeyConfigured ? {
+    Authorization: `Bearer ${process.env.XI_XU_API_KEY}`
+  } : {});
+
+  res.json({
+    node: {
+      version: process.version,
+      fetchAvailable: typeof fetch === 'function',
+      formDataAvailable: typeof FormData === 'function',
+      blobAvailable: typeof Blob === 'function'
+    },
+    env: {
+      nodeEnv: process.env.NODE_ENV || '',
+      port: process.env.PORT || '3001',
+      xiXuApiBaseUrl: xiXuBaseUrl,
+      xiXuApiKeyConfigured: apiKeyConfigured,
+      xiXuImageModel: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+      xiXuVisionModel: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+      xiXuMaxActiveJobs: process.env.XI_XU_MAX_ACTIVE_JOBS || '1',
+      xiXuRateLimitPerMin: process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || '30',
+      arkFallbackEnabled: /^true$/i.test(process.env.ARK_FALLBACK_ENABLED || ''),
+      arkApiKeyConfigured: hasEnv('ARK_API_KEY')
+    },
+    storage: {
+      uploads: checkUploadDirectory()
+    },
+    upstream: {
+      modelsEndpoint: modelsReachability
+    }
+  });
 });
 
 // 获取所有用户
