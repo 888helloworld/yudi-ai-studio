@@ -487,6 +487,8 @@ function isTransientXiXuError(err) {
     'abort',
     'rate limit',
     'too many requests',
+    '上游服务暂时异常',
+    '服务暂时异常',
     ' 429',
     ' 500',
     ' 502',
