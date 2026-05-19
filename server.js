@@ -1,4 +1,4 @@
-try { require('dotenv').config(); } catch {}
+require('dotenv').config();
 
 const express = require('express');
 const multer = require('multer');
@@ -1900,7 +1900,7 @@ app.post('/api/xi-image/jobs/generate', xiImageLimiter, authMiddleware, (req, re
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'medium';
+  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
   const costPoints = POINTS.image * count;
   try {
@@ -1916,7 +1916,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'medium';
+  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
   sourceFiles.forEach((file, index) => {
     file.originalname = getSourceImageFilename(index);
@@ -1959,7 +1959,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'medium';
+  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
 
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
   const totalCost = POINTS.image * count;
@@ -2059,7 +2059,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'medium';
+  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
   sourceFiles.forEach((file, index) => {
     file.originalname = getSourceImageFilename(index);

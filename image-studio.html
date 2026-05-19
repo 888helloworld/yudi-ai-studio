@@ -2509,6 +2509,48 @@
     renderTaskPage();
     updateStats();
   </script>
+<script>
+  (() => {
+    function setNativeControl(selector, value) {
+      document.querySelectorAll(selector).forEach((el) => {
+        if (el.tagName === 'SELECT') {
+          const hasOption = Array.from(el.options || []).some((option) => option.value === value);
+          if (!hasOption || el.value === value) return;
+          el.value = value;
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          return;
+        }
+        if ((el.type === 'radio' || el.type === 'checkbox') && el.value === value && !el.checked) {
+          el.checked = true;
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    }
+
+    function clickSegmentButton(attribute, value) {
+      document.querySelectorAll(`[${attribute}="${value}"]`).forEach((el) => {
+        if (el instanceof HTMLButtonElement || el.getAttribute('role') === 'button') {
+          el.click();
+        }
+      });
+    }
+
+    function applyImageStudioDefaults() {
+      setNativeControl('select, input[type="radio"], input[type="checkbox"]', '1024x1536');
+      setNativeControl('select, input[type="radio"], input[type="checkbox"]', 'high');
+      ['data-size', 'data-value', 'data-ratio', 'data-quality'].forEach((attr) => {
+        clickSegmentButton(attr, '1024x1536');
+        clickSegmentButton(attr, 'high');
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyImageStudioDefaults);
+    } else {
+      applyImageStudioDefaults();
+    }
+  })();
+</script>
 </body>
 </html>
 
