@@ -322,9 +322,9 @@
           <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.01</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.05</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.17</span></div>
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.00474</span></div>
+              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.04116</span></div>
+              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.16464</span></div>
             </div>
           </div>
         </div>
@@ -485,11 +485,33 @@
     const DEFAULT_QUALITY = 'high';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
-    const IMAGE_PRICE_MAP = {
-      low: { '1024x1024': 0.01, '1024x1536': 0.01, '1536x1024': 0.01, '2560x1440': 0.01, '3840x2160': 0.02 },
-      medium: { '1024x1024': 0.06, '1024x1536': 0.05, '1536x1024': 0.05, '2560x1440': 0.06, '3840x2160': 0.11 },
-      high: { '1024x1024': 0.22, '1024x1536': 0.17, '1536x1024': 0.17, '2560x1440': 0.23, '3840x2160': 0.41 }
+    const GPT_IMAGE_2_QUALITY_BASE = { low: 16, medium: 48, high: 96 };
+    const getGptImage2OutputTokens = (quality, size) => {
+      const base = GPT_IMAGE_2_QUALITY_BASE[quality];
+      const match = /^(\d+)x(\d+)$/i.exec(String(size || '').trim());
+      if (!base || !match) return 0;
+      const width = Number(match[1]);
+      const height = Number(match[2]);
+      const pixels = width * height;
+      const longSide = Math.max(width, height);
+      const shortSide = Math.min(width, height);
+      if (
+        width % 16 !== 0 ||
+        height % 16 !== 0 ||
+        pixels < 655360 ||
+        pixels > 8294400 ||
+        longSide > 3840 ||
+        longSide / shortSide > 3
+      ) return 0;
+      const scaledShort = Math.round(base * shortSide / longSide);
+      const grid = base * scaledShort;
+      return Math.ceil(grid * (2000000 + pixels) / 4000000);
     };
+    const getGptImage2Price = (quality, size) => {
+      const tokens = getGptImage2OutputTokens(quality, size);
+      return tokens > 0 ? tokens * 30 / 1000000 : NaN;
+    };
+    const formatGptImage2Price = (price) => Number.isFinite(price) ? `$${price.toFixed(5)}` : '';
     const REVERSE_TEMPLATE_HINTS = {
       general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
       amazon: '适合家居、清洁、服饰配件等产品主图，重点输出专业棚拍和亚马逊白底主图提示词。',
@@ -1861,16 +1883,16 @@
       const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
-      const unitPrice = IMAGE_PRICE_MAP[state.quality]?.[state.selectedSize];
-      const priceText = Number.isFinite(unitPrice) ? ` · 约 $${(unitPrice * totalImages).toFixed(2)}` : '';
+      const unitPrice = getGptImage2Price(state.quality, state.selectedSize);
+      const priceText = Number.isFinite(unitPrice) ? ` · 约 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
       if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组${priceText}`;
     }
 
     function updateQualityPrices() {
       qualityPriceEls.forEach((el) => {
         const quality = el.dataset.priceQuality;
-        const price = IMAGE_PRICE_MAP[quality]?.[state.selectedSize];
-        el.textContent = Number.isFinite(price) ? `$${price.toFixed(2)}` : '';
+        const price = getGptImage2Price(quality, state.selectedSize);
+        el.textContent = formatGptImage2Price(price);
       });
     }
 
