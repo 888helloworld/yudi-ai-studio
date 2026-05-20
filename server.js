@@ -1440,7 +1440,7 @@ async function callXiXuGenerateViaResponses({ prompt, size, count, quality }, at
         'Content-Type': 'application/json'
       }),
       body: JSON.stringify({
-        model: process.env.XI_XU_RESPONSES_MODEL || process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+        model: process.env.XI_XU_RESPONSES_MODEL || 'gpt-5.4-mini',
         input: prompt,
         tools: [{
           type: 'image_generation',
