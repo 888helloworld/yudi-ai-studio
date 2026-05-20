@@ -500,6 +500,7 @@
     let reverseSelectedFile = null;
     let reversePreviewUrl = '';
     let currentPreviewImage = null;
+    let pasteTargetMode = 'source';
 
     const state = {
       tasks: [],
@@ -601,11 +602,19 @@
     });
 
     sourceGrid.addEventListener('click', () => {
+      pasteTargetMode = 'source';
       const emptyIndex = getFirstEmptySourceIndex();
       if (emptyIndex >= 0) sourceSlots[emptyIndex].focus();
     });
+    sourceGrid.addEventListener('pointerenter', () => {
+      pasteTargetMode = 'source';
+    });
     reverseDropZone.tabIndex = 0;
+    reverseDropZone.addEventListener('pointerenter', () => {
+      pasteTargetMode = 'reverse';
+    });
     reverseDropZone.addEventListener('click', () => {
+      pasteTargetMode = 'reverse';
       reverseDropZone.focus();
       reverseDropZone.classList.add('paste-ready');
       setTimeout(() => reverseDropZone.classList.remove('paste-ready'), 1800);
@@ -1999,6 +2008,7 @@
     }
 
     function shouldIgnoreImagePaste(target) {
+      if (pasteTargetMode === 'reverse') return true;
       const active = document.activeElement;
       if (active?.closest?.('#reversePrompt, .preview-overlay, .prompt-preview-overlay')) return true;
       if (!target) return false;
@@ -2010,7 +2020,7 @@
 
     function isReversePasteTarget(target) {
       const active = document.activeElement;
-      return Boolean(target?.closest?.('#reversePrompt') || active?.closest?.('#reversePrompt'));
+      return Boolean(pasteTargetMode === 'reverse' || target?.closest?.('#reversePrompt') || active?.closest?.('#reversePrompt'));
     }
 
     function getImageFileFromClipboard(clipboardData, basename = 'pasted_source') {
