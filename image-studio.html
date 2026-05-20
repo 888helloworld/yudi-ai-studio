@@ -604,6 +604,12 @@
       const emptyIndex = getFirstEmptySourceIndex();
       if (emptyIndex >= 0) sourceSlots[emptyIndex].focus();
     });
+    reverseDropZone.tabIndex = 0;
+    reverseDropZone.addEventListener('click', () => {
+      reverseDropZone.focus();
+      reverseDropZone.classList.add('paste-ready');
+      setTimeout(() => reverseDropZone.classList.remove('paste-ready'), 1800);
+    });
     document.addEventListener('paste', handleSourcePaste);
     document.addEventListener('paste', handleReversePaste);
 
@@ -1993,6 +1999,8 @@
     }
 
     function shouldIgnoreImagePaste(target) {
+      const active = document.activeElement;
+      if (active?.closest?.('#reversePrompt, .preview-overlay, .prompt-preview-overlay')) return true;
       if (!target) return false;
       const tagName = target.tagName;
       if (tagName === 'TEXTAREA') return false;
@@ -2001,7 +2009,8 @@
     }
 
     function isReversePasteTarget(target) {
-      return Boolean(target?.closest?.('#reversePrompt'));
+      const active = document.activeElement;
+      return Boolean(target?.closest?.('#reversePrompt') || active?.closest?.('#reversePrompt'));
     }
 
     function getImageFileFromClipboard(clipboardData, basename = 'pasted_source') {
