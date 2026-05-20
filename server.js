@@ -246,7 +246,15 @@ function buildXiImageUrl(pathname) {
 }
 
 function getXiImageApiKey() {
-  return getRequiredEnv('OPENAI_IMAGE_API_KEY') || getRequiredEnv('XI_XU_API_KEY');
+  if (getRequiredEnv('OPENAI_IMAGE_API_KEY') || getRequiredEnv('OPENAI_IMAGE_API_BASE_URL')) {
+    return getRequiredEnv('OPENAI_IMAGE_API_KEY');
+  }
+  return getRequiredEnv('XI_XU_API_KEY');
+}
+
+function isOfficialOpenAIImageApi() {
+  const baseUrl = (process.env.OPENAI_IMAGE_API_BASE_URL || '').trim();
+  return Boolean(getRequiredEnv('OPENAI_IMAGE_API_KEY')) && (!baseUrl || /api\.openai\.com/i.test(baseUrl));
 }
 
 function buildXiImageHeaders(headers = {}) {
@@ -683,7 +691,34 @@ function saveDataUrlImage(dataUrl, prefix) {
   return `/uploads/${filename}`;
 }
 
-async function saveXiXuImages(imageUrls, prefix) {
+function getLocalUploadPath(url) {
+  const match = String(url || '').match(/^\/uploads\/([^/?#]+)$/);
+  if (!match) return null;
+  const filename = path.basename(match[1]);
+  return path.join(UPLOAD_DIR, filename);
+}
+
+function assertSavedImageDimensions(localUrls, expectedSize) {
+  if (!expectedSize || !XI_IMAGE_SIZES.includes(expectedSize)) return;
+  const [expectedWidth, expectedHeight] = expectedSize.split('x').map(Number);
+  for (const url of localUrls) {
+    const filepath = getLocalUploadPath(url);
+    if (!filepath || !fs.existsSync(filepath)) continue;
+    const buffer = fs.readFileSync(filepath);
+    let png;
+    try {
+      png = PNG.sync.read(buffer);
+    } catch {
+      continue;
+    }
+    if (png.width !== expectedWidth || png.height !== expectedHeight) {
+      try { fs.unlinkSync(filepath); } catch {}
+      throw new Error(`上游返回图片尺寸不匹配：请求 ${expectedSize}，实际 ${png.width}x${png.height}。本次没有生成图片，积分已退回。`);
+    }
+  }
+}
+
+async function saveXiXuImages(imageUrls, prefix, expectedSize = '') {
   const saved = [];
   for (let index = 0; index < imageUrls.length; index += 1) {
     const url = imageUrls[index];
@@ -693,6 +728,7 @@ async function saveXiXuImages(imageUrls, prefix) {
       saved.push(await downloadAndSaveImage(url, `${prefix}_${index + 1}`));
     }
   }
+  assertSavedImageDimensions(saved, expectedSize);
   return saved;
 }
 
@@ -1426,7 +1462,7 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
     }
     const imageUrls = parseXiXuImages(data);
     if (imageUrls.length === 0) throw new Error('上游未返回图片');
-    return saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`);
+    return saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
   } catch (err) {
     const normalizedErr = err.name === 'AbortError'
       ? new Error(`gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
@@ -1479,8 +1515,17 @@ function xiSizeToArkSize(size) {
 }
 
 const XI_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440', '3840x2160'];
+const XI_HIGH_RES_IMAGE_SIZES = new Set(['2560x1440', '3840x2160']);
 function parseXiImageSize(size) {
   return XI_IMAGE_SIZES.includes(size) ? size : '1024x1536';
+}
+
+function assertXiImageSizeSupported(size) {
+  if (XI_HIGH_RES_IMAGE_SIZES.has(size) && !isOfficialOpenAIImageApi()) {
+    const err = new Error('2K/4K 需要配置官方 OpenAI 图片接口，当前 xi-xu 兼容通道只支持 1024x1024、1024x1536、1536x1024。');
+    err.statusCode = 400;
+    throw err;
+  }
 }
 
 async function callArkGenerateForXiJob({ prompt, size, count }) {
@@ -1511,7 +1556,7 @@ async function callArkGenerateForXiJob({ prompt, size, count }) {
     remoteUrls.push(url);
   }
   if (remoteUrls.length === 0) throw new Error('备用图片服务未返回图片');
-  return saveXiXuImages(remoteUrls, `xixu_ark_fallback_${size.replace('x', '_')}`);
+  return saveXiXuImages(remoteUrls, `xixu_ark_fallback_${size.replace('x', '_')}`, size);
 }
 
 async function callArkEditFallbackForXiJob({ prompt, size, count, sourceFiles, promptOverride }) {
@@ -1530,7 +1575,7 @@ async function callArkEditFallbackForXiJob({ prompt, size, count, sourceFiles, p
     watermark: false
   }, count);
   if (remoteUrls.length === 0) throw new Error('备用改图服务未返回图片');
-  return saveXiXuImages(remoteUrls, `xixu_ark_edit_fallback_${size.replace('x', '_')}`);
+  return saveXiXuImages(remoteUrls, `xixu_ark_edit_fallback_${size.replace('x', '_')}`, size);
 }
 
 function getXiEditLabels() {
@@ -1759,7 +1804,7 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
     }
     const imageUrls = parseXiXuImages(data);
     if (imageUrls.length === 0) throw new Error('上游未返回图片');
-    const localUrls = await saveXiXuImages(imageUrls, `xixu_edit_${size.replace('x', '_')}`);
+    const localUrls = await saveXiXuImages(imageUrls, `xixu_edit_${size.replace('x', '_')}`, size);
     markXiXuEditSuccess();
     return localUrls;
   } catch (err) {
@@ -1928,6 +1973,11 @@ app.post('/api/xi-image/jobs/generate', xiImageLimiter, authMiddleware, (req, re
   const count = parseXiXuImageCount(req.body.count);
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
+  try {
+    assertXiImageSizeSupported(size);
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
   const costPoints = POINTS.image * count;
   try {
     chargePoints(req.userId, costPoints, `gpt-image-2 生图 x${count}`);
@@ -1949,6 +1999,11 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   });
   if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
   if (sourceFiles.length === 0) return res.status(400).json({ error: '请至少上传一张原图' });
+  try {
+    assertXiImageSizeSupported(size);
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
   if (sourceFiles.some((file) => file.mimetype !== 'image/png')) {
     return res.status(400).json({ error: '改图原图需为 PNG 格式，请刷新页面后重新上传，页面会自动转换' });
   }
@@ -1988,6 +2043,11 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
 
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
+  try {
+    assertXiImageSizeSupported(size);
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
   const totalCost = POINTS.image * count;
   let charged = false;
   try {
@@ -2046,7 +2106,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
       charged = false;
       return res.status(502).json({ error: '上游未返回图片' });
     }
-    const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`);
+    const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
     const actualCount = Math.min(localUrls.length, count);
     const actualCost = POINTS.image * actualCount;
     const refundAmount = Math.max(totalCost - actualCost, 0);
@@ -2095,6 +2155,11 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
 
   if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
   if (sourceFiles.length === 0) return res.status(400).json({ error: '请至少上传一张原图' });
+  try {
+    assertXiImageSizeSupported(size);
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
   if (sourceFiles.some((file) => file.mimetype !== 'image/png')) {
     return res.status(400).json({ error: '改图原图需为 PNG 格式，请刷新页面后重新上传，页面会自动转换' });
   }
