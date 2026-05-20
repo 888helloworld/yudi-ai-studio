@@ -322,9 +322,9 @@
           <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.00474</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.04116</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.16464</span></div>
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.0047</span></div>
+              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.0411</span></div>
+              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.1646</span></div>
             </div>
           </div>
         </div>
@@ -511,7 +511,10 @@
       const tokens = getGptImage2OutputTokens(quality, size);
       return tokens > 0 ? tokens * 30 / 1000000 : NaN;
     };
-    const formatGptImage2Price = (price) => Number.isFinite(price) ? `$${price.toFixed(5)}` : '';
+    const formatGptImage2Price = (price) => {
+      if (!Number.isFinite(price)) return '';
+      return `$${(Math.trunc(price * 10000) / 10000).toFixed(4)}`;
+    };
     const REVERSE_TEMPLATE_HINTS = {
       general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
       amazon: '适合家居、清洁、服饰配件等产品主图，重点输出专业棚拍和亚马逊白底主图提示词。',
