@@ -322,9 +322,9 @@
           <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">¥0.1</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">¥0.4</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">¥1.2</span></div>
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.01</span></div>
+              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.05</span></div>
+              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.17</span></div>
             </div>
           </div>
         </div>
@@ -485,15 +485,10 @@
     const DEFAULT_QUALITY = 'high';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
-    const USD_TO_CNY_RATE = 6.8;
-    const IMAGE_PRICE_USD_MAP = {
+    const IMAGE_PRICE_MAP = {
       low: { '1024x1024': 0.01, '1024x1536': 0.01, '1536x1024': 0.01, '2560x1440': 0.01, '3840x2160': 0.02 },
       medium: { '1024x1024': 0.06, '1024x1536': 0.05, '1536x1024': 0.05, '2560x1440': 0.06, '3840x2160': 0.11 },
       high: { '1024x1024': 0.22, '1024x1536': 0.17, '1536x1024': 0.17, '2560x1440': 0.23, '3840x2160': 0.41 }
-    };
-    const getImagePriceCny = (quality, size) => {
-      const usd = IMAGE_PRICE_USD_MAP[quality]?.[size];
-      return Number.isFinite(usd) ? Math.round(usd * USD_TO_CNY_RATE * 10) / 10 : NaN;
     };
     const REVERSE_TEMPLATE_HINTS = {
       general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
@@ -1866,16 +1861,16 @@
       const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
-      const unitPrice = getImagePriceCny(state.quality, state.selectedSize);
-      const priceText = Number.isFinite(unitPrice) ? ` · 约 ¥${(Math.round(unitPrice * totalImages * 10) / 10).toFixed(1)}` : '';
+      const unitPrice = IMAGE_PRICE_MAP[state.quality]?.[state.selectedSize];
+      const priceText = Number.isFinite(unitPrice) ? ` · 约 $${(unitPrice * totalImages).toFixed(2)}` : '';
       if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组${priceText}`;
     }
 
     function updateQualityPrices() {
       qualityPriceEls.forEach((el) => {
         const quality = el.dataset.priceQuality;
-        const price = getImagePriceCny(quality, state.selectedSize);
-        el.textContent = Number.isFinite(price) ? `¥${price.toFixed(1)}` : '';
+        const price = IMAGE_PRICE_MAP[quality]?.[state.selectedSize];
+        el.textContent = Number.isFinite(price) ? `$${price.toFixed(2)}` : '';
       });
     }
 
