@@ -238,6 +238,22 @@ function buildXiXuUrl(pathname) {
   return `${baseUrl}${pathname}`;
 }
 
+function buildXiImageUrl(pathname) {
+  const baseUrl = (process.env.OPENAI_IMAGE_API_BASE_URL || process.env.XI_XU_API_BASE_URL || 'https://api.xi-xu.me').replace(/\/+$/, '');
+  if (baseUrl.includes('?path=')) return `${baseUrl}${encodeURIComponent(pathname)}`;
+  if (baseUrl.endsWith('/v1') && pathname.startsWith('/v1/')) return `${baseUrl}${pathname.slice(3)}`;
+  return `${baseUrl}${pathname}`;
+}
+
+function getXiImageApiKey() {
+  return getRequiredEnv('OPENAI_IMAGE_API_KEY') || getRequiredEnv('XI_XU_API_KEY');
+}
+
+function buildXiImageHeaders(headers = {}) {
+  if (getRequiredEnv('OPENAI_IMAGE_API_KEY') || getRequiredEnv('OPENAI_IMAGE_API_BASE_URL')) return headers;
+  return buildXiXuHeaders(headers);
+}
+
 function buildXiXuHeaders(headers = {}) {
   const proxyToken = String(process.env.XI_XU_PROXY_TOKEN || '').trim();
   return proxyToken
@@ -612,6 +628,7 @@ const SIZE_MAP = {
 // 图片本地存储
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const MAX_SAVED_IMAGE_BYTES = 80 * 1024 * 1024;
 app.use('/uploads', express.static(UPLOAD_DIR, {
   index: false,
   fallthrough: false,
@@ -624,14 +641,14 @@ app.use('/uploads', express.static(UPLOAD_DIR, {
 
 async function downloadAndSaveImage(url, prefix) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
   try {
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw new Error(`下载失败: ${response.status}`);
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.startsWith('image/')) throw new Error('下载内容不是图片');
     const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > 10 * 1024 * 1024) throw new Error('图片文件过大');
+    if (buffer.length > MAX_SAVED_IMAGE_BYTES) throw new Error('图片文件过大');
     const ext = url.includes('.jpg') || url.includes('jpeg') ? '.jpg' : '.png';
     const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
     const filepath = path.join(UPLOAD_DIR, filename);
@@ -658,7 +675,7 @@ function saveDataUrlImage(dataUrl, prefix) {
   if (!match) return null;
   const mimeType = match[1];
   const buffer = Buffer.from(match[2], 'base64');
-  if (!buffer.length || buffer.length > 20 * 1024 * 1024) return null;
+  if (!buffer.length || buffer.length > MAX_SAVED_IMAGE_BYTES) return null;
   const ext = getImageExtension(mimeType);
   const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
   const filepath = path.join(UPLOAD_DIR, filename);
@@ -1372,17 +1389,17 @@ function recoverStaleXiJobHistories() {
 recoverStaleXiJobHistories();
 
 async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
-  const apiKey = getRequiredEnv('XI_XU_API_KEY');
+  const apiKey = getXiImageApiKey();
   if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
 
   const controller = new AbortController();
   const timeoutMs = Math.max(XI_XU_GENERATE_TIMEOUT_MS, 30000);
   const startedAt = Date.now();
   try {
-    const response = await withTimeout(fetch(buildXiXuUrl('/v1/images/generations'), {
+    const response = await withTimeout(fetch(buildXiImageUrl('/v1/images/generations'), {
       method: 'POST',
       signal: controller.signal,
-      headers: buildXiXuHeaders({
+      headers: buildXiImageHeaders({
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       }),
@@ -1391,7 +1408,8 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
         prompt,
         size,
         n: count,
-        quality
+        quality,
+        output_format: 'png'
       })
     }), timeoutMs, `gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
     const text = await withTimeout(
@@ -1700,7 +1718,7 @@ function createReferenceBoardFile(sourceFiles = []) {
 }
 
 async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, promptOverride }, attempt = 1) {
-  const apiKey = getRequiredEnv('XI_XU_API_KEY');
+  const apiKey = getXiImageApiKey();
   if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
   if (XI_XU_EDIT_FORCE_FALLBACK) throw new Error('gpt-image-2 改图已临时切到备用通道');
   const circuitMessage = getXiXuEditCircuitMessage();
@@ -1719,11 +1737,12 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
     form.append('size', size);
     form.append('n', String(count));
     form.append('quality', quality);
+    form.append('output_format', 'png');
 
-    const response = await withTimeout(fetch(buildXiXuUrl('/v1/images/edits'), {
+    const response = await withTimeout(fetch(buildXiImageUrl('/v1/images/edits'), {
       method: 'POST',
       signal: controller.signal,
-      headers: buildXiXuHeaders({ 'Authorization': `Bearer ${apiKey}` }),
+      headers: buildXiImageHeaders({ 'Authorization': `Bearer ${apiKey}` }),
       body: form
     }), timeoutMs, `gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
     const text = await withTimeout(
@@ -1978,7 +1997,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
     return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
   }
 
-  const apiKey = getRequiredEnv('XI_XU_API_KEY');
+  const apiKey = getXiImageApiKey();
   if (!apiKey) {
     refundPoints(req.userId, totalCost, 'gpt-image-2 生图失败退款');
     return res.status(500).json({ error: 'gpt-image-2 图片服务未配置' });
@@ -1989,10 +2008,10 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
   const timeout = setTimeout(() => controller.abort(), XI_XU_IMAGE_TIMEOUT_MS);
 
   try {
-    const response = await fetch(buildXiXuUrl('/v1/images/generations'), {
+    const response = await fetch(buildXiImageUrl('/v1/images/generations'), {
       method: 'POST',
       signal: controller.signal,
-      headers: buildXiXuHeaders({
+      headers: buildXiImageHeaders({
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       }),
@@ -2001,7 +2020,8 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
         prompt,
         size,
         n: count,
-        quality
+        quality,
+        output_format: 'png'
       })
     });
 
