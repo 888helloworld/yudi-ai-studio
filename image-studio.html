@@ -292,9 +292,11 @@
         <div class="form-group">
           <label>图片尺寸</label>
           <div class="ratio-selector" id="sizeSelector">
-          <div class="ratio-btn" data-size="1024x1024">1:1 方形 · 1024×1024</div>
-          <div class="ratio-btn active" data-size="1024x1536">2:3 竖图 · 1024×1536</div>
+            <div class="ratio-btn" data-size="1024x1024">1:1 方形 · 1024×1024</div>
+            <div class="ratio-btn active" data-size="1024x1536">2:3 竖图 · 1024×1536</div>
             <div class="ratio-btn" data-size="1536x1024">3:2 横图 · 1536×1024</div>
+            <div class="ratio-btn" data-size="2560x1440">2K 横图 · 2560×1440</div>
+            <div class="ratio-btn" data-size="3840x2160">4K 横图 · 3840×2160</div>
           </div>
         </div>
 
@@ -478,14 +480,15 @@
     const reverseTemplateHint = document.getElementById('reverseTemplateHint');
     const MAX_BATCH_COUNT = 1000;
     const MAX_PARALLELISM = Number.MAX_SAFE_INTEGER;
+    const SUPPORTED_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440', '3840x2160'];
     const DEFAULT_SIZE = '1024x1536';
     const DEFAULT_QUALITY = 'high';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
     const IMAGE_PRICE_MAP = {
-      low: { '1024x1024': '$0.009', '1024x1536': '$0.013', '1536x1024': '$0.013' },
-      medium: { '1024x1024': '$0.034', '1024x1536': '$0.050', '1536x1024': '$0.050' },
-      high: { '1024x1024': '$0.133', '1024x1536': '$0.200', '1536x1024': '$0.200' }
+      low: { '1024x1024': '$0.009', '1024x1536': '$0.013', '1536x1024': '$0.013', '2560x1440': '2K', '3840x2160': '4K' },
+      medium: { '1024x1024': '$0.034', '1024x1536': '$0.050', '1536x1024': '$0.050', '2560x1440': '2K', '3840x2160': '4K' },
+      high: { '1024x1024': '$0.133', '1024x1536': '$0.200', '1536x1024': '$0.200', '2560x1440': '2K', '3840x2160': '4K' }
     };
     const REVERSE_TEMPLATE_HINTS = {
       general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
@@ -1381,7 +1384,7 @@
         return;
       }
       promptEl.value = task.prompt || '';
-      state.selectedSize = ['1024x1024', '1024x1536', '1536x1024'].includes(task.size) ? task.size : state.selectedSize;
+      state.selectedSize = SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : state.selectedSize;
       state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : state.quality;
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
@@ -1516,7 +1519,7 @@
       }
       try {
         promptEl.value = task.prompt || '';
-        state.selectedSize = ['1024x1024', '1024x1536', '1536x1024'].includes(task.size) ? task.size : DEFAULT_SIZE;
+        state.selectedSize = SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : DEFAULT_SIZE;
         state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : DEFAULT_QUALITY;
         countEl.value = 1;
         batchCountEl.value = DEFAULT_BATCH_COUNT;

@@ -1453,9 +1453,16 @@ function xiSizeToArkSize(size) {
   const map = {
     '1024x1024': { width: 1920, height: 1920 },
     '1024x1536': { width: 1920, height: 2560 },
-    '1536x1024': { width: 2560, height: 1920 }
+    '1536x1024': { width: 2560, height: 1920 },
+    '2560x1440': { width: 2560, height: 1440 },
+    '3840x2160': { width: 3840, height: 2160 }
   };
   return map[size] || map['1024x1024'];
+}
+
+const XI_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440', '3840x2160'];
+function parseXiImageSize(size) {
+  return XI_IMAGE_SIZES.includes(size) ? size : '1024x1536';
 }
 
 async function callArkGenerateForXiJob({ prompt, size, count }) {
@@ -1898,7 +1905,7 @@ app.get('/api/xi-image/jobs/:id', authMiddleware, (req, res) => {
 
 app.post('/api/xi-image/jobs/generate', xiImageLimiter, authMiddleware, (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 3000);
-  const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
+  const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
@@ -1914,7 +1921,7 @@ app.post('/api/xi-image/jobs/generate', xiImageLimiter, authMiddleware, (req, re
 
 app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array('image', 4), validateUploadedImageFiles, (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 3000);
-  const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
+  const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
@@ -1957,7 +1964,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
 // gpt-image-2 OpenAI兼容生图接口
 app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 3000);
-  const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
+  const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
 
@@ -2057,7 +2064,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
 // gpt-image-2 OpenAI兼容改图接口：上传原图后按用户提示词编辑
 app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('image', 4), validateUploadedImageFiles, async (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 3000);
-  const size = ['1024x1024', '1024x1536', '1536x1024'].includes(req.body.size) ? req.body.size : '1024x1536';
+  const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
