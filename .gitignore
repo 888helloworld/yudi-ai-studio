@@ -10,6 +10,7 @@ data.db
 data.db-*
 history.json
 uploads/
+output/
 logs/
 *.log
 *.out

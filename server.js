@@ -279,7 +279,7 @@ function parseXiXuImages(data) {
     }
     const url = item.url || item.image_url;
     if (url) urls.push(url);
-    const b64 = item.b64_json || item.base64 || item.image_base64;
+    const b64 = item.b64_json || item.base64 || item.image_base64 || item.result;
     if (b64) urls.push(b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`);
   };
 
@@ -1424,7 +1424,72 @@ function recoverStaleXiJobHistories() {
 
 recoverStaleXiJobHistories();
 
+async function callXiXuGenerateViaResponses({ prompt, size, count, quality }, attempt) {
+  const apiKey = getXiImageApiKey();
+  if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
+
+  const controller = new AbortController();
+  const timeoutMs = Math.max(XI_XU_GENERATE_TIMEOUT_MS, 30000);
+  const startedAt = Date.now();
+  try {
+    const response = await withTimeout(fetch(buildXiImageUrl('/v1/responses'), {
+      method: 'POST',
+      signal: controller.signal,
+      headers: buildXiImageHeaders({
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify({
+        model: process.env.XI_XU_RESPONSES_MODEL || process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+        input: prompt,
+        tools: [{
+          type: 'image_generation',
+          model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+          size,
+          quality,
+          output_format: 'png'
+        }]
+      })
+    }), timeoutMs, `gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
+    const text = await withTimeout(
+      response.text(),
+      timeoutMs,
+      `gpt-image-2 生图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`,
+      () => controller.abort()
+    );
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+    if (!response.ok) {
+      const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
+      throw new Error(formatUpstreamError(upstreamError, '生图服务暂时不可用，请稍后再试'));
+    }
+    const imageUrls = parseXiXuImages(data).slice(0, count);
+    if (imageUrls.length === 0) throw new Error('上游未返回图片');
+    return saveXiXuImages(imageUrls, `xixu_responses_gen_${size.replace('x', '_')}`, size);
+  } catch (err) {
+    const normalizedErr = err.name === 'AbortError'
+      ? new Error(`gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
+      : err;
+    logXiXuGenerateError(normalizedErr, {
+      attempt,
+      endpoint: 'responses',
+      size,
+      count,
+      quality,
+      durationMs: Date.now() - startedAt
+    });
+    if (err.name === 'AbortError') throw normalizedErr;
+    throw err;
+  } finally {
+    controller.abort();
+  }
+}
+
 async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
+  if (XI_HIGH_RES_IMAGE_SIZES.has(size)) {
+    return callXiXuGenerateViaResponses({ prompt, size, count, quality }, attempt);
+  }
+
   const apiKey = getXiImageApiKey();
   if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
 
@@ -1521,8 +1586,8 @@ function parseXiImageSize(size) {
 }
 
 function assertXiImageSizeSupported(size) {
-  if (XI_HIGH_RES_IMAGE_SIZES.has(size) && !isOfficialOpenAIImageApi()) {
-    const err = new Error('2K/4K 需要配置官方 OpenAI 图片接口，当前 xi-xu 兼容通道只支持 1024x1024、1024x1536、1536x1024。');
+  if (!XI_IMAGE_SIZES.includes(size)) {
+    const err = new Error('无效的图片尺寸');
     err.statusCode = 400;
     throw err;
   }
