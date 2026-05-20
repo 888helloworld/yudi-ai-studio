@@ -322,10 +322,11 @@
           <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.009</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.034</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.133</span></div>
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.01/张</span></div>
+              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.05/张</span></div>
+              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.17/张</span></div>
             </div>
+            <div class="field-hint">显示为 GPT-Image-2 官方 token 计费折算的 API 成本估算，实际账单以接口返回为准。</div>
           </div>
         </div>
 
@@ -486,9 +487,9 @@
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
     const IMAGE_PRICE_MAP = {
-      low: { '1024x1024': '$0.009', '1024x1536': '$0.013', '1536x1024': '$0.013', '2560x1440': '2K', '3840x2160': '4K' },
-      medium: { '1024x1024': '$0.034', '1024x1536': '$0.050', '1536x1024': '$0.050', '2560x1440': '2K', '3840x2160': '4K' },
-      high: { '1024x1024': '$0.133', '1024x1536': '$0.200', '1536x1024': '$0.200', '2560x1440': '2K', '3840x2160': '4K' }
+      low: { '1024x1024': 0.01, '1024x1536': 0.01, '1536x1024': 0.01, '2560x1440': 0.01, '3840x2160': 0.02 },
+      medium: { '1024x1024': 0.06, '1024x1536': 0.05, '1536x1024': 0.05, '2560x1440': 0.06, '3840x2160': 0.11 },
+      high: { '1024x1024': 0.22, '1024x1536': 0.17, '1536x1024': 0.17, '2560x1440': 0.23, '3840x2160': 0.41 }
     };
     const REVERSE_TEMPLATE_HINTS = {
       general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
@@ -546,6 +547,7 @@
         btn.classList.add('active');
         state.selectedSize = btn.dataset.size;
         updateQualityPrices();
+        updateEstimate();
       });
     });
 
@@ -554,6 +556,7 @@
         document.querySelectorAll('#qualitySelector .quality-btn').forEach((item) => item.classList.remove('active'));
         btn.classList.add('active');
         state.quality = btn.dataset.quality;
+        updateEstimate();
       });
     });
 
@@ -1859,13 +1862,16 @@
       const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
-      if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组`;
+      const unitPrice = IMAGE_PRICE_MAP[state.quality]?.[state.selectedSize];
+      const priceText = Number.isFinite(unitPrice) ? ` · 约 $${(unitPrice * totalImages).toFixed(2)}` : '';
+      if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组${priceText}`;
     }
 
     function updateQualityPrices() {
       qualityPriceEls.forEach((el) => {
         const quality = el.dataset.priceQuality;
-        el.textContent = IMAGE_PRICE_MAP[quality]?.[state.selectedSize] || '';
+        const price = IMAGE_PRICE_MAP[quality]?.[state.selectedSize];
+        el.textContent = Number.isFinite(price) ? `$${price.toFixed(2)}/张` : '';
       });
     }
 
