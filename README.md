@@ -13,7 +13,7 @@
 - 支持 `gpt-image-2` 文生图。
 - 支持上传 1-4 张参考图进行改图。
 - 支持粘贴图片、拖拽图片、点击上传图片。
-- 支持 1:1、2:3、3:2 常用尺寸。
+- 支持方图、竖图、横图、2K 横图和 4K 横图。
 - 支持快速、标准、精细质量档位。
 - 支持批量出图，出图组数最多可配置到 1000。
 - 支持“同时开跑”并发配置。
@@ -21,6 +21,16 @@
 - 支持把已生成图片放回参考图继续改图。
 
 服务端还有独立队列 `XI_XU_MAX_ACTIVE_JOBS`，设置为 `0` 表示不限制服务端同时运行的 gpt-image-2 图片任务。
+
+当前画面规格：
+
+| 画面类型 | 尺寸 | low 快速 | medium 标准 | high 精细 |
+| --- | --- | --- | --- | --- |
+| 方图 | `1024x1024` | 支持 | 支持 | 支持 |
+| 竖图 | `1024x1536` | 支持 | 支持 | 支持 |
+| 横图 | `1536x1024` | 支持 | 支持 | 支持 |
+| 2K 横图 | `2560x1440` | 支持 | 支持 | 支持 |
+| 4K 横图 | `3840x2160` | 支持 | 支持 | 支持 |
 
 ### DeepSeek 文案和内容创作
 
@@ -129,7 +139,7 @@ http://localhost:3001
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env`，根据实际服务填写密钥。不要把真实 API Key、JWT 密钥、管理员密码提交到 Git。
+复制 `.env.example` 为 `.env`，根据实际服务填写密钥。公开仓库只保留占位配置，不要把真实 API Key、JWT 密钥、管理员密码、支付密钥、回调保护令牌或生产地址提交到 Git。
 
 核心配置：
 
@@ -142,7 +152,7 @@ ARK_API_KEY=your_ark_api_key_here
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
 
-XI_XU_API_BASE_URL=https://api.xi-xu.me
+XI_XU_API_BASE_URL=https://your-image-api.example
 XI_XU_API_KEY=your_image_api_key_here
 XI_XU_IMAGE_MODEL=gpt-image-2
 XI_XU_VISION_MODEL=gpt-5.5
@@ -192,6 +202,7 @@ PORT=3001
 - 上传文件有大小限制、MIME 白名单和文件头校验。
 - `multer` 已升级到 2.x。
 - 官方 npm registry 下 `npm audit` 当前为 0 vulnerabilities。
+- 仓库只应提交 `.env.example` 占位配置；模型 API、支付配置和生产密钥只保存在服务端 `.env`。
 
 仍需注意：
 

@@ -8,9 +8,9 @@ This project uses a simple source-of-truth rule:
 
 ## Server Configuration
 
-Do not commit real server addresses, SSH users, private paths, or production ports.
+Do not commit real API keys, payment secrets, callback protection tokens, server addresses, SSH users, private paths, or production ports.
 
-Use placeholders in documentation and pass real deployment values only through local commands, private notes, or server-side environment variables.
+Use placeholders in documentation and pass real deployment values only through local commands, private notes, or server-side environment variables. Public repository docs should describe the deployment shape without publishing private infrastructure details.
 
 ## Deploy Code
 
@@ -42,7 +42,7 @@ ALLOWED_ORIGIN=https://your-domain.example
 ARK_API_KEY=...
 DEEPSEEK_API_KEY=...
 DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
-XI_XU_API_BASE_URL=https://api.xi-xu.me
+XI_XU_API_BASE_URL=https://your-image-api.example
 XI_XU_API_KEY=...
 XI_XU_IMAGE_MODEL=gpt-image-2
 XI_XU_VISION_MODEL=gpt-5.5
