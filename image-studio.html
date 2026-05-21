@@ -485,7 +485,6 @@
     const DEFAULT_QUALITY = 'high';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
-    const RESPONSES_IMAGE_SIZES = new Set(['2560x1440', '3840x2160']);
     const GPT_IMAGE_2_QUALITY_BASE = { low: 16, medium: 48, high: 96 };
     const getGptImage2OutputTokens = (quality, size) => {
       const base = GPT_IMAGE_2_QUALITY_BASE[quality];
@@ -509,9 +508,7 @@
       return Math.ceil(grid * (2000000 + pixels) / 4000000);
     };
     const getGptImage2Price = (quality, size) => {
-      // Xi-xu Responses billing reports 2K/4K image generation calls at medium quality.
-      const billedQuality = RESPONSES_IMAGE_SIZES.has(size) ? 'medium' : quality;
-      const tokens = getGptImage2OutputTokens(billedQuality, size);
+      const tokens = getGptImage2OutputTokens(quality, size);
       return tokens > 0 ? tokens * 30 / 1000000 : NaN;
     };
     const formatGptImage2Price = (price) => {

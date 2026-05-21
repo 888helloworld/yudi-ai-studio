@@ -146,7 +146,6 @@ XI_XU_API_BASE_URL=https://api.xi-xu.me
 XI_XU_API_KEY=your_image_api_key_here
 XI_XU_IMAGE_MODEL=gpt-image-2
 XI_XU_VISION_MODEL=gpt-5.5
-XI_XU_RESPONSES_MODEL=gpt-5.4-mini
 XI_XU_MAX_ACTIVE_JOBS=0
 XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 

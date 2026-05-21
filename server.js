@@ -1424,73 +1424,7 @@ function recoverStaleXiJobHistories() {
 
 recoverStaleXiJobHistories();
 
-async function callXiXuGenerateViaResponses({ prompt, size, count, quality }, attempt) {
-  const apiKey = getXiImageApiKey();
-  if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
-
-  const controller = new AbortController();
-  const timeoutMs = Math.max(XI_XU_GENERATE_TIMEOUT_MS, 30000);
-  const startedAt = Date.now();
-  try {
-    const response = await withTimeout(fetch(buildXiImageUrl('/v1/responses'), {
-      method: 'POST',
-      signal: controller.signal,
-      headers: buildXiImageHeaders({
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }),
-      body: JSON.stringify({
-        model: process.env.XI_XU_RESPONSES_MODEL || 'gpt-5.4-mini',
-        input: prompt,
-        tool_choice: { type: 'image_generation' },
-        tools: [{
-          type: 'image_generation',
-          model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
-          size,
-          quality,
-          output_format: 'png'
-        }]
-      })
-    }), timeoutMs, `gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
-    const text = await withTimeout(
-      response.text(),
-      timeoutMs,
-      `gpt-image-2 生图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`,
-      () => controller.abort()
-    );
-    let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!response.ok) {
-      const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
-      throw new Error(formatUpstreamError(upstreamError, '生图服务暂时不可用，请稍后再试'));
-    }
-    const imageUrls = parseXiXuImages(data).slice(0, count);
-    if (imageUrls.length === 0) throw new Error('上游未返回图片');
-    return saveXiXuImages(imageUrls, `xixu_responses_gen_${size.replace('x', '_')}`, size);
-  } catch (err) {
-    const normalizedErr = err.name === 'AbortError'
-      ? new Error(`gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
-      : err;
-    logXiXuGenerateError(normalizedErr, {
-      attempt,
-      endpoint: 'responses',
-      size,
-      count,
-      quality,
-      durationMs: Date.now() - startedAt
-    });
-    if (err.name === 'AbortError') throw normalizedErr;
-    throw err;
-  } finally {
-    controller.abort();
-  }
-}
-
 async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
-  if (XI_HIGH_RES_IMAGE_SIZES.has(size)) {
-    return callXiXuGenerateViaResponses({ prompt, size, count, quality }, attempt);
-  }
-
   const apiKey = getXiImageApiKey();
   if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
 
@@ -1581,7 +1515,6 @@ function xiSizeToArkSize(size) {
 }
 
 const XI_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440', '3840x2160'];
-const XI_HIGH_RES_IMAGE_SIZES = new Set(['2560x1440', '3840x2160']);
 function parseXiImageSize(size) {
   return XI_IMAGE_SIZES.includes(size) ? size : '1024x1536';
 }
