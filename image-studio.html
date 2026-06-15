@@ -122,6 +122,12 @@
     .quality-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);font-weight:800}
     .quality-price{display:block;margin-top:3px;color:var(--text-muted);font-size:10px;font-weight:700;line-height:1}
     .quality-btn.active .quality-price{color:var(--neon-cyan)}
+    .mode-switch{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .mode-pill{padding:8px 14px;border:1px solid var(--border);border-radius:999px;background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:800;cursor:pointer;transition:var(--base)}
+    .mode-pill:hover{border-color:rgba(0,240,255,0.35);color:var(--neon-cyan);background:rgba(0,240,255,0.05)}
+    .mode-pill.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);box-shadow:0 0 0 1px rgba(0,240,255,0.12)}
+    .mode-hint{margin:-2px 0 14px;color:var(--text-muted);font-size:12px;line-height:1.6}
+    .mode-hint strong{color:var(--neon-cyan)}
     .reverse-layout{display:grid;gap:20px;align-items:start}
     #reverseDropZone{min-height:118px;padding:14px}
     #reverseDropHint{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
@@ -247,6 +253,11 @@
           </div>
           <textarea id="prompt" rows="8" placeholder="例如：雨后的窗边，一束柔光落在旧木桌上，咖啡仍有热气，翻开的书页停在风里，画面安静、真实、带一点温柔的颗粒感。"></textarea>
         </div>
+
+        <div class="mode-switch" id="creationModeSwitch">
+          <button class="mode-pill active" type="button" data-mode="general">通用出图</button>
+        </div>
+        <div class="mode-hint" id="creationModeHint">通用模式适合小红书、生活方式场景和创意出图。</div>
 
         <div class="form-group">
           <div class="field-label-row">
@@ -434,10 +445,15 @@
   <script>
     const token = localStorage.getItem('token');
     const promptEl = document.getElementById('prompt');
+    const creationModeSwitch = document.getElementById('creationModeSwitch');
+    const creationModeHint = document.getElementById('creationModeHint');
     const sourceGrid = document.getElementById('sourceGrid');
     const sourceSlots = Array.from(document.querySelectorAll('[data-source-slot]'));
     const countEl = document.getElementById('count');
     const batchCountEl = document.getElementById('batchCount');
+    const batchCountGroup = batchCountEl.closest('.form-group');
+    const batchCountLabel = batchCountGroup?.querySelector('label');
+    const batchCountHint = batchCountGroup?.querySelector('.field-hint');
     const parallelismEl = document.getElementById('parallelism');
     const estimateTotalEl = document.getElementById('estimateTotal');
     const statusEl = document.getElementById('status');
@@ -485,6 +501,7 @@
     const DEFAULT_QUALITY = 'high';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
+    const DEFAULT_AMAZON_COUNT = 4;
     const GPT_IMAGE_2_QUALITY_BASE = { low: 16, medium: 48, high: 96 };
     const getGptImage2OutputTokens = (quality, size) => {
       const base = GPT_IMAGE_2_QUALITY_BASE[quality];
@@ -522,6 +539,9 @@
       'style-only': '只提取风格、构图、光线、色彩和商业摄影感觉，不复制人物、品牌、logo 或独特设计。',
       structured: '按主体、背景、构图、镜头、光线、颜色、材质、风格、细节和画质关键词结构化拆图。'
     };
+    const AMAZON_PROMPT_PLACEHOLDER = '例如：304 不锈钢保温杯，黑色，带盖，纯白背景，专业棚拍主图，多张候选保持同一棚拍风格，只微调角度和裁切。';
+    const AMAZON_MODE_HINT = '亚马逊模式会自动锁定白底主图逻辑，并把“出图组数”当作候选张数。建议上传白底参考图，批量出 2-4 张最顺。';
+    const GENERAL_MODE_HINT = '通用模式适合小红书、生活方式场景和创意出图。';
     let reverseSelectedFile = null;
     let reversePreviewUrl = '';
     let currentPreviewImage = null;
@@ -535,8 +555,10 @@
       failed: 0,
       images: 0,
       taskSeq: 0,
+      creationMode: 'general',
       selectedSize: DEFAULT_SIZE,
       quality: DEFAULT_QUALITY,
+      generalParallelism: DEFAULT_PARALLELISM,
       reverseMode: 'general',
       sourceFiles: [null, null, null, null],
       sourcePreviewUrls: ['', '', '', ''],
@@ -584,8 +606,18 @@
       });
     });
 
+    creationModeSwitch.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-mode]');
+      if (!button) return;
+      setCreationMode(button.dataset.mode === 'amazon' ? 'amazon' : 'general');
+    });
+    setCreationMode('general', { silent: true });
+
     parallelismEl.addEventListener('input', () => {
       parallelismEl.value = Math.max(Math.floor(Number(parallelismEl.value || 1)), 1);
+      if (state.creationMode !== 'amazon') {
+        state.generalParallelism = getParallelism();
+      }
       updateEstimate();
       updateStats();
       processQueue();
@@ -787,7 +819,7 @@
         const data = await res.json();
         const saved = (data.history || [])
           .filter((item) => {
-            if (item.sub_type !== 'xi-generate' && item.sub_type !== 'xi-edit') return false;
+            if (item.sub_type !== 'xi-generate' && item.sub_type !== 'xi-edit' && item.sub_type !== 'amazon-generate') return false;
             const meta = parseJson(item.content) || {};
             return parseSavedImageUrls(item.image_url).length > 0 || meta.status === 'failed';
           })
@@ -804,7 +836,7 @@
             historyId: item.id,
             index: item.id,
             status: meta.status === 'failed' ? 'failed' : 'done',
-            mode: item.sub_type === 'xi-edit' ? 'edit' : 'generate',
+            mode: item.sub_type === 'xi-edit' ? 'edit' : item.sub_type === 'amazon-generate' ? 'amazon' : 'generate',
             prompt: item.prompt || '',
             size: item.ratio || '1024x1024',
             count: imageUrls.length || meta.count || 1,
@@ -977,12 +1009,12 @@
         return;
       }
 
-      const count = 1;
-      const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
+      const count = state.creationMode === 'amazon' ? getRequestedBatchCount() : 1;
+      const batchCount = state.creationMode === 'amazon' ? 1 : clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const selectedSources = getSelectedSourceImages();
-      const mode = selectedSources.length > 0 ? 'edit' : 'generate';
-      countEl.value = count;
+      const mode = getRequestedMode();
+      countEl.value = 1;
       batchCountEl.value = batchCount;
       parallelismEl.value = parallelism;
       updateEstimate();
@@ -995,7 +1027,7 @@
           status: 'queued',
           mode,
           prompt,
-          size: state.selectedSize,
+          size: state.creationMode === 'amazon' ? '1:1' : state.selectedSize,
           count,
           quality: state.quality,
           sourceFiles: selectedSources.map((source) => source.file),
@@ -1014,7 +1046,15 @@
 
       state.taskPage = 1;
       renderTaskPage();
-      setStatus(`已开始生成 ${batchCount} 组${mode === 'edit' ? '参考图改图' : '新图'}，同时开跑 ${parallelism} 组。`, 'ok');
+      setStatus(
+        state.creationMode === 'amazon'
+          ? `已开始生成 ${count} 张亚马逊主图候选，风格会保持统一。`
+          : `已开始生成 ${batchCount} 组${mode === 'edit' ? '参考图改图' : '新图'}，同时开跑 ${parallelism} 组。`,
+        'ok'
+      );
+      if (state.creationMode === 'amazon' && selectedSources.length > 1) {
+        setStatus('亚马逊模式当前只会使用第一张参考图，其他参考图会保留在面板里。', 'ok');
+      }
       updateStats();
       resetImageForm();
       processQueue();
@@ -1024,9 +1064,17 @@
       promptEl.value = '';
       sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       countEl.value = 1;
-      batchCountEl.value = DEFAULT_BATCH_COUNT;
-      parallelismEl.value = DEFAULT_PARALLELISM;
-      state.selectedSize = DEFAULT_SIZE;
+      if (state.creationMode === 'amazon') {
+        batchCountEl.value = DEFAULT_AMAZON_COUNT;
+        parallelismEl.value = '1';
+        parallelismEl.disabled = true;
+        state.selectedSize = '1024x1024';
+      } else {
+        batchCountEl.value = DEFAULT_BATCH_COUNT;
+        parallelismEl.disabled = false;
+        parallelismEl.value = String(clamp(state.generalParallelism || DEFAULT_PARALLELISM, 1, MAX_PARALLELISM));
+        state.selectedSize = DEFAULT_SIZE;
+      }
       state.quality = DEFAULT_QUALITY;
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === DEFAULT_SIZE);
@@ -1034,6 +1082,12 @@
       document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.quality === DEFAULT_QUALITY);
       });
+      if (state.creationMode === 'amazon') {
+        document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
+        });
+      }
+      setCreationMode(state.creationMode, { silent: true });
       updateGenerateButton();
       updateQualityPrices();
       updateEstimate();
@@ -1077,7 +1131,7 @@
         task.doneAt = result.createdAt || formatBeijingDateTime();
         state.finished += 1;
         state.images += task.imageUrls.length;
-        setStatus(`#${task.index} 已出图，看看有没有顺眼的。`, 'ok');
+        setStatus(`#${task.index} 已生成${task.mode === 'amazon' ? '亚马逊主图候选' : '图片'}，看看有没有顺眼的。`, 'ok');
       } catch (err) {
         task.status = 'failed';
         task.finishedAtMs = Date.now();
@@ -1094,6 +1148,10 @@
     }
 
     async function requestImageTask(task) {
+      if (task.mode === 'amazon') {
+        return submitAmazonJob(task);
+      }
+
       const submitResult = task.mode !== 'edit'
         ? await requestJson('/api/xi-image/jobs/generate', {
           prompt: task.prompt,
@@ -1109,6 +1167,32 @@
       task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
       task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
       return waitServerJob(task);
+    }
+
+    async function submitAmazonJob(task) {
+      const form = new FormData();
+      form.append('prompt', task.prompt);
+      form.append('ratio', '1:1');
+      form.append('imageCount', String(task.count));
+      (task.sourceFiles || []).slice(0, 1).forEach((file, index) => {
+        form.append('referenceImage', file, task.sourceFileNames?.[index] || getSourceImageName(index));
+      });
+
+      const res = await fetch('/api/amazon-image/generate', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: form
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleAuthExpired(data.error || '登录已过期，请重新登录。');
+        }
+        const detail = data.detail ? '：' + data.detail : '';
+        throw new Error((data.error || '亚马逊主图生成失败') + detail);
+      }
+      updateNavPoints(data.remainingPoints);
+      return data;
     }
 
     async function submitEditJob(task) {
@@ -1342,7 +1426,7 @@
         body.appendChild(createDurationLine(task));
         const loading = document.createElement('div');
         loading.className = 'task-loading';
-        loading.innerHTML = `<div class="spinner"></div><span>正在${task.mode === 'edit' ? '参考改图' : '生成图片'}...</span>`;
+        loading.innerHTML = `<div class="spinner"></div><span>正在${task.mode === 'edit' ? '参考改图' : task.mode === 'amazon' ? '亚马逊主图' : '生成图片'}...</span>`;
         body.appendChild(loading);
       } else if (task.status === 'failed') {
         appendTaskSourceThumbs(body, task);
@@ -1368,7 +1452,7 @@
     }
 
     function appendTaskSourceThumbs(target, task) {
-      if (task.mode !== 'edit') return;
+      if (task.mode !== 'edit' && task.mode !== 'amazon') return;
       if ((task.sourcePreviewUrls || []).length === 0 && (task.sourceFileNames || []).length === 0) return;
       target.appendChild(createSourceThumbStrip(task));
     }
@@ -1411,6 +1495,7 @@
       meta.className = 'xi-task-meta';
       meta.textContent = [
         `#${task.index}`,
+        getTaskModeLabel(task.mode),
         task.size,
         `${task.count} 张`,
         `质量${getQualityLabel(task.quality)}`,
@@ -1426,10 +1511,16 @@
         return;
       }
       promptEl.value = task.prompt || '';
+      setCreationMode(task.mode === 'amazon' ? 'amazon' : 'general', { silent: true });
       state.selectedSize = SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : state.selectedSize;
       state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : state.quality;
       countEl.value = 1;
-      batchCountEl.value = DEFAULT_BATCH_COUNT;
+      batchCountEl.value = task.mode === 'amazon'
+        ? clamp(Number(task.count || task.imageUrls?.length || DEFAULT_AMAZON_COUNT), 1, 4)
+        : DEFAULT_BATCH_COUNT;
+      if (task.mode === 'amazon') {
+        state.selectedSize = '1024x1024';
+      }
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
       });
@@ -1561,10 +1652,15 @@
       }
       try {
         promptEl.value = task.prompt || '';
-        state.selectedSize = SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : DEFAULT_SIZE;
+        setCreationMode(task.mode === 'amazon' ? 'amazon' : 'general', { silent: true });
+        state.selectedSize = task.mode === 'amazon'
+          ? '1024x1024'
+          : (SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : DEFAULT_SIZE);
         state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : DEFAULT_QUALITY;
         countEl.value = 1;
-        batchCountEl.value = DEFAULT_BATCH_COUNT;
+        batchCountEl.value = task.mode === 'amazon'
+          ? clamp(Number(task.count || task.imageUrls?.length || DEFAULT_AMAZON_COUNT), 1, 4)
+          : DEFAULT_BATCH_COUNT;
         document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
           btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
         });
@@ -1589,7 +1685,12 @@
         promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         promptEl.focus();
         const suffix = urls.length > 0 && loaded < urls.length ? `，${urls.length - loaded} 张参考图读取失败` : '';
-        setStatus(`已回填提示词和 ${loaded} 张参考图，可以直接点开始改图${suffix}。`, loaded > 0 || urls.length === 0 ? 'ok' : 'error');
+        setStatus(
+          task.mode === 'amazon'
+            ? `已回填提示词和 ${loaded} 张参考图，可以直接点生成亚马逊主图${suffix}。`
+            : `已回填提示词和 ${loaded} 张参考图，可以直接点开始改图${suffix}。`,
+          loaded > 0 || urls.length === 0 ? 'ok' : 'error'
+        );
       } finally {
         if (button) {
           button.disabled = false;
@@ -1668,7 +1769,7 @@
       currentPreviewImage = { url, filename, title: `任务 #${task.index} · 图片 ${index + 1}` };
       previewImage.src = url;
       previewImage.alt = `任务 ${task.index} 图片 ${index + 1}`;
-      previewTitle.textContent = `任务 #${task.index} · 图片 ${index + 1} · ${task.mode === 'edit' ? '改图' : '生图'}`;
+      previewTitle.textContent = `任务 #${task.index} · 图片 ${index + 1} · ${task.mode === 'edit' ? '改图' : task.mode === 'amazon' ? '亚马逊主图' : '生图'}`;
       previewDownload.href = url;
       previewDownload.download = filename;
       previewOpen.href = url;
@@ -1882,13 +1983,18 @@
     }
 
     function updateEstimate() {
-      const count = 1;
-      const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
+      const count = state.creationMode === 'amazon' ? getRequestedBatchCount() : 1;
+      const batchCount = state.creationMode === 'amazon' ? 1 : clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
-      const unitPrice = getGptImage2Price(state.quality, state.selectedSize);
+      const estimateSize = state.creationMode === 'amazon' ? '1024x1024' : state.selectedSize;
+      const unitPrice = getGptImage2Price(state.quality, estimateSize);
       const priceText = Number.isFinite(unitPrice) ? ` · 约 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
-      if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组${priceText}`;
+      if (estimateTotalEl) {
+        estimateTotalEl.textContent = state.creationMode === 'amazon'
+          ? `这次最多 ${totalImages} 张亚马逊主图候选 · 1 组 · 同时跑 1 组${priceText}`
+          : `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组${priceText}`;
+      }
     }
 
     function updateQualityPrices() {
@@ -1929,7 +2035,12 @@
       renderSourceSlot(index);
       generateBtn.disabled = false;
       updateGenerateButton();
-      setStatus(`已放入 ${getSelectedSourceImages().length} 张参考图，可以开始改图了。`, 'ok');
+      setStatus(
+        state.creationMode === 'amazon'
+          ? `已放入 ${getSelectedSourceImages().length} 张参考图，可以开始生成亚马逊主图。`
+          : `已放入 ${getSelectedSourceImages().length} 张参考图，可以开始改图了。`,
+        'ok'
+      );
     }
 
     function renderSourceSlot(index) {
@@ -2084,7 +2195,11 @@
       updateGenerateButton();
       const selectedCount = getSelectedSourceImages().length;
       if (!options.silent) {
-        setStatus(selectedCount > 0 ? `还保留 ${selectedCount} 张参考图。` : '参考图已清空，现在是自由生图。', 'ok');
+        if (state.creationMode === 'amazon') {
+          setStatus(selectedCount > 0 ? `还保留 ${selectedCount} 张参考图，可以继续生成亚马逊主图。` : '参考图已清空，可以继续生成亚马逊主图。', 'ok');
+        } else {
+          setStatus(selectedCount > 0 ? `还保留 ${selectedCount} 张参考图。` : '参考图已清空，现在是自由生图。', 'ok');
+        }
       }
     }
 
@@ -2095,12 +2210,77 @@
       }
       sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       updateGenerateButton();
-      setStatus('参考图已清空，现在是自由生图。', 'ok');
+      setStatus(state.creationMode === 'amazon' ? '参考图已清空，可以继续生成亚马逊主图。' : '参考图已清空，现在是自由生图。', 'ok');
+    }
+
+    function setCreationMode(mode, options = {}) {
+      const nextMode = mode === 'amazon' ? 'amazon' : 'general';
+      const changed = state.creationMode !== nextMode;
+      state.creationMode = nextMode;
+
+      creationModeSwitch.querySelectorAll('[data-mode]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mode === nextMode);
+      });
+
+      if (nextMode === 'amazon') {
+        state.generalParallelism = getParallelism();
+        promptEl.placeholder = AMAZON_PROMPT_PLACEHOLDER;
+        creationModeHint.innerHTML = `亚马逊模式会自动锁定白底主图逻辑，并把“出图组数”当作候选张数。建议上传白底参考图，批量出 2-4 张最顺。`;
+        if (batchCountLabel) batchCountLabel.textContent = '候选张数';
+        if (batchCountHint) batchCountHint.textContent = '一次返回几张统一风格的主图候选，建议 2-4 张。';
+        batchCountEl.min = '1';
+        batchCountEl.max = '4';
+        batchCountEl.value = clamp(Number(batchCountEl.value || DEFAULT_AMAZON_COUNT), 1, 4);
+        parallelismEl.value = '1';
+        parallelismEl.disabled = true;
+        state.selectedSize = '1024x1024';
+        document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
+        });
+        updateQualityPrices();
+      } else {
+        promptEl.placeholder = '例如：雨后的窗边，一束柔光落在旧木桌上，咖啡仍有热气，翻开的书页停在风里，画面安静、真实、带一点温柔的颗粒感。';
+        creationModeHint.textContent = GENERAL_MODE_HINT;
+        if (batchCountLabel) batchCountLabel.textContent = '出图组数';
+        if (batchCountHint) batchCountHint.textContent = '要几版就填几组。';
+        batchCountEl.min = '1';
+        batchCountEl.max = String(MAX_BATCH_COUNT);
+        batchCountEl.value = clamp(Number(batchCountEl.value || DEFAULT_BATCH_COUNT), 1, MAX_BATCH_COUNT);
+        parallelismEl.disabled = false;
+        parallelismEl.value = String(clamp(state.generalParallelism || DEFAULT_PARALLELISM, 1, MAX_PARALLELISM));
+      }
+
+      updateGenerateButton();
+      updateEstimate();
+      if (!options.silent && changed) {
+        setStatus(nextMode === 'amazon' ? '已切换到亚马逊主图模式。' : '已切换到通用出图模式。', 'ok');
+      }
+    }
+
+    function getRequestedBatchCount() {
+      if (state.creationMode === 'amazon') {
+        return clamp(Number(batchCountEl.value || DEFAULT_AMAZON_COUNT), 1, 4);
+      }
+      return clamp(Number(batchCountEl.value || DEFAULT_BATCH_COUNT), 1, MAX_BATCH_COUNT);
+    }
+
+    function getRequestedMode() {
+      if (state.creationMode === 'amazon') return 'amazon';
+      return getSelectedSourceImages().length > 0 ? 'edit' : 'generate';
+    }
+
+    function getTaskModeLabel(mode) {
+      return mode === 'edit' ? '参考改图' : mode === 'amazon' ? '亚马逊主图' : '生图';
     }
 
     function updateGenerateButton() {
       const span = generateBtn.querySelector('span');
-      if (span) span.textContent = getSelectedSourceImages().length > 0 ? '开始改图' : '开始出图';
+      if (!span) return;
+      if (state.creationMode === 'amazon') {
+        span.textContent = '生成亚马逊主图';
+        return;
+      }
+      span.textContent = getSelectedSourceImages().length > 0 ? '开始改图' : '开始出图';
     }
 
     function getSelectedSourceImages() {
