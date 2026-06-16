@@ -12,11 +12,11 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
   <link rel="stylesheet" href="style.css">
   <style>
-    body .container{width:min(1760px,calc(100% - 40px));padding-top:4px}
-    body .user-bar{width:min(1760px,calc(100% - 40px))}
+    body .container{width:min(1920px,calc(100% - 12px));padding-top:4px}
+    body .user-bar{width:min(1920px,calc(100% - 12px))}
     .xi-workspace{display:grid;grid-template-columns:minmax(520px,600px) minmax(820px,1fr);gap:22px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:20px;align-items:start}
-    .xi-control-grid{display:grid;grid-template-columns:.78fr 1fr 1fr 1.15fr;gap:10px;align-items:start}
+    .xi-control-grid{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:10px;align-items:start}
     .xi-control-grid + .generate-btn{margin-top:16px}
     .xi-control-grid .form-group{margin-bottom:0}
     .xi-control-grid input{padding:9px 10px;font-size:13px}
@@ -305,22 +305,18 @@
         </div>
 
         <div class="xi-control-grid">
-          <div class="form-group">
-            <label for="count">每组出图</label>
-            <input type="number" id="count" min="1" max="1" value="1" disabled>
-            <div class="field-hint">每组固定 1 张。</div>
-          </div>
+          <input type="hidden" id="count" value="1">
 
           <div class="form-group">
-            <label for="batchCount">出图组数</label>
+            <label for="batchCount">要生成几张</label>
             <input type="number" id="batchCount" min="1" max="1000" value="1">
-            <div class="field-hint">要几版就填几组。</div>
+            <div class="field-hint">想要几张成品图，就填几。</div>
           </div>
 
           <div class="form-group">
-            <label for="parallelism">同时开跑</label>
+            <label for="parallelism">同时生成几张</label>
             <input type="number" id="parallelism" min="1" value="10">
-            <div class="field-hint">一次同时跑几组，不设上限。</div>
+            <div class="field-hint">一次并发几张；太高可能让上游变慢。</div>
           </div>
 
           <div class="form-group">
@@ -406,7 +402,7 @@
           <div class="xi-stat"><strong id="statTotal">0</strong><span>总记录</span></div>
           <div class="xi-stat"><strong id="statImages">0</strong><span>图片</span></div>
           <div class="xi-stat"><strong id="statFailed">0</strong><span>失败</span></div>
-          <div class="xi-stat"><strong id="statConcurrency">10</strong><span>同时开跑</span></div>
+          <div class="xi-stat"><strong id="statConcurrency">10</strong><span>同时生成</span></div>
         </div>
 
         <div id="empty" class="xi-empty">还没有作品。写一句画面描述，点“开始出图”，这里就会出现你的生成结果。</div>
@@ -1024,7 +1020,7 @@
 
       state.taskPage = 1;
       renderTaskPage();
-      setStatus(`已开始生成 ${batchCount} 组${mode === 'edit' ? '参考图改图' : '新图'}，同时开跑 ${parallelism} 组。`, 'ok');
+      setStatus(`已开始生成 ${batchCount} 张${mode === 'edit' ? '参考图改图' : '新图'}，同时生成 ${parallelism} 张。`, 'ok');
       updateStats();
       resetImageForm();
       processQueue();
@@ -1873,7 +1869,7 @@
       renderTaskPage();
       updateTaskCard(task);
       updateStats();
-      setStatus(`#${task.index} 已重新开跑。`, 'ok');
+      setStatus(`#${task.index} 已重新生成。`, 'ok');
       processQueue();
     }
 
@@ -1919,7 +1915,7 @@
       const totalImages = count * batchCount;
       const unitPrice = getGptImage2Price(state.quality, state.selectedSize);
       const priceText = Number.isFinite(unitPrice) ? ` · 约 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
-      if (estimateTotalEl) estimateTotalEl.textContent = `这次最多 ${totalImages} 张图 · ${batchCount} 组 · 同时跑 ${parallelism} 组${priceText}`;
+      if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 同时生成 ${parallelism} 张${priceText}`;
     }
 
     function updateQualityPrices() {
