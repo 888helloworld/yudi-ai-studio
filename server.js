@@ -112,6 +112,7 @@ const XI_XU_EDIT_RETRIES = Number.isFinite(configuredXiEditRetries)
 const XI_XU_EDIT_CIRCUIT_BREAKER_MS = Number(process.env.XI_XU_EDIT_CIRCUIT_BREAKER_MS || 0);
 const XI_XU_EDIT_FORCE_FALLBACK = /^true$/i.test(process.env.XI_XU_EDIT_FORCE_FALLBACK || '');
 const ARK_FALLBACK_ENABLED = /^true$/i.test(process.env.ARK_FALLBACK_ENABLED || '');
+const XI_XU_NORMALIZE_OUTPUT_SIZE = /^true$/i.test(process.env.XI_XU_NORMALIZE_OUTPUT_SIZE || '');
 const configuredXiMaxActiveJobsRaw = String(process.env.XI_XU_MAX_ACTIVE_JOBS || '1').trim();
 const configuredXiMaxActiveJobs = Number(configuredXiMaxActiveJobsRaw);
 const XI_XU_MAX_ACTIVE_JOBS = /^(0|unlimited|infinite|none)$/i.test(configuredXiMaxActiveJobsRaw)
@@ -544,8 +545,10 @@ function parseImageCount(value) {
   return Math.min(Math.max(count, 1), 4);
 }
 
-function parseXiXuImageCount() {
-  return 1;
+function parseXiXuImageCount(value) {
+  const count = parseInt(value, 10);
+  if (!Number.isFinite(count)) return 1;
+  return Math.min(Math.max(count, 1), 4);
 }
 
 function withTimeout(promise, timeoutMs, message, onTimeout) {
@@ -698,22 +701,112 @@ function getLocalUploadPath(url) {
   return path.join(UPLOAD_DIR, filename);
 }
 
+function getPngDimensionsFromBuffer(buffer) {
+  try {
+    const png = PNG.sync.read(buffer);
+    return { width: png.width, height: png.height, size: `${png.width}x${png.height}` };
+  } catch {
+    return null;
+  }
+}
+
+function getLocalImageDimensions(localUrls) {
+  return (localUrls || []).map((url) => {
+    const filepath = getLocalUploadPath(url);
+    if (!filepath || !fs.existsSync(filepath)) return null;
+    return getPngDimensionsFromBuffer(fs.readFileSync(filepath));
+  });
+}
+
+function getUploadedImageDimensions(files) {
+  return (files || []).map((file) => getPngDimensionsFromBuffer(file.buffer));
+}
+
+function resizePngContainOnWhite(source, targetWidth, targetHeight) {
+  const target = new PNG({ width: targetWidth, height: targetHeight });
+  target.data.fill(255);
+
+  const scale = Math.min(targetWidth / source.width, targetHeight / source.height);
+  const scaledWidth = Math.max(1, Math.round(source.width * scale));
+  const scaledHeight = Math.max(1, Math.round(source.height * scale));
+  const offsetX = Math.floor((targetWidth - scaledWidth) / 2);
+  const offsetY = Math.floor((targetHeight - scaledHeight) / 2);
+
+  for (let y = 0; y < scaledHeight; y += 1) {
+    const srcY = (y + 0.5) / scale - 0.5;
+    const y0 = Math.max(0, Math.floor(srcY));
+    const y1 = Math.min(source.height - 1, y0 + 1);
+    const wy = srcY - y0;
+
+    for (let x = 0; x < scaledWidth; x += 1) {
+      const srcX = (x + 0.5) / scale - 0.5;
+      const x0 = Math.max(0, Math.floor(srcX));
+      const x1 = Math.min(source.width - 1, x0 + 1);
+      const wx = srcX - x0;
+      const targetIndex = ((offsetY + y) * targetWidth + offsetX + x) * 4;
+      const color = [0, 0, 0, 0];
+
+      for (const [sampleX, sampleY, weight] of [
+        [x0, y0, (1 - wx) * (1 - wy)],
+        [x1, y0, wx * (1 - wy)],
+        [x0, y1, (1 - wx) * wy],
+        [x1, y1, wx * wy]
+      ]) {
+        const sourceIndex = (sampleY * source.width + sampleX) * 4;
+        color[0] += source.data[sourceIndex] * weight;
+        color[1] += source.data[sourceIndex + 1] * weight;
+        color[2] += source.data[sourceIndex + 2] * weight;
+        color[3] += source.data[sourceIndex + 3] * weight;
+      }
+
+      const alpha = Math.max(0, Math.min(255, Math.round(color[3]))) / 255;
+      target.data[targetIndex] = Math.round(color[0] * alpha + 255 * (1 - alpha));
+      target.data[targetIndex + 1] = Math.round(color[1] * alpha + 255 * (1 - alpha));
+      target.data[targetIndex + 2] = Math.round(color[2] * alpha + 255 * (1 - alpha));
+      target.data[targetIndex + 3] = 255;
+    }
+  }
+
+  return target;
+}
+
+function normalizeSavedImageDimensions(localUrls, expectedSize) {
+  if (!expectedSize || !XI_IMAGE_SIZES.includes(expectedSize)) return;
+  const [expectedWidth, expectedHeight] = expectedSize.split('x').map(Number);
+  for (const url of localUrls) {
+    const filepath = getLocalUploadPath(url);
+    if (!filepath || !fs.existsSync(filepath)) continue;
+    let png;
+    try {
+      png = PNG.sync.read(fs.readFileSync(filepath));
+    } catch {
+      continue;
+    }
+    if (png.width === expectedWidth && png.height === expectedHeight) continue;
+    const normalized = resizePngContainOnWhite(png, expectedWidth, expectedHeight);
+    fs.writeFileSync(filepath, PNG.sync.write(normalized, { colorType: 6 }));
+    console.warn('上游返回图片尺寸不匹配，已自动规整到请求尺寸:', JSON.stringify({
+      url,
+      expectedSize,
+      upstreamSize: `${png.width}x${png.height}`
+    }));
+  }
+}
+
 function assertSavedImageDimensions(localUrls, expectedSize) {
   if (!expectedSize || !XI_IMAGE_SIZES.includes(expectedSize)) return;
   const [expectedWidth, expectedHeight] = expectedSize.split('x').map(Number);
   for (const url of localUrls) {
     const filepath = getLocalUploadPath(url);
     if (!filepath || !fs.existsSync(filepath)) continue;
-    const buffer = fs.readFileSync(filepath);
-    let png;
-    try {
-      png = PNG.sync.read(buffer);
-    } catch {
-      continue;
-    }
-    if (png.width !== expectedWidth || png.height !== expectedHeight) {
-      try { fs.unlinkSync(filepath); } catch {}
-      throw new Error(`上游返回图片尺寸不匹配：请求 ${expectedSize}，实际 ${png.width}x${png.height}。本次没有生成图片，积分已退回。`);
+    const dimensions = getPngDimensionsFromBuffer(fs.readFileSync(filepath));
+    if (!dimensions) continue;
+    if (dimensions.width !== expectedWidth || dimensions.height !== expectedHeight) {
+      console.warn('上游返回图片尺寸不匹配，已保留原图继续返回:', JSON.stringify({
+        url,
+        expectedSize,
+        actualSize: dimensions.size
+      }));
     }
   }
 }
@@ -728,6 +821,7 @@ async function saveXiXuImages(imageUrls, prefix, expectedSize = '') {
       saved.push(await downloadAndSaveImage(url, `${prefix}_${index + 1}`));
     }
   }
+  if (XI_XU_NORMALIZE_OUTPUT_SIZE) normalizeSavedImageDimensions(saved, expectedSize);
   assertSavedImageDimensions(saved, expectedSize);
   return saved;
 }
@@ -749,11 +843,43 @@ function buildImageVariationPrompt(prompt, index, total) {
 这是同一主题的第 ${index + 1}/${total} 张图，请生成不同角度、不同构图或不同细节版本，保持同一小红书爆款风格，但避免和其他图片重复。`;
 }
 
-async function generateArkImageUrls(baseUrl, apiKey, requestBody, count) {
+function buildAmazonMainImagePrompt(prompt, ratio) {
+  const ratioHint = ratio === '3:4'
+    ? '竖版主图候选，主体占画面 85% 以上，适合电商移动端首屏浏览'
+    : ratio === '4:3'
+      ? '横版主图候选，主体完整、结构清晰，适合商品详情或组合展示'
+      : '方形主图候选，主体居中、识别度高，适合 Amazon 1:1 主图';
+
+  return `你现在在生成亚马逊产品主图候选，要求是专业棚拍产品主图，不是场景海报，也不是营销海报。
+${ratioHint}
+
+硬性要求：
+- 纯白背景，接近 RGB 255,255,255 / #FFFFFF
+- 只突出商品本体，主体占画面 85% 以上
+- 画面干净，无文字、无水印、无角标、无价格、无促销信息、无比较图标
+- 不要添加多余道具、装饰物、手势、人物、复杂场景
+- 保持真实产品比例、颜色、材质、logo 位置和包装结构
+- 光线、阴影、色温统一，像同一套棚拍系统拍出来的主图
+- 如果一次生成多张，请保持同一视觉风格，只允许角度、裁切、产品在画面中的位置轻微变化，不要改变整体风格
+
+用户产品信息：
+${prompt}`.trim();
+}
+
+function buildAmazonMainImageVariationPrompt(prompt, index, total) {
+  if (total <= 1) return prompt;
+  return `${prompt}
+
+这是同一商品的第 ${index + 1}/${total} 张亚马逊主图候选。
+请严格保持同一白底、同一棚拍光线、同一阴影方向、同一色温、同一材质表现和同一产品识别方式，只做轻微的拍摄角度、裁切或主体居中方式变化。
+不要改变产品本体、包装、颜色、logo、配件或任何结构细节。`;
+}
+
+async function generateArkImageUrls(baseUrl, apiKey, requestBody, count, buildVariationPrompt = buildImageVariationPrompt) {
   const tasks = Array.from({ length: count }, async (_, index) => {
     const body = {
       ...requestBody,
-      prompt: buildImageVariationPrompt(requestBody.prompt, index, count)
+      prompt: buildVariationPrompt(requestBody.prompt, index, count)
     };
 
     const response = await fetch(`${baseUrl}/images/generations`, {
@@ -1241,6 +1367,8 @@ function buildXiJobHistoryContent(job, status, extra = {}) {
     count: job.count,
     sources: job.sourceFileNames || [],
     source_urls: job.sourcePreviewUrls || [],
+    source_dimensions: job.sourceDimensions || [],
+    output_dimensions: job.outputDimensions || [],
     duration_ms: durationMs,
     error: job.error || '',
     refunded_points: job.refundedPoints || 0,
@@ -1337,6 +1465,8 @@ function serializeXiJob(job) {
     quality: job.quality,
     sourceFileNames: job.sourceFileNames || [],
     sourcePreviewUrls: job.sourcePreviewUrls || [],
+    sourceDimensions: job.sourceDimensions || [],
+    outputDimensions: job.outputDimensions || [],
     createdAt: formatBeijingDateTime(new Date(job.createdAtMs), { date: false }),
     startedAtMs: job.startedAtMs,
     finishedAtMs: job.finishedAtMs,
@@ -1375,6 +1505,8 @@ function saveXiJobFailureHistory(job) {
         count: job.count,
         sources: job.sourceFileNames || [],
         source_urls: job.sourcePreviewUrls || [],
+        source_dimensions: job.sourceDimensions || [],
+        output_dimensions: job.outputDimensions || [],
         duration_ms: durationMs,
         error: job.error || '任务失败',
         refunded_points: job.refundedPoints || 0
@@ -1508,15 +1640,16 @@ function xiSizeToArkSize(size) {
     '1024x1024': { width: 1920, height: 1920 },
     '1024x1536': { width: 1920, height: 2560 },
     '1536x1024': { width: 2560, height: 1920 },
-    '2560x1440': { width: 2560, height: 1440 },
-    '3840x2160': { width: 3840, height: 2160 }
+    '2560x1440': { width: 2560, height: 1440 }
   };
   return map[size] || map['1024x1024'];
 }
 
-const XI_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440', '3840x2160'];
+const XI_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440'];
 function parseXiImageSize(size) {
-  return XI_IMAGE_SIZES.includes(size) ? size : '1024x1536';
+  const value = String(size || '').trim();
+  if (!value) return '1024x1536';
+  return XI_IMAGE_SIZES.includes(value) ? value : '';
 }
 
 function assertXiImageSizeSupported(size) {
@@ -1567,7 +1700,7 @@ async function callArkEditFallbackForXiJob({ prompt, size, count, sourceFiles, p
   const arkSize = xiSizeToArkSize(size);
   const remoteUrls = await generateArkImageUrls(ARK_IMAGE_BASE_URL, apiKey, {
     model: 'doubao-seedream-5-0-lite-260128',
-    prompt: promptOverride || buildXiEditPrompt(prompt, sourceFiles),
+    prompt: promptOverride || buildXiEditPrompt(prompt, sourceFiles, size),
     image: `data:${firstSource.mimetype};base64,${Buffer.from(firstSource.buffer).toString('base64')}`,
     size: `${arkSize.width}x${arkSize.height}`,
     output_format: 'png',
@@ -1590,7 +1723,7 @@ function getSourceImageFilename(index) {
   return `图${index + 1}.png`;
 }
 
-function buildXiEditPrompt(prompt, sourceFiles = []) {
+function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
   const labels = getXiEditLabels();
   const sourceList = sourceFiles
     .map((_, index) => labels[index] || `图${index + 1}：参考图${index + 1}`)
@@ -1600,6 +1733,9 @@ function buildXiEditPrompt(prompt, sourceFiles = []) {
     sourceList ? `参考图说明：\n${sourceList}` : '',
     '如果用户提到“图1、图2、图3、图4”，必须对应上面的上传顺序。',
     '需要把用户指定的各参考图元素组合到同一张最终图片里；不要遗漏用户点名的参考图元素。',
+    size ? `最终图片目标画布是 ${size}，请按这个画布比例重新构图。` : '',
+    '必须让主体完整出现在画面内，四周保留安全留白；不要裁掉脚尖、脚跟、袜口、袜身、产品边缘或用户要求保留的细节。',
+    '如果原参考图主体贴边，请主动缩小构图并补足干净背景，而不是沿用贴边裁切。',
     '保持最终画面自然真实、构图完整，不要生成拼贴图或多宫格。',
     `用户要求：${prompt}`
   ].filter(Boolean).join('\n\n');
@@ -1777,11 +1913,19 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
       form.append('image', imageBlob, file.originalname || getSourceImageFilename(index));
     });
     form.append('model', process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2');
-    form.append('prompt', promptOverride || buildXiEditPrompt(prompt, sourceFiles));
+    form.append('prompt', promptOverride || buildXiEditPrompt(prompt, sourceFiles, size));
     form.append('size', size);
     form.append('n', String(count));
     form.append('quality', quality);
     form.append('output_format', 'png');
+
+    console.log('gpt-image-2 改图请求:', JSON.stringify({
+      size,
+      quality,
+      count,
+      sourceDimensions: getUploadedImageDimensions(sourceFiles),
+      sourceBytes: sourceFiles.map((file) => file.buffer?.length || 0)
+    }));
 
     const response = await withTimeout(fetch(buildXiImageUrl('/v1/images/edits'), {
       method: 'POST',
@@ -1902,11 +2046,13 @@ async function runXiJob(job) {
     job.finishedAtMs = Date.now();
     const durationMs = job.finishedAtMs - job.startedAtMs;
     job.imageUrls = localUrls;
+    job.outputDimensions = getLocalImageDimensions(localUrls);
     console.log('gpt-image-2 任务完成:', JSON.stringify({
       id: job.id,
       mode: job.mode,
       provider: job.provider || '',
       size: job.size,
+      outputDimensions: job.outputDimensions,
       quality: job.quality,
       count: job.count,
       durationMs
@@ -1996,6 +2142,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   sourceFiles.forEach((file, index) => {
     file.originalname = getSourceImageFilename(index);
   });
+  const sourceDimensions = getUploadedImageDimensions(sourceFiles);
   if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
   if (sourceFiles.length === 0) return res.status(400).json({ error: '请至少上传一张原图' });
   try {
@@ -2029,6 +2176,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
     })),
     sourceFileNames: sourceFiles.map((file, index) => file.originalname || getSourceImageFilename(index)),
     sourcePreviewUrls,
+    sourceDimensions,
     costPoints
   });
   res.json({ success: true, job: serializeXiJob(job) });
@@ -2106,6 +2254,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
       return res.status(502).json({ error: '上游未返回图片' });
     }
     const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
+    const outputDimensions = getLocalImageDimensions(localUrls);
     const actualCount = Math.min(localUrls.length, count);
     const actualCost = POINTS.image * actualCount;
     const refundAmount = Math.max(totalCost - actualCost, 0);
@@ -2116,7 +2265,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
     const historyId = db.addHistory(req.userId, 'image', {
       sub_type: 'xi-generate',
       image_url: JSON.stringify(localUrls),
-      content: JSON.stringify({ model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2', quality, count, duration_ms: durationMs }),
+      content: JSON.stringify({ model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2', quality, count, duration_ms: durationMs, output_dimensions: outputDimensions }),
       prompt,
       ratio: size,
       cost_points: actualCost
@@ -2129,6 +2278,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
       historyId,
       remainingPoints: db.getUserPoints(req.userId),
       model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+      outputDimensions,
       createdAt
     });
   } catch (err) {
@@ -2137,6 +2287,82 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
     res.status(502).json({ error: message });
   } finally {
     clearTimeout(timeout);
+  }
+});
+
+// 亚马逊主图批量生成接口：一次返回多张主图候选，风格保持统一
+app.post('/api/amazon-image/generate', imageLimiter, authMiddleware, upload.single('referenceImage'), validateUploadedImageFiles, async (req, res) => {
+  const prompt = sanitizeInput(req.body.prompt, 2000);
+  const ratio = req.body.ratio || '1:1';
+  const imageCount = parseImageCount(req.body.imageCount ?? req.body.count);
+
+  if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
+  if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
+
+  const totalCost = POINTS.image * imageCount;
+  const pointsResult = db.deductPoints(req.userId, totalCost, `亚马逊主图生成 x${imageCount}`);
+  if (!pointsResult.success) return res.status(400).json({ error: '积分不足，请充值' });
+
+  const size = SIZE_MAP[ratio];
+  const API_KEY = getRequiredEnv('ARK_API_KEY');
+  if (!API_KEY) {
+    db.rechargePoints(req.userId, totalCost, '亚马逊主图生成失败退款');
+    return res.status(500).json({ error: '图片服务未配置' });
+  }
+
+  try {
+    const requestBody = {
+      model: 'doubao-seedream-5-0-lite-260128',
+      prompt: buildAmazonMainImagePrompt(prompt, ratio),
+      size: `${size.width}x${size.height}`,
+      output_format: 'png',
+      watermark: false,
+    };
+
+    if (req.file) {
+      requestBody.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    }
+
+    const remoteUrls = await generateArkImageUrls(
+      ARK_IMAGE_BASE_URL,
+      API_KEY,
+      requestBody,
+      imageCount,
+      buildAmazonMainImageVariationPrompt
+    );
+
+    if (remoteUrls.length === 0) {
+      db.rechargePoints(req.userId, totalCost, '亚马逊主图生成失败退款');
+      return res.status(500).json({ error: '图片生成失败' });
+    }
+
+    const localUrls = await Promise.all(remoteUrls.map((url, index) => (
+      downloadAndSaveImage(url, `amazon_${ratio.replace(':', '')}_${index + 1}`)
+    )));
+    const missingCount = Math.max(imageCount - localUrls.length, 0);
+    if (missingCount > 0) {
+      db.rechargePoints(req.userId, POINTS.image * missingCount, `亚马逊主图少出${missingCount}张退款`);
+    }
+
+    const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
+    const historyIds = [];
+    localUrls.forEach((localUrl) => {
+      const historyId = db.addHistory(req.userId, 'image', {
+        sub_type: 'amazon-generate',
+        image_url: localUrl,
+        prompt: prompt,
+        ratio: ratio,
+        cost_points: POINTS.image
+      });
+      historyIds.push(historyId);
+    });
+    const remainingPoints = pointsResult.balance + (POINTS.image * missingCount);
+
+    res.json({ imageUrl: localUrls[0], imageUrls: localUrls, historyId: historyIds[0] || null, remainingPoints, createdAt });
+  } catch (err) {
+    db.rechargePoints(req.userId, totalCost, '亚马逊主图生成失败退款');
+    console.error('亚马逊主图生成失败:', err.message || err);
+    res.status(502).json({ error: formatUpstreamError(err.message || err, '图片生成失败，请稍后再试') });
   }
 });
 
@@ -2150,6 +2376,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
   sourceFiles.forEach((file, index) => {
     file.originalname = getSourceImageFilename(index);
   });
+  const sourceDimensions = getUploadedImageDimensions(sourceFiles);
   const startedAtMs = Date.now();
 
   if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
@@ -2187,6 +2414,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
       }))
     });
     const localUrls = editResult.localUrls;
+    const outputDimensions = getLocalImageDimensions(localUrls);
     const actualCount = Math.min(localUrls.length, count);
     const actualCost = POINTS.image * actualCount;
     const refundAmount = Math.max(totalCost - actualCost, 0);
@@ -2206,6 +2434,8 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
         count,
         sources: sourceFiles.map((file, index) => file.originalname || getSourceImageFilename(index)),
         source_urls: sourcePreviewUrls,
+        source_dimensions: sourceDimensions,
+        output_dimensions: outputDimensions,
         duration_ms: durationMs
       }),
       prompt,
@@ -2221,6 +2451,8 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
       mode: 'edit',
       remainingPoints: db.getUserPoints(req.userId),
       model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+      sourceDimensions,
+      outputDimensions,
       durationMs,
       createdAt
     });
