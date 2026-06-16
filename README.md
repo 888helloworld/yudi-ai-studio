@@ -1,115 +1,338 @@
-# 御弟哥哥，你的 AI 图文创作搭档
+# 御弟哥哥 AI 图文创作工作台
 
-御弟哥哥是一个面向内容创作者、电商卖家、设计团队和运营人员的 AI 图文工作台。它不只服务小红书，也覆盖通用 AI 生图、参考图改图、批量测试、看图写 Prompt、DeepSeek 文案生成、积分/卡密运营和后台管理。
+御弟哥哥是一个面向内容创作者、电商卖家、设计团队和运营人员的 AI 图文工作台。项目目前以“小红书内容生产 + 通用 AI 生图 + 参考图改图 + 看图写 Prompt + 积分运营后台”为核心，适合个人本地部署、团队内部使用，也可以继续扩展成 SaaS。
 
-项目是一个轻量 Node.js 单体应用：前端使用原生 HTML/CSS/JavaScript，后端基于 Express、SQLite、JWT 和模型 API。它可以直接部署到单台服务器，也可以作为后续 SaaS 产品的核心底座。
+当前项目是轻量 Node.js 单体应用：
 
-## 核心能力
+- 前端：原生 HTML、CSS、JavaScript
+- 后端：Express
+- 数据库：SQLite / better-sqlite3
+- 鉴权：JWT
+- 上传：Multer 2.x
+- 文案模型：DeepSeek
+- 图片模型：火山引擎图片接口、OpenAI-compatible `gpt-image-2`
+- 运行方式：Node.js / PM2 / nginx
 
-### 画面工坊：gpt-image-2 生图和改图
+## 当前重点
 
-`image-studio.html` 是当前最重要的图片创作页面，面向通用出图、批量测试和参考图改图。
+当前最重要的页面是 `image-studio.html`，也就是“画面工坊”。它负责：
 
-- 支持 `gpt-image-2` 文生图。
-- 支持上传 1-4 张参考图进行改图。
-- 支持粘贴图片、拖拽图片、点击上传图片。
-- 支持方图、竖图、横图、2K 横图和 4K 横图。
-- 支持快速、标准、精细质量档位。
-- 支持批量出图，出图组数最多可配置到 1000。
-- 支持“同时开跑”并发配置。
-- 支持生成记录分页、图片预览、下载、重新生图、复制提示词。
-- 支持把已生成图片放回参考图继续改图。
+- `gpt-image-2` 文生图
+- 上传 1-4 张参考图改图
+- 看图写 Prompt
+- 批量生成和并发控制
+- 生成记录、预览、下载、重新生成
+- 记录真实上游返回图片尺寸，尺寸不一致时仍保留原图返回
 
-服务端还有独立队列 `XI_XU_MAX_ACTIVE_JOBS`，设置为 `0` 表示不限制服务端同时运行的 gpt-image-2 图片任务。
+## 功能总览
 
-当前画面规格：
+| 模块 | 页面/接口 | 说明 |
+| --- | --- | --- |
+| 首页 | `index.html` | 内容创作入口 |
+| 小红书工作台 | `xhs.html` | 小红书配图、标题、正文、标签 |
+| 画面工坊 | `image-studio.html` | `gpt-image-2` 生图、改图、看图写 Prompt、生成记录 |
+| 旧生图入口 | `xi-image.html` | 自动跳转到画面工坊 |
+| 看图写 Prompt | `reverse-prompt.html` | 独立反推提示词页面 |
+| 个人中心 | `profile.html` | 积分、历史、卡密、订单、邀请码 |
+| 管理后台 | `admin.html` | 用户、历史、积分、卡密、订单和系统状态 |
+| 登录/注册 | `login.html` / `register.html` | JWT 登录，本地/内网可免邀请码注册 |
+| 帮助/协议 | `help.html`、`terms.html`、`privacy.html`、`content-policy.html` | 基础说明页 |
 
-| 画面类型 | 尺寸 | low 快速 | medium 标准 | high 精细 |
-| --- | --- | --- | --- | --- |
-| 方图 | `1024x1024` | 支持 | 支持 | 支持 |
-| 竖图 | `1024x1536` | 支持 | 支持 | 支持 |
-| 横图 | `1536x1024` | 支持 | 支持 | 支持 |
-| 2K 横图 | `2560x1440` | 支持 | 支持 | 支持 |
-| 4K 横图 | `3840x2160` | 支持 | 支持 | 支持 |
+## 画面工坊
 
-### DeepSeek 文案和内容创作
+画面工坊是当前版本的核心生产页面。
 
-首页和小红书工作台集成 DeepSeek 文案能力，用于日常内容生产。
+### 支持能力
 
-- 小红书风格图片生成。
-- 小红书标题、正文和标签生成。
-- 文案改写、结构优化和语气调整。
-- 图文一体生成：同时生成配图和配套文案。
-- 文案模型可通过 `DEEPSEEK_TEXT_MODEL` 配置，当前默认 `deepseek-v4-pro`。
+- 文生图：输入图片描述后生成图片。
+- 参考图改图：最多上传 4 张参考图。
+- 多种上传方式：点击上传、拖拽上传、粘贴图片。
+- 批量生成：用户只需要填写“要生成几张”。
+- 并发控制：用户可填写“同时生成几张”。
+- 质量档位：快速、标准、精细，分别映射 `low`、`medium`、`high`。
+- 图片记录：查看进度、结果预览、单张下载、重新生成、复制提示词。
+- 参考图复用：可以把已生成图片重新放回参考图继续改图。
+- 历史编号：优先展示数据库历史 ID，例如 `#539`，避免展示内部任务时间戳。
 
-这些能力可以继续扩展到 TikTok、Instagram、Amazon、独立站、电商详情页、广告素材和短视频封面等场景。
+### 当前尺寸映射
 
-### 看图写 Prompt
+上游 `gpt-image-2` 当前存在“请求尺寸”和“实际出图尺寸”不完全一致的情况。页面按用户能看到的真实出图尺寸展示，但请求仍使用上游当前接受的尺寸参数。
 
-“看图写 Prompt”用于上传图片后反推出可复用提示词，适合学习参考图的构图、光线、材质和商业摄影表达。
+| 页面显示 | 实际展示尺寸 | 请求给上游的 `size` | 备注 |
+| --- | --- | --- | --- |
+| 1:1 方图 | `1254x1254` | `1024x1024` | 当前上游请求 1024 方图会返回 1254 方图 |
+| 2:3 竖图 | `1024x1536` | `1024x1536` | 正常返回 |
+| 3:2 横图 | `1536x1024` | `1536x1024` | 正常返回 |
+| 16:9 横图 | `1672x941` | `2560x1440` | 当前上游请求 2K 横图会返回 1672x941 |
 
-内置模板包括：
+4K 入口已从页面去掉。测试中 `3840x2160` 和 `2560x1440` 都返回 `1672x941`，所以目前不再单独提供 4K 按钮。
 
-- 通用拆解：拆主体、场景、构图、光线、色彩、材质、镜头、风格和负面词。
-- 亚马逊主图：适合清洁用品、家居用品、服饰配件等产品主图。
-- 模特穿搭：适合服饰、鞋履、裙装搭配等电商图片。
-- 只取风格：学习参考图的视觉风格，但不复制人物、品牌、logo 或独特设计。
-- 精准拆图：结构化输出主体、背景、构图、镜头、光线、颜色、材质、风格、细节、画质关键词和负面词。
+### 尺寸不匹配处理
 
-反推结果默认只展示：
+服务端保存上游返回图片后会读取 PNG 尺寸，并把真实尺寸写入历史记录的 `output_dimensions`。
 
-- 中文 Prompt
-- 英文 Prompt
+当前默认策略是：
 
-中文和英文 Prompt 下方都有“用它生图”按钮，点击后会直接填入画面工坊的图片描述框。
+- 上游返回尺寸和请求尺寸不一致时，不拦截、不退款、不丢图。
+- 继续保存原图并回传给前端。
+- 服务端日志会输出尺寸不匹配警告。
+- 如果显式设置 `XI_XU_NORMALIZE_OUTPUT_SIZE=true`，服务端才会把图片规整到请求尺寸；默认不建议开启，因为会改变原图画布。
 
-### 账号、积分和后台
+## gpt-image-2 价格显示
 
-- 用户注册、登录和 JWT 鉴权。
-- 用户积分余额和积分流水。
-- 生成任务按积分扣费。
-- 失败任务自动退款。
-- 卡密兑换。
-- 模拟支付订单。
-- 个人中心。
-- 管理后台：用户、历史、积分流水、卡密、支付订单和统计数据。
+画面工坊里的快速、标准、精细价格按照 new-api / 官方计算方式在前端实时计算，用于给用户看到大概的上游 USD 成本。
 
-注意：当前支付仍是模拟订单流程，适合内部测试。生产环境正式收费前，必须接入支付宝/微信等真实支付平台回调和验签逻辑。
+质量映射：
 
-## 适用场景
+| 页面文案 | API `quality` | base grid |
+| --- | --- | --- |
+| 快速 | `low` | 16 |
+| 标准 | `medium` | 48 |
+| 精细 | `high` | 96 |
 
-- 内容创作者：快速生成封面、配图、标题和笔记文案。
-- 电商卖家：生成商品主图、商品场景图、模特穿搭图和详情页素材。
-- 设计团队：沉淀 Prompt，批量测试风格，复用生成记录。
-- 小商家：围绕商品、门店、活动快速产出推广素材。
-- 运营团队：管理账号、积分、卡密和历史资产。
+计算公式：
 
-## 技术栈
+```text
+short = min(width, height)
+long = max(width, height)
+pixels = width * height
+scaledShort = round(qualityBase * short / long)
+grid = qualityBase * scaledShort
+tokens = ceil(grid * (2000000 + pixels) / 4000000)
+priceUsd = tokens * 30 / 1000000
+```
 
-- Runtime: Node.js
-- Backend: Express
-- Database: SQLite / better-sqlite3
-- Auth: JWT
-- Upload: Multer 2.x
-- Frontend: 原生 HTML、CSS、JavaScript
-- Text model: DeepSeek
-- Image model: gpt-image-2 / 火山引擎图片接口
-- Process manager: PM2
-- Reverse proxy: nginx
+典型价格：
 
-## 主要页面
+| 质量 | 尺寸 | tokens | 约 USD |
+| --- | --- | ---: | ---: |
+| 快速 | `1024x1024` | 196 | `$0.00588` |
+| 标准 | `1024x1024` | 1756 | `$0.05268` |
+| 精细 | `1024x1024` | 7024 | `$0.21072` |
+| 快速 | `1024x1536` | 158 | `$0.00474` |
+| 标准 | `1024x1536` | 1372 | `$0.04116` |
+| 精细 | `1024x1536` | 5488 | `$0.16464` |
+| 快速 | `1536x1024` | 158 | `$0.00474` |
+| 标准 | `1536x1024` | 1372 | `$0.04116` |
+| 精细 | `1536x1024` | 5488 | `$0.16464` |
+| 快速 | `2560x1440` | 167 | `$0.00501` |
+| 标准 | `2560x1440` | 1512 | `$0.04536` |
+| 精细 | `2560x1440` | 6048 | `$0.18144` |
 
-| 页面 | 说明 |
-| --- | --- |
-| `index.html` | 首页和内容创作入口 |
-| `xhs.html` | 小红书图文创作工作台 |
-| `image-studio.html` | 画面工坊：gpt-image-2 生图、参考图改图、看图写 Prompt、生成记录 |
-| `xi-image.html` | 旧入口跳转页，自动跳转到 `image-studio.html` |
-| `reverse-prompt.html` | 独立图片反推提示词页面 |
-| `profile.html` | 个人中心 |
-| `admin.html` | 管理后台 |
-| `login.html` / `register.html` | 登录和注册 |
-| `help.html` | 使用帮助 |
+注意：这是上游美元成本估算。项目自己的积分扣费目前仍按平台规则扣积分，`POINTS.image = 10`，也就是每张图片扣 10 积分；失败或少出图会按实际成功张数退款。
+
+## 积分规则
+
+当前后端基础积分配置在 `server.js`：
+
+| 行为 | 积分 |
+| --- | ---: |
+| 图片生成 | 10 / 张 |
+| 文案生成 | 5 / 次 |
+| 文案改写 | 3 / 次 |
+| 图文一体 | 15 起，按图片张数叠加 |
+| 看图写 Prompt | 5 / 次 |
+
+积分相关特性：
+
+- 新用户默认赠送积分，默认值来自 `NEW_USER_BONUS_POINTS`，未配置时为 1000。
+- 扣费使用 SQLite 原子更新，避免并发时余额被扣成负数。
+- 图片生成失败自动退款。
+- 少出图时按缺少的张数退款。
+- 服务重启后，未完成的 `gpt-image-2` 队列任务会标记失败并退款。
+- 管理后台可给用户充值、生成卡密、查看积分流水。
+
+## gpt-image-2 队列和并发
+
+画面工坊有两层并发：
+
+- 前端“同时生成几张”：控制浏览器侧一次提交多少个任务。
+- 服务端 `XI_XU_MAX_ACTIVE_JOBS`：控制真正同时跑多少个 `gpt-image-2` 上游任务。
+
+配置说明：
+
+```env
+XI_XU_MAX_ACTIVE_JOBS=0
+XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
+```
+
+- `XI_XU_MAX_ACTIVE_JOBS=0`、`unlimited`、`infinite`、`none` 都表示服务端不设任务并发上限。
+- 其他数字会被解析为至少 1 的整数。
+- `XI_XU_IMAGE_RATE_LIMIT_PER_MIN` 限制图片相关接口每分钟请求数，默认 30。
+- 实际速度还会受到上游 API 限流、网络、服务器带宽、浏览器连接数影响。
+
+## API 概览
+
+所有用户侧生成接口都需要登录后携带 JWT：
+
+```http
+Authorization: Bearer <token>
+```
+
+### 账号
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/auth/register-config` | 返回当前是否需要邀请码 |
+| `POST` | `/api/auth/register` | 注册 |
+| `POST` | `/api/auth/login` | 登录 |
+| `GET` | `/api/auth/me` | 当前用户 |
+
+### 用户中心
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/user/points` | 积分余额 |
+| `GET` | `/api/user/points/logs` | 积分流水 |
+| `GET` | `/api/user/history` | 我的生成历史 |
+| `DELETE` | `/api/user/history/:id` | 删除我的某条历史 |
+| `GET` | `/api/user/stats` | 我的统计 |
+| `GET` | `/api/user/invites` | 我的邀请码 |
+| `POST` | `/api/user/invites/generate` | 生成邀请码 |
+| `POST` | `/api/user/change-password` | 修改密码 |
+
+### 画面工坊任务接口
+
+推荐使用任务接口，因为它支持排队、轮询和重启遗留任务处理。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/xi-image/jobs` | 获取当前用户排队/运行中的任务 |
+| `GET` | `/api/xi-image/jobs/:id` | 获取单个任务状态 |
+| `POST` | `/api/xi-image/jobs/generate` | 创建文生图任务 |
+| `POST` | `/api/xi-image/jobs/edit` | 创建参考图改图任务 |
+
+文生图示例：
+
+```bash
+curl -X POST http://localhost:3001/api/xi-image/jobs/generate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "a clean editorial product photo, soft directional light",
+    "size": "1024x1536",
+    "count": 1,
+    "quality": "high"
+  }'
+```
+
+参考图改图示例：
+
+```bash
+curl -X POST http://localhost:3001/api/xi-image/jobs/edit \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "prompt=keep the subject, improve lighting and composition" \
+  -F "size=1024x1536" \
+  -F "count=1" \
+  -F "quality=high" \
+  -F "image=@reference.png"
+```
+
+### 兼容直接接口
+
+项目仍保留直接调用接口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/api/xi-image/generate` | 直接 `gpt-image-2` 文生图 |
+| `POST` | `/api/xi-image/edit` | 直接 `gpt-image-2` 改图 |
+| `POST` | `/api/xi-image/reverse-prompt` | 看图写 Prompt |
+
+### 小红书和电商接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/generate` | 小红书图片生成 |
+| `POST` | `/generate-copy` | DeepSeek 文案生成 |
+| `POST` | `/rewrite` | 文案改写 |
+| `POST` | `/generate-both` | 图文一体生成 |
+| `POST` | `/api/amazon-image/generate` | 亚马逊主图批量生成 |
+
+亚马逊主图示例：
+
+```bash
+curl -X POST http://localhost:3001/api/amazon-image/generate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "prompt=304 stainless steel insulated cup, black, with lid, pure white background, professional studio photo" \
+  -F "ratio=1:1" \
+  -F "imageCount=4"
+```
+
+## 注册和邀请码
+
+注册接口会根据访问环境决定是否需要邀请码：
+
+- 本地或内网访问默认免邀请码，例如 `localhost`、`127.0.0.1`、`10.x.x.x`、`192.168.x.x`、`172.16-31.x.x`。
+- 公网访问默认需要邀请码。
+- 可用 `LOCAL_REGISTER_WITHOUT_INVITE` 强制控制。
+
+配置示例：
+
+```env
+# 强制免邀请码
+LOCAL_REGISTER_WITHOUT_INVITE=true
+
+# 强制需要邀请码
+LOCAL_REGISTER_WITHOUT_INVITE=false
+```
+
+前端注册页会调用 `/api/auth/register-config`，如果返回 `inviteRequired:false`，邀请码输入框会自动隐藏。
+
+## 环境变量
+
+复制 `.env.example` 为 `.env` 后配置。不要把真实密钥提交到 GitHub。
+
+```env
+PORT=3001
+HOST=0.0.0.0
+ALLOWED_ORIGIN=http://localhost:3001
+
+ARK_API_KEY=your_ark_api_key_here
+
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
+
+XI_XU_API_BASE_URL=https://your-image-api.example
+XI_XU_API_KEY=your_xi_xu_api_key_here
+XI_XU_IMAGE_MODEL=gpt-image-2
+XI_XU_VISION_MODEL=gpt-5.5
+XI_XU_GENERATE_TIMEOUT_MS=1800000
+XI_XU_GENERATE_RETRIES=1
+XI_XU_EDIT_TIMEOUT_MS=180000
+XI_XU_EDIT_RETRIES=1
+XI_XU_EDIT_FORCE_FALLBACK=false
+XI_XU_EDIT_CIRCUIT_BREAKER_MS=120000
+XI_XU_MAX_ACTIVE_JOBS=0
+XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
+XI_XU_NORMALIZE_OUTPUT_SIZE=false
+
+ARK_FALLBACK_ENABLED=true
+MAX_UPLOAD_IMAGE_MB=10
+
+JWT_SECRET=replace_with_a_long_random_secret
+JWT_EXPIRES_IN=7d
+
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=replace_with_a_strong_password
+
+NEW_USER_BONUS_POINTS=1000
+USER_INVITE_POINTS=0
+LOCAL_REGISTER_WITHOUT_INVITE=
+
+ENABLE_MOCK_PAYMENT=false
+MOCK_PAYMENT_TOKEN=replace_with_a_long_random_token
+PAYMENT_PROVIDER=mock
+PUBLIC_BASE_URL=https://your-domain.example
+```
+
+如果你使用官方 OpenAI 图片接口，也可以配置：
+
+```env
+OPENAI_IMAGE_API_BASE_URL=https://api.openai.com
+OPENAI_IMAGE_API_KEY=your_openai_api_key
+```
+
+如果配置了 `OPENAI_IMAGE_API_KEY` 或 `OPENAI_IMAGE_API_BASE_URL`，图片请求会优先走这组配置；否则走 `XI_XU_API_BASE_URL` 和 `XI_XU_API_KEY`。
 
 ## 本地运行
 
@@ -131,108 +354,73 @@ npm start
 http://localhost:3001
 ```
 
-如果使用 Windows 本地守护脚本：
+语法检查：
+
+```bash
+npm run check
+```
+
+Windows 本地守护脚本：
 
 ```powershell
 .\deploy\ensure-local-service.ps1
 ```
 
-## 环境变量
+## 管理后台
 
-复制 `.env.example` 为 `.env`，根据实际服务填写密钥。公开仓库只保留占位配置，不要把真实 API Key、JWT 密钥、管理员密码、支付密钥、回调保护令牌或生产地址提交到 Git。
+首次启动时，如果数据库里没有管理员，会使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 创建管理员账号。
 
-核心配置：
+管理员可在 `admin.html` 中处理：
 
-```env
-PORT=3001
-ALLOWED_ORIGIN=http://localhost:3001
+- 用户列表
+- 删除用户
+- 重置用户密码
+- 用户积分充值
+- 历史记录查询和删除
+- 积分流水
+- 卡密生成和统计
+- 支付订单查看、确认到账、关闭订单
+- 系统配置检查
+- gpt-image-2 上游 ping
 
-ARK_API_KEY=your_ark_api_key_here
+生产环境必须设置强管理员密码。不要使用默认密码上线。
 
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
+## 支付状态
 
-XI_XU_API_BASE_URL=https://your-image-api.example
-XI_XU_API_KEY=your_image_api_key_here
-XI_XU_IMAGE_MODEL=gpt-image-2
-XI_XU_VISION_MODEL=gpt-5.5
-XI_XU_MAX_ACTIVE_JOBS=0
-XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
+当前支付仍是模拟订单/人工确认流程，适合内部测试：
 
-JWT_SECRET=replace_with_a_long_random_secret
-JWT_EXPIRES_IN=7d
+- `/api/payment/create` 创建订单。
+- 管理后台可把订单标记为已支付。
+- 真实支付宝/微信回调目前是占位保护逻辑，未完成验签前不会自动入账。
 
-ENABLE_MOCK_PAYMENT=false
-MOCK_PAYMENT_TOKEN=replace_with_a_long_random_token
+生产环境正式收费前必须完成：
 
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=replace_with_a_strong_password
+- 支付宝/微信真实下单
+- 平台回调验签
+- 幂等处理
+- 订单金额校验
+- 回调 IP/证书/平台公钥校验
+- 财务对账
+
+## 数据库
+
+默认数据库文件：
+
+```text
+data.db
 ```
 
-生产环境建议额外设置：
+核心表：
 
-```env
-NODE_ENV=production
-HOST=127.0.0.1
-PORT=3001
-```
+| 表 | 说明 |
+| --- | --- |
+| `users` | 用户、密码哈希、积分、角色 |
+| `point_logs` | 积分流水 |
+| `history` | 生成历史 |
+| `cdkeys` | 卡密和邀请码 |
+| `payment_orders` | 支付订单 |
 
-## 并发配置
-
-项目有两层并发控制：
-
-- 前端“同时开跑”控制浏览器侧提交任务的数量。
-- 服务端 `XI_XU_MAX_ACTIVE_JOBS` 控制真正同时运行的 gpt-image-2 图片任务。
-- `XI_XU_MAX_ACTIVE_JOBS=0` 表示服务端不设并发上限。
-- `XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30` 控制图片任务接口每分钟请求数，避免误操作或账号被盗后快速打满额度。
-
-实际并发仍会受到浏览器连接数、服务器带宽、上游 API 限流和超时影响。
-
-## 安全说明
-
-当前已做的安全加固：
-
-- 生产环境没有 `JWT_SECRET` 会拒绝启动。
-- `ENABLE_MOCK_PAYMENT` 默认关闭，模拟支付回调默认不可用。
-- 模拟支付回调即使开启，也必须配置 `MOCK_PAYMENT_TOKEN`。
-- gpt-image-2 接口默认限流为 `30/分钟`。
-- 用户分页 `limit` 最大 100，后台分页 `limit` 最大 200。
-- `/uploads` 响应头添加 `Cache-Control: private`、`X-Content-Type-Options: nosniff`、`X-Robots-Tag: noindex`。
-- 关闭 `X-Powered-By`，减少技术栈指纹暴露。
-- 上传文件有大小限制、MIME 白名单和文件头校验。
-- `multer` 已升级到 2.x。
-- 官方 npm registry 下 `npm audit` 当前为 0 vulnerabilities。
-- 仓库只应提交 `.env.example` 占位配置；模型 API、支付配置和生产密钥只保存在服务端 `.env`。
-
-仍需注意：
-
-- `/uploads` 目前仍然是“知道链接即可访问”，不是彻底私有。如果业务涉及客户隐私图、人脸图、未公开商品设计，应升级为鉴权图片代理或签名 URL。
-- 当前支付是模拟订单，生产环境正式收费前必须接入真实支付回调和平台验签。
-- JWT 当前保存在浏览器 `localStorage`，如果未来出现 XSS，token 有泄露风险。后续可升级为 HttpOnly Cookie，并进一步收紧 CSP。
-
-## 部署
-
-部署文档见：
-
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-
-当前部署策略：
-
-- 本地代码是代码源。
-- 云端保留运行数据：`.env`、`data.db`、`uploads/`。
-- 正常部署不会覆盖云端数据库、用户、积分、历史和图片。
-
-执行部署：
-
-```powershell
-.\deploy\deploy.ps1
-```
-
-只在首次安装或明确恢复数据时，才使用包含运行数据的部署方式。
-
-## 数据和备份
-
-以下文件不会提交到 Git，也不会在正常部署中覆盖云端：
+这些文件和目录属于运行数据，不应该提交到 Git：
 
 - `.env`
 - `data.db`
@@ -241,48 +429,98 @@ PORT=3001
 - `node_modules/`
 - `history.json`
 
-建议生产环境定期备份：
+生产环境建议定期备份：
 
-- SQLite 数据库：`data.db`
-- 用户上传和生成图片：`uploads/`
+- `data.db`
+- `uploads/`
 - 云端 `.env`
 
-## 项目文档
+## 上传和图片保存
 
-- [产品框架](docs/PRODUCT_FRAMEWORK.md)
-- [指标和埋点](docs/METRICS_AND_EVENTS.md)
-- [迭代路线](docs/ROADMAP.md)
-- [发布验收清单](docs/RELEASE_CHECKLIST.md)
-- [部署说明](docs/DEPLOYMENT.md)
+- 上传文件默认限制为 `MAX_UPLOAD_IMAGE_MB=10`。
+- 改图原图会在服务端处理并限制大小。
+- 支持常见图片 MIME 和文件头校验。
+- 生成图片会下载到本地 `uploads/` 后再返回本地 URL。
+- `/uploads` 当前是“知道链接即可访问”，适合内部工具；如果用于客户隐私图、人脸图、未公开商品图，建议升级成鉴权图片代理或签名 URL。
 
-## 常用命令
+## 安全说明
 
-代码检查：
+当前已做的安全措施：
 
-```bash
-npm run check
-```
+- 生产环境没有 `JWT_SECRET` 会拒绝启动。
+- `ENABLE_MOCK_PAYMENT` 默认关闭。
+- 模拟支付回调开启时必须配置 `MOCK_PAYMENT_TOKEN`。
+- 图片接口有限流。
+- 注册接口有限流。
+- 用户分页和后台分页有限制。
+- 上传有大小限制、MIME 白名单和文件头校验。
+- `/uploads` 添加了 `Cache-Control: private`、`X-Content-Type-Options: nosniff`、`X-Robots-Tag: noindex`。
+- 关闭 `X-Powered-By`。
+- 依赖使用 `multer` 2.x。
 
-依赖安全审计：
+仍需注意：
 
-```bash
-npm audit --registry=https://registry.npmjs.org --audit-level=moderate
-```
+- JWT 当前保存在浏览器 `localStorage`，如果未来出现 XSS，token 有泄露风险。
+- 生产环境建议升级 HttpOnly Cookie、收紧 CSP、给 `/uploads` 加鉴权。
+- 支付正式上线前必须完成真实验签。
+- 不要提交任何真实 API Key、服务器地址、SSH 信息、管理员密码、支付密钥。
 
-查看 Git 状态：
+## 部署
 
-```bash
-git status --short --branch
-```
+部署说明见：
 
-推送到 GitHub：
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
-```bash
-git push
-```
+当前部署规则：
 
-部署到云端：
+- 本地代码是代码源。
+- 云端运行数据是云端源：`.env`、`data.db`、`uploads/`。
+- 正常部署只更新代码，不覆盖云端用户、积分、历史和图片。
+
+执行部署：
 
 ```powershell
 .\deploy\deploy.ps1
 ```
+
+只有首次安装或明确恢复数据时，才使用：
+
+```powershell
+.\deploy\deploy.ps1 -IncludeRuntimeData
+```
+
+## 常用命令
+
+```bash
+npm install
+npm start
+npm run check
+```
+
+```powershell
+.\deploy\ensure-local-service.ps1
+.\deploy\deploy.ps1
+```
+
+```bash
+git status --short --branch
+git log -1 --oneline
+git push
+```
+
+## 项目文档
+
+- [部署说明](docs/DEPLOYMENT.md)
+- [产品框架](docs/PRODUCT_FRAMEWORK.md)
+- [指标和埋点](docs/METRICS_AND_EVENTS.md)
+- [迭代路线](docs/ROADMAP.md)
+- [发布验收清单](docs/RELEASE_CHECKLIST.md)
+
+## 当前已知限制
+
+- `gpt-image-2` 上游尺寸会变化，README 中尺寸表反映的是当前测试和页面适配结果。
+- 4K 已暂时去掉，因为当前上游和 2K 横图返回同一实际尺寸。
+- 平台积分扣费和上游 USD 成本目前是两套逻辑：页面展示 USD 估算，后端按积分扣费。
+- 支付仍是模拟/人工确认，不是生产级自动支付。
+- `/uploads` 还不是强私有资源。
+- 项目是单体应用，适合轻量部署；高并发商用前需要拆分任务队列、对象存储、支付服务和日志监控。
