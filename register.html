@@ -59,7 +59,7 @@
       <div class="error" id="error"></div>
 
       <form id="registerForm">
-        <div class="form-group">
+        <div class="form-group" id="inviteGroup">
           <label for="inviteCode">邀请码 <span style="color:var(--neon-pink)">*</span></label>
           <input type="text" id="inviteCode" placeholder="请输入邀请码" required autocomplete="off">
           <p class="hint">需要邀请码才能注册，请联系管理员获取。</p>
@@ -95,11 +95,27 @@
     const successEl = document.getElementById('success');
     const submitBtn = document.getElementById('submitBtn');
     const inviteInput = document.getElementById('inviteCode');
+    const inviteGroup = document.getElementById('inviteGroup');
+    let inviteRequired = true;
 
     const inviteFromUrl = new URLSearchParams(window.location.search).get('invite');
     if (inviteFromUrl) {
       inviteInput.value = inviteFromUrl.trim().toUpperCase();
     }
+
+    async function loadRegisterConfig() {
+      try {
+        const res = await fetch('/api/auth/register-config');
+        const data = await res.json();
+        inviteRequired = data.inviteRequired !== false;
+      } catch {
+        inviteRequired = true;
+      }
+      inviteInput.required = inviteRequired;
+      inviteGroup.style.display = inviteRequired ? '' : 'none';
+    }
+
+    loadRegisterConfig();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -111,7 +127,7 @@
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
 
-      if (!inviteCode) {
+      if (inviteRequired && !inviteCode) {
         errorEl.textContent = '请输入邀请码';
         errorEl.style.display = 'block';
         return;

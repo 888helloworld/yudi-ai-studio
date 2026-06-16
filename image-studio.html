@@ -12,7 +12,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
   <link rel="stylesheet" href="style.css">
   <style>
-    body .container{width:min(1760px,calc(100% - 40px));padding-top:48px}
+    body .container{width:min(1760px,calc(100% - 40px));padding-top:4px}
     body .user-bar{width:min(1760px,calc(100% - 40px))}
     .xi-workspace{display:grid;grid-template-columns:minmax(520px,600px) minmax(820px,1fr);gap:22px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:20px;align-items:start}
@@ -36,23 +36,23 @@
     #sizeSelector .ratio-btn.active .ratio-size{color:var(--neon-pink)}
     .field-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
     .field-label-row label{margin:0}
-    .xi-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:12px}
-    .xi-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;text-align:center}
-    .xi-stat strong{display:block;font-size:18px;font-weight:900;color:var(--neon-cyan);line-height:1}
-    .xi-stat span{display:block;margin-top:4px;color:var(--text-muted);font-size:11px}
+    .xi-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:8px}
+    .xi-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;text-align:center}
+    .xi-stat strong{display:block;font-size:13px;font-weight:900;color:var(--neon-cyan);line-height:1}
+    .xi-stat span{display:block;margin-top:3px;color:var(--text-muted);font-size:10px}
     .param-help{margin:-4px 0 18px;padding:14px;border:1px solid rgba(0,240,255,0.14);border-radius:var(--radius-md);background:rgba(0,240,255,0.045)}
     .param-help-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--text-primary);font-size:13px;font-weight:800}
     .param-help-total{color:var(--neon-cyan);white-space:nowrap}
     .param-help p{color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0}
     .param-help p+p{margin-top:4px}
-    .xi-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-    .xi-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .xi-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+    .xi-toolbar-actions{display:flex;gap:6px;flex-wrap:wrap}
     .xi-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0;flex-wrap:wrap}
     .xi-pager-left,.xi-pager-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .xi-pager label{color:var(--text-muted);font-size:12px;font-weight:700}
     .xi-pager select{width:auto;min-width:82px;padding:7px 28px 7px 10px;border-radius:var(--radius-sm);font-size:13px}
     .xi-page-info{color:var(--text-muted);font-size:12px}
-    .xi-small-btn{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:700;transition:var(--base)}
+    .xi-small-btn{padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:11px;font-weight:700;transition:var(--base)}
     .xi-small-btn:hover{border-color:var(--neon-pink);color:var(--neon-pink)}
     .xi-small-btn.danger{border-color:rgba(239,68,68,0.3);color:var(--neon-red)}
     .xi-small-btn.danger:hover{background:rgba(239,68,68,0.08)}
@@ -171,7 +171,7 @@
     .reverse-meta .xi-stat{text-align:left}
     .login-overlay{display:none}
     .login-overlay.show{display:flex}
-    body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:16px auto 0;z-index:10}
+    body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:8px auto 0;z-index:10}
     @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(440px,520px) minmax(620px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -242,7 +242,6 @@
           <div class="header-icon">🖼</div>
           <div>
             <h2>画面工坊</h2>
-            <p>把脑海里的光影、人物与气氛，慢慢写成一张画。</p>
           </div>
         </div>
 
@@ -393,7 +392,6 @@
         <div class="xi-toolbar">
           <div class="section-heading">
         <h2>生成记录</h2>
-        <p>查看进度、预览结果和下载图片</p>
           </div>
           <div class="xi-toolbar-actions">
             <button class="xi-small-btn" id="reloadHistoryBtn" type="button">刷新历史</button>
@@ -877,7 +875,7 @@
     }
 
     function taskFromServerJob(job) {
-      const index = Number(String(job.id || '').match(/\d+/)?.[0]) || ++state.taskSeq;
+      const index = Number(job.historyId) || ++state.taskSeq;
       return {
         id: 'job-' + job.id,
         jobId: job.id,
@@ -1116,6 +1114,8 @@
       const job = submitResult.job;
       updateNavPoints(job.remainingPoints);
       task.jobId = job.id;
+      task.historyId = job.historyId || task.historyId || '';
+      if (task.historyId) task.index = task.historyId;
       task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
       task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
       return waitServerJob(task);
@@ -1181,6 +1181,7 @@
         task.outputDimensions = job.outputDimensions || task.outputDimensions || [];
         task.error = formatTaskError(job.error || '');
         task.historyId = job.historyId || task.historyId || '';
+        if (task.historyId) task.index = task.historyId;
         task.provider = job.provider || task.provider || '';
         task.fallbackReason = job.fallbackReason || task.fallbackReason || '';
         task.saved = Boolean(task.historyId);
