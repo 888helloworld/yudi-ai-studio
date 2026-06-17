@@ -412,6 +412,19 @@ function deleteHistoryAdmin(id) {
   return true;
 }
 
+function userOwnsUpload(userId, filename) {
+  const safeFilename = String(filename || '').trim();
+  if (!safeFilename || safeFilename.includes('/') || safeFilename.includes('\\')) return false;
+  const needle = `%/uploads/${safeFilename}%`;
+  const row = db.prepare(`
+    SELECT id FROM history
+    WHERE user_id = ?
+      AND (image_url LIKE ? OR content LIKE ?)
+    LIMIT 1
+  `).get(userId, needle, needle);
+  return Boolean(row);
+}
+
 // =============================================
 // 统计数据
 // =============================================
@@ -773,6 +786,7 @@ module.exports = {
   getAllHistory,
   getAllHistoryCount,
   deleteHistoryAdmin,
+  userOwnsUpload,
   getStats,
   getUserStats,
   changePassword,

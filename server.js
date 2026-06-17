@@ -640,15 +640,29 @@ const SIZE_MAP = {
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_SAVED_IMAGE_BYTES = 80 * 1024 * 1024;
-app.use('/uploads', express.static(UPLOAD_DIR, {
-  index: false,
-  fallthrough: false,
-  setHeaders(res) {
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
+  const filename = path.basename(req.params.filename || '');
+  if (!filename || filename !== req.params.filename) {
+    return res.status(400).json({ error: '图片路径无效' });
   }
-}));
+
+  if (req.user?.role !== 'admin' && !canUserAccessUpload(req.userId, filename)) {
+    return res.status(403).json({ error: '无权访问这张图片' });
+  }
+
+  const filepath = path.join(UPLOAD_DIR, filename);
+  if (!filepath.startsWith(UPLOAD_DIR + path.sep)) {
+    return res.status(400).json({ error: '图片路径无效' });
+  }
+  if (!fs.existsSync(filepath)) {
+    return res.status(404).json({ error: '图片不存在' });
+  }
+
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  return res.sendFile(filepath, next);
+});
 
 // SSRF 防护：拒绝下载内网/环回/链路本地地址，防止被诱导访问内网或云元数据接口
 function isInternalHost(hostname) {
@@ -1386,6 +1400,23 @@ app.get('/api/packages', (req, res) => {
 });
 
 const xiJobs = new Map();
+
+function localUploadMatchesFilename(url, filename) {
+  return String(url || '') === `/uploads/${filename}`;
+}
+
+function canUserAccessUpload(userId, filename) {
+  if (db.userOwnsUpload(userId, filename)) return true;
+  for (const job of xiJobs.values()) {
+    if (job.userId !== userId) continue;
+    const outputUrls = Array.isArray(job.imageUrls) ? job.imageUrls : [];
+    const sourceUrls = Array.isArray(job.sourcePreviewUrls) ? job.sourcePreviewUrls : [];
+    if ([...outputUrls, ...sourceUrls].some((url) => localUploadMatchesFilename(url, filename))) {
+      return true;
+    }
+  }
+  return false;
+}
 const xiJobQueue = [];
 let xiActiveJobs = 0;
 

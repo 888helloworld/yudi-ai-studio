@@ -38,6 +38,53 @@ function getAuthHeader() {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+function isProtectedUploadUrl(url) {
+  try {
+    const parsed = new URL(String(url || ''), window.location.origin);
+    return parsed.origin === window.location.origin && parsed.pathname.startsWith('/uploads/');
+  } catch (err) {
+    return false;
+  }
+}
+
+async function fetchImageBlob(url) {
+  const headers = isProtectedUploadUrl(url) ? getAuthHeader() : {};
+  const res = await fetch(new URL(url, window.location.origin).href, {
+    headers,
+    credentials: 'same-origin',
+    cache: 'no-store'
+  });
+  if (!res.ok) throw new Error('图片读取失败');
+  return res.blob();
+}
+
+function setProtectedImageSource(img, url) {
+  if (!img || !url) return;
+  if (!isProtectedUploadUrl(url)) {
+    img.src = url;
+    return;
+  }
+  fetchImageBlob(url)
+    .then((blob) => {
+      const objectUrl = URL.createObjectURL(blob);
+      img.onload = () => setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      img.src = objectUrl;
+    })
+    .catch(() => {
+      img.alt = '图片需要登录后查看';
+    });
+}
+
+function protectedImageHtml(url, alt, className = '', style = '') {
+  return `<img src="" data-protected-src="${escapeForAttr(url)}" alt="${escapeForAttr(alt)}"${className ? ` class="${escapeForAttr(className)}"` : ''}${style ? ` style="${escapeForAttr(style)}"` : ''}>`;
+}
+
+function hydrateProtectedImages(root = document) {
+  root.querySelectorAll('img[data-protected-src]').forEach((img) => {
+    setProtectedImageSource(img, img.dataset.protectedSrc);
+  });
+}
+
 function getImageCountInput(id) {
   const value = parseInt(document.getElementById(id)?.value, 10);
   if (!Number.isFinite(value)) return 1;
@@ -916,7 +963,7 @@ function updateTaskCard(taskId, data) {
   if (data.type === 'image') {
     card.dataset.status = 'done';
     const imageUrls = Array.isArray(data.imageUrls) && data.imageUrls.length ? data.imageUrls : [data.imageUrl].filter(Boolean);
-    const imageHtml = imageUrls.map(url => `<img src="${escapeForAttr(url)}" alt="生成的图片" class="task-image">`).join('');
+    const imageHtml = imageUrls.map(url => protectedImageHtml(url, '生成的图片', 'task-image')).join('');
     const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
     const encodedPrompt = encodeURIComponent(data.prompt || '');
     const actionsHtml = imageUrls.length
@@ -951,7 +998,7 @@ function updateTaskCard(taskId, data) {
     
     const copyPreview = (data.copy || '').substring(0, 100) + (data.copy && data.copy.length > 100 ? '...' : '');
     const imageUrls = Array.isArray(data.imageUrls) && data.imageUrls.length ? data.imageUrls : [data.imageUrl].filter(Boolean);
-    const imageHtml = imageUrls.map(url => `<img src="${escapeForAttr(url)}" alt="生成的图片" class="task-image" style="max-height:180px;">`).join('');
+    const imageHtml = imageUrls.map(url => protectedImageHtml(url, '生成的图片', 'task-image', 'max-height:180px;')).join('');
     const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
     const downloadButtons = imageUrls.length
       ? `<button class="task-btn" onclick="downloadImagesFromEncoded('${encodedImageUrls}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
@@ -966,6 +1013,7 @@ function updateTaskCard(taskId, data) {
       </div>
     `;
   }
+  hydrateProtectedImages(body);
   updateXhsWorkStats();
 
   // 3绉掑悗鑷姩绉诲埌鍘嗗彶
@@ -1011,13 +1059,26 @@ function escapeJsString(str) {
   return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-function downloadImage(url) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `xiaohongshu_${Date.now()}.png`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+async function downloadImage(url, prompt = '', ratio = 'image') {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const promptShort = prompt ? String(prompt).substring(0, 10).replace(/[^\w]/g, '_') : 'image';
+  const ext = String(url || '').includes('.jpg') || String(url || '').includes('jpeg') ? 'jpg' : 'png';
+  const filename = prompt || ratio !== 'image'
+    ? `xhs_${ratio}_${promptShort}_${date}.${ext}`
+    : `xiaohongshu_${Date.now()}.${ext}`;
+  try {
+    const blob = await fetchImageBlob(url);
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  } catch (err) {
+    alert(err.message || '图片下载失败，请重新登录后再试');
+  }
 }
 
 window.downloadImage = downloadImage;
@@ -1047,20 +1108,6 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
-
-// 鍥剧墖涓嬭浇锛堝甫鏂囦欢鍚嶏級
-window.downloadImage = function(url, prompt, ratio) {
-  const a = document.createElement('a');
-  a.href = url;
-  // 鐢熸垚鏈夋剰涔夌殑鏂囦欢鍚?
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const promptShort = prompt ? prompt.substring(0, 10).replace(/[^\w]/g, '_') : 'image';
-  const ext = url.includes('.jpg') || url.includes('jpeg') ? 'jpg' : 'png';
-  a.download = `xhs_${ratio}_${promptShort}_${date}.${ext}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-};
 
 function downloadImages(urls, prompt = '', ratio = 'image') {
   const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
@@ -1310,7 +1357,7 @@ document.addEventListener('click', (e) => {
     body.style.cssText = 'text-align:center;';
     
     const img = document.createElement('img');
-    img.src = imgUrl;
+    setProtectedImageSource(img, imgUrl);
     img.alt = '历史图片';
     img.style.cssText = 'max-width:100%;max-height:65vh;border-radius:12px;display:block;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
     
@@ -1392,7 +1439,7 @@ document.addEventListener('click', (e) => {
       imageGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;';
       imageUrls.forEach((url, index) => {
         const img = document.createElement('img');
-        img.src = url;
+        setProtectedImageSource(img, url);
         img.alt = `图文一体图片 ${index + 1}`;
         img.style.cssText = 'width:100%;max-height:45vh;object-fit:cover;border-radius:12px;display:block;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
         imageGrid.appendChild(img);
@@ -1620,7 +1667,7 @@ function createHistoryCard(item) {
       : document.createElement('div');
 
     if (previewUrl) {
-      thumb.src = previewUrl;
+      setProtectedImageSource(thumb, previewUrl);
       thumb.alt = '反推参考图';
     } else {
       thumb.className = 'copy-thumb';
@@ -1667,7 +1714,7 @@ function createHistoryCard(item) {
     card.appendChild(deleteBtn);
   } else if (item.type === 'image' && getHistoryImageUrl(item)) {
     const img = document.createElement('img');
-    img.src = getHistoryImageUrl(item);
+    setProtectedImageSource(img, getHistoryImageUrl(item));
     img.alt = '历史图片';
     
     const infoDiv = document.createElement('div');
@@ -1760,7 +1807,7 @@ function createHistoryCard(item) {
     const content = getHistoryCopyContent(item);
     
     const img = document.createElement('img');
-    img.src = imgUrl || '';
+    if (imgUrl) setProtectedImageSource(img, imgUrl);
     img.alt = '图文一体';
     img.style.cssText = 'width:100%;height:120px;object-fit:cover;border-radius:var(--radius-sm) 0 0 0;';
     
@@ -1880,7 +1927,7 @@ function openReversePromptModal(data) {
 
   if (data?.previewUrl) {
     const preview = document.createElement('img');
-    preview.src = data.previewUrl;
+    setProtectedImageSource(preview, data.previewUrl);
     preview.alt = '反推参考图';
     preview.style.cssText = 'width:100%;max-height:220px;object-fit:contain;border-radius:var(--radius-md);background:var(--bg-input);margin-bottom:14px;';
     body.appendChild(preview);

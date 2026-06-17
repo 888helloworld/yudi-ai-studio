@@ -242,6 +242,38 @@
     if (!token) { window.location.href = 'login.html'; }
 
     const authHeaders = { 'Authorization': `Bearer ${token}` };
+
+    function isProtectedUploadUrl(url) {
+      try {
+        const parsed = new URL(String(url || ''), window.location.origin);
+        return parsed.origin === window.location.origin && parsed.pathname.startsWith('/uploads/');
+      } catch {
+        return false;
+      }
+    }
+
+    async function setProtectedImageSource(img, url) {
+      if (!img || !url) return;
+      if (!isProtectedUploadUrl(url)) {
+        img.src = url;
+        return;
+      }
+      try {
+        const res = await fetch(new URL(url, window.location.origin).href, {
+          headers: authHeaders,
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        if (!res.ok) throw new Error('图片读取失败');
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        img.onload = () => setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        img.src = objectUrl;
+      } catch {
+        img.alt = '图片需要登录后查看';
+      }
+    }
+
     let pointLogs = [];
     let logTotal = 0;
     let logPage = 1;
@@ -459,7 +491,7 @@
         const title = item.content || item.prompt || '图片创作';
         const typeText = item.type === 'image' ? '图片' : (item.type === 'copy' ? '文案' : '图文');
         const thumb = imageUrl
-          ? `<img class="recent-thumb" src="${escapeHtml(imageUrl)}" alt="创作图片">`
+          ? `<img class="recent-thumb" src="" data-protected-src="${escapeHtml(imageUrl)}" alt="创作图片">`
           : '<div class="recent-copy-thumb">文</div>';
         return `<div class="recent-item">
           ${thumb}
@@ -472,6 +504,9 @@
           </div>
         </div>`;
       }).join('')}</div>`;
+      container.querySelectorAll('img[data-protected-src]').forEach((img) => {
+        setProtectedImageSource(img, img.dataset.protectedSrc);
+      });
     }
 
     async function deleteRecentHistory(id) {

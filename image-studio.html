@@ -127,6 +127,19 @@
     .quality-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);font-weight:800}
     .quality-price{display:block;margin-top:3px;color:var(--text-muted);font-size:10px;font-weight:700;line-height:1}
     .quality-btn.active .quality-price{color:var(--neon-cyan)}
+    .detail-suite-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .detail-suite-grid .form-group{margin-bottom:0}
+    .detail-suite-grid .form-group.wide{grid-column:1/-1}
+    .detail-suite-grid textarea{min-height:86px}
+    .detail-suite-grid input[type="color"]{height:42px;padding:4px}
+    .detail-suite-hint{margin:-4px 0 14px;padding:10px 12px;border:1px solid rgba(0,240,255,0.14);border-radius:var(--radius-sm);background:rgba(0,240,255,0.045);color:var(--text-secondary);font-size:12px;line-height:1.6}
+    .detail-suite-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+    .detail-suite-row{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:800}
+    .detail-suite-chip{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1px solid rgba(0,240,255,0.22);background:rgba(0,240,255,0.08);color:var(--neon-cyan);font-size:11px;font-weight:900}
+    .detail-suite-row span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .detail-task-kicker{display:grid;gap:4px;padding:9px 10px;border:1px solid rgba(0,240,255,0.16);border-radius:var(--radius-sm);background:rgba(0,240,255,0.055);color:var(--text-secondary);font-size:12px}
+    .detail-task-kicker strong{color:var(--neon-cyan);font-size:12px}
+    .detail-task-kicker span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .reverse-layout{display:grid;gap:20px;align-items:start}
     #reverseDropZone{min-height:118px;padding:14px}
     #reverseDropHint{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
@@ -175,7 +188,7 @@
     @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(440px,520px) minmax(620px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
+    @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -333,6 +346,91 @@
         <div id="status" class="xi-status"></div>
       </section>
 
+      <section class="panel" id="detailSuitePanel">
+        <div class="panel-header">
+          <div class="header-icon">▦</div>
+          <div>
+            <h2>电商详情套图</h2>
+            <p>一键生成同一风格的主图、卖点、场景、对比和品牌图</p>
+          </div>
+        </div>
+        <div class="detail-suite-hint">先在上方参考图放产品图，再填写卖点。系统会统一光线、色调、构图和字体气质；AI 不直接画文字，后续文字用本地统一字体叠加。</div>
+
+        <div class="detail-suite-grid">
+          <div class="form-group">
+            <label for="detailProductName">产品名称</label>
+            <input type="text" id="detailProductName" maxlength="80" placeholder="例如：不锈钢保温杯">
+          </div>
+          <div class="form-group">
+            <label for="detailPlatform">平台</label>
+            <select id="detailPlatform">
+              <option value="Amazon">Amazon</option>
+              <option value="淘宝/天猫">淘宝/天猫</option>
+              <option value="小红书">小红书</option>
+              <option value="独立站">独立站</option>
+            </select>
+          </div>
+          <div class="form-group wide">
+            <label for="detailSellingPoints">核心卖点</label>
+            <textarea id="detailSellingPoints" rows="4" maxlength="1000" placeholder="一行一个卖点，例如：&#10;24小时长效保温&#10;316不锈钢内胆&#10;一键开盖不漏水"></textarea>
+          </div>
+          <div class="form-group wide">
+            <label for="detailSpecs">产品参数/结构锁定</label>
+            <textarea id="detailSpecs" rows="3" maxlength="800" placeholder="尺寸、材质、颜色、组件、按钮/接口/配件位置等，越具体越不容易画错。"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="detailStyle">整体风格</label>
+            <select id="detailStyle">
+              <option value="Minimal Premium">极简高级</option>
+              <option value="Luxury Tech">轻奢科技</option>
+              <option value="Warm Home">温暖家居</option>
+              <option value="Scandinavian Lifestyle">北欧生活方式</option>
+              <option value="Industrial Professional">专业工业风</option>
+              <option value="Outdoor Adventure">户外场景</option>
+              <option value="Soft Baby Style">母婴柔和风</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="detailTone">品牌调性</label>
+            <input type="text" id="detailTone" maxlength="80" placeholder="例如：干净、可信、轻奢、专业">
+          </div>
+          <div class="form-group">
+            <label for="detailBrandColor">品牌主色</label>
+            <input type="color" id="detailBrandColor" value="#111827">
+          </div>
+          <div class="form-group">
+            <label for="detailFont">统一字体气质</label>
+            <select id="detailFont">
+              <option value="modern sans-serif">现代无衬线</option>
+              <option value="premium serif">高级衬线</option>
+              <option value="bold condensed">粗窄标题体</option>
+              <option value="rounded friendly sans-serif">圆润亲和体</option>
+              <option value="clean technical sans-serif">干净科技体</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="detailCount">套图张数</label>
+            <select id="detailCount">
+              <option value="6">6 张</option>
+              <option value="8" selected>8 张</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="detailSize">套图尺寸</label>
+            <select id="detailSize">
+              <option value="1024x1024">1:1 方图 · 1254×1254</option>
+              <option value="1024x1536" selected>2:3 竖图 · 1024×1536</option>
+              <option value="1536x1024">3:2 横图 · 1536×1024</option>
+              <option value="2560x1440">16:9 横图 · 1672×941</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="detail-suite-preview" id="detailSuitePreview"></div>
+        <button class="generate-btn" id="detailSuiteBtn" type="button"><span>生成详情套图</span></button>
+        <div class="xi-status" id="detailSuiteStatus"></div>
+      </section>
+
       <section class="panel" id="reversePrompt">
         <div class="panel-header">
           <div class="header-icon">⌕</div>
@@ -432,6 +530,39 @@
 
   <script>
     const token = localStorage.getItem('token');
+    function isProtectedUploadUrl(url) {
+      try {
+        const parsed = new URL(String(url || ''), window.location.origin);
+        return parsed.origin === window.location.origin && parsed.pathname.startsWith('/uploads/');
+      } catch {
+        return false;
+      }
+    }
+    function buildAssetFetchOptions(url) {
+      const headers = isProtectedUploadUrl(url) && token ? { 'Authorization': 'Bearer ' + token } : {};
+      return { headers, credentials: 'same-origin', cache: 'no-store' };
+    }
+    async function fetchAssetBlob(url) {
+      const response = await fetch(resolveAssetUrl(url), buildAssetFetchOptions(url));
+      if (!response.ok) throw new Error('图片读取失败');
+      return response.blob();
+    }
+    function setProtectedImageSource(img, url) {
+      if (!img || !url) return;
+      if (!isProtectedUploadUrl(url)) {
+        img.src = url;
+        return;
+      }
+      fetchAssetBlob(url)
+        .then((blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          img.onload = () => setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+          img.src = objectUrl;
+        })
+        .catch(() => {
+          img.alt = '图片需要登录后查看';
+        });
+    }
     const promptEl = document.getElementById('prompt');
     const sourceGrid = document.getElementById('sourceGrid');
     const sourceSlots = Array.from(document.querySelectorAll('[data-source-slot]'));
@@ -477,6 +608,19 @@
     const reverseNextPageBtn = document.getElementById('reverseNextPage');
     const reverseTemplateGrid = document.getElementById('reverseTemplateGrid');
     const reverseTemplateHint = document.getElementById('reverseTemplateHint');
+    const detailProductNameEl = document.getElementById('detailProductName');
+    const detailPlatformEl = document.getElementById('detailPlatform');
+    const detailSellingPointsEl = document.getElementById('detailSellingPoints');
+    const detailSpecsEl = document.getElementById('detailSpecs');
+    const detailStyleEl = document.getElementById('detailStyle');
+    const detailToneEl = document.getElementById('detailTone');
+    const detailBrandColorEl = document.getElementById('detailBrandColor');
+    const detailFontEl = document.getElementById('detailFont');
+    const detailCountEl = document.getElementById('detailCount');
+    const detailSizeEl = document.getElementById('detailSize');
+    const detailSuiteBtn = document.getElementById('detailSuiteBtn');
+    const detailSuiteStatusEl = document.getElementById('detailSuiteStatus');
+    const detailSuitePreviewEl = document.getElementById('detailSuitePreview');
     const MAX_BATCH_COUNT = 1000;
     const MAX_PARALLELISM = Number.MAX_SAFE_INTEGER;
     const SUPPORTED_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440'];
@@ -547,13 +691,15 @@
       reverseHistory: [],
       reverseSeq: 0,
       reversePage: 1,
-      reversePageSize: 10
+      reversePageSize: 10,
+      detailSetSeq: 0
     };
 
     if (!token) {
       document.getElementById('loginPrompt').classList.add('show');
       generateBtn.disabled = true;
       reverseBtn.disabled = true;
+      detailSuiteBtn.disabled = true;
     } else {
       initUser();
     }
@@ -564,6 +710,7 @@
       document.getElementById('loginPrompt').classList.add('show');
       generateBtn.disabled = true;
       reverseBtn.disabled = true;
+      detailSuiteBtn.disabled = true;
       setStatus(message || '登录已过期，请重新登录。', 'error');
     }
 
@@ -694,6 +841,22 @@
     });
     clearSourcesBtn.addEventListener('click', clearAllSourceImages);
     reverseBtn.addEventListener('click', runReversePrompt);
+    detailSuiteBtn.addEventListener('click', enqueueDetailSuite);
+    [
+      detailProductNameEl,
+      detailPlatformEl,
+      detailSellingPointsEl,
+      detailSpecsEl,
+      detailStyleEl,
+      detailToneEl,
+      detailBrandColorEl,
+      detailFontEl,
+      detailCountEl,
+      detailSizeEl
+    ].forEach((el) => {
+      el.addEventListener('input', renderDetailSuitePreview);
+      el.addEventListener('change', renderDetailSuitePreview);
+    });
     reloadHistoryBtn.addEventListener('click', () => loadSavedTasks({ force: true }));
     clearQueuedBtn.addEventListener('click', clearQueuedTasks);
     reversePrevPageBtn.addEventListener('click', () => {
@@ -725,6 +888,10 @@
     previewDownload.addEventListener('click', (event) => {
       event.preventDefault();
       downloadImageFile(previewDownload.href, previewDownload.download || 'xi_xu_image.png');
+    });
+    previewOpen.addEventListener('click', (event) => {
+      event.preventDefault();
+      openImageInNewTab(currentPreviewImage?.url || previewOpen.href);
     });
     previewEditBtn.addEventListener('click', usePreviewImageAsSource);
     previewOverlay.addEventListener('click', (event) => {
@@ -974,6 +1141,150 @@
         minute: '2-digit',
         hour12: false
       }).format(input).replace(/\//g, '-');
+    }
+
+    function setDetailSuiteStatus(text, type) {
+      detailSuiteStatusEl.textContent = text || '';
+      detailSuiteStatusEl.className = 'xi-status' + (type ? ' ' + type : '');
+    }
+
+    function getDetailSuiteModules(count) {
+      const modules = [
+        { title: '主视觉图', purpose: 'white-background product hero image, show what the product is, clean premium commercial product photography, no text' },
+        { title: '核心卖点图', purpose: 'feature infographic base image, visually emphasize the strongest benefit with clear text-safe empty space' },
+        { title: '痛点解决图', purpose: 'problem-solution scene, show the shopper pain point being solved in a realistic situation' },
+        { title: '使用场景图', purpose: 'lifestyle use scene, show the product naturally used by the target customer, product clearly visible' },
+        { title: '对比优势图', purpose: 'advantage comparison layout without competitor logos, leave balanced clean areas for local text overlay' },
+        { title: '尺寸参数图', purpose: 'specification and scale base image, clean technical composition, leave whitespace for local labels' },
+        { title: '包装清单图', purpose: 'package contents and accessories image, only show items actually included, organized premium layout' },
+        { title: '品牌收尾图', purpose: 'brand closing hero image, premium trust-building atmosphere, consistent color palette and lighting' }
+      ];
+      return modules.slice(0, clamp(Number(count || 8), 6, 8));
+    }
+
+    function getDetailSuiteForm() {
+      const sellingPoints = String(detailSellingPointsEl.value || '')
+        .split(/\n|；|;|、/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+      return {
+        productName: detailProductNameEl.value.trim(),
+        platform: detailPlatformEl.value || 'Amazon',
+        sellingPoints,
+        specs: detailSpecsEl.value.trim(),
+        style: detailStyleEl.value || 'Minimal Premium',
+        tone: detailToneEl.value.trim() || 'clean, trustworthy, premium, conversion-focused',
+        brandColor: detailBrandColorEl.value || '#111827',
+        fontMood: detailFontEl.value || 'modern sans-serif',
+        count: clamp(Number(detailCountEl.value || 8), 6, 8),
+        size: SUPPORTED_IMAGE_SIZES.includes(detailSizeEl.value) ? detailSizeEl.value : DEFAULT_SIZE
+      };
+    }
+
+    function renderDetailSuitePreview() {
+      const form = getDetailSuiteForm();
+      const modules = getDetailSuiteModules(form.count);
+      detailSuitePreviewEl.innerHTML = '';
+      modules.forEach((module, index) => {
+        const row = document.createElement('div');
+        row.className = 'detail-suite-row';
+        row.innerHTML = `<span class="detail-suite-chip">${String(index + 1).padStart(2, '0')}</span><span>${escapeHtml(module.title)}</span>`;
+        detailSuitePreviewEl.appendChild(row);
+      });
+    }
+
+    function buildDetailSuitePrompt(form, module, index, total, setId) {
+      const point = form.sellingPoints[index - 1] || form.sellingPoints[(index - 1) % Math.max(form.sellingPoints.length, 1)] || 'premium product value and clear shopper benefit';
+      const allPoints = form.sellingPoints.length > 0 ? form.sellingPoints.join(', ') : 'premium quality, clear function, trustworthy product details';
+      const specs = form.specs || 'Follow the reference image exactly for size, material, color, component count, button position, connector position, package/accessory quantity, and original product shape.';
+      const platformNote = form.platform === 'Amazon'
+        ? 'Amazon listing image logic: mobile-readable composition, compliant product presentation, no price, no coupon, no Amazon badge, no unsupported claim.'
+        : `${form.platform} ecommerce detail image logic: strong product recognition, clean conversion-oriented composition, premium visual hierarchy.`;
+      return [
+        `Create image ${index}/${total} for one consistent ecommerce detail image set.`,
+        `Set ID: ${setId}. Product: ${form.productName}. Module: ${module.title}.`,
+        `Module purpose: ${module.purpose}.`,
+        `Main selling point for this image: ${point}. Full selling points: ${allPoints}.`,
+        platformNote,
+        `Visual style direction: ${form.style}. Brand tone: ${form.tone}. Brand color palette anchored by ${form.brandColor}, with restrained complementary colors.`,
+        `Typography mood to reserve for later local overlay: ${form.fontMood}. Do not render readable text inside the image. Reserve clean text-safe whitespace where appropriate.`,
+        `Product structure lock: ${specs}`,
+        'Product ratio protection: keep the original product proportions, silhouette, color, material, logo position, surface texture, packaging details, and real-world scale unchanged from the reference image.',
+        'Do not alter: button placement, interface layout, connector position, handle structure, accessory quantity, original product shape, product color, material texture, or logo position.',
+        'Consistency requirements across the whole set: same lighting direction, same rendering quality, same color palette, same shadow softness, same visual tone, same product proportions, same premium commercial photography style.',
+        'Composition: product must be fully visible, not awkwardly cropped, not stretched, not warped, with enough safe margins for ecommerce use.',
+        'Negative prompt: distorted product, stretched structure, incorrect proportions, extra components, extra accessories, wrong package contents, unrealistic reflections, warped geometry, messy composition, low quality texture, inconsistent lighting, incorrect shadows, duplicated accessories, blurry rendering, fake material appearance, random text, misspelled text, logo hallucination, watermark.'
+      ].join('\n');
+    }
+
+    function enqueueDetailSuite() {
+      const form = getDetailSuiteForm();
+      if (!form.productName) {
+        setDetailSuiteStatus('先填产品名称。', 'error');
+        detailProductNameEl.focus();
+        return;
+      }
+      if (form.sellingPoints.length === 0) {
+        setDetailSuiteStatus('至少填一个核心卖点，一行一个最好用。', 'error');
+        detailSellingPointsEl.focus();
+        return;
+      }
+
+      const selectedSources = getSelectedSourceImages();
+      if (selectedSources.length === 0) {
+        setDetailSuiteStatus('请先在上方参考图放产品图，这样才能尽量保持产品比例和结构。', 'error');
+        sourceGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      const modules = getDetailSuiteModules(form.count);
+      const parallelism = getParallelism();
+      const setId = 'detail-' + (++state.detailSetSeq) + '-' + Date.now();
+      parallelismEl.value = parallelism;
+
+      modules.forEach((module, index) => {
+        const createdAtMs = Date.now() + index;
+        const task = {
+          id: 'xi-task-' + (++state.taskSeq),
+          index: state.taskSeq,
+          status: 'queued',
+          mode: 'edit',
+          prompt: buildDetailSuitePrompt(form, module, index + 1, modules.length, setId),
+          size: form.size,
+          count: 1,
+          quality: state.quality,
+          sourceFiles: selectedSources.map((source) => source.file),
+          sourcePreviewUrls: selectedSources.map((source) => source.previewUrl),
+          sourceFileNames: selectedSources.map((_, sourceIndex) => getSourceImageName(sourceIndex)),
+          detailSuite: {
+            setId,
+            productName: form.productName,
+            moduleTitle: module.title,
+            moduleIndex: index + 1,
+            total: modules.length,
+            platform: form.platform,
+            style: form.style,
+            brandColor: form.brandColor,
+            fontMood: form.fontMood
+          },
+          createdAt: formatBeijingTime(),
+          createdAtMs,
+          startedAtMs: 0,
+          finishedAtMs: 0,
+          imageUrls: [],
+          error: ''
+        };
+        state.tasks.unshift(task);
+        state.queue.push(task);
+      });
+
+      state.taskPage = 1;
+      renderTaskPage();
+      updateStats();
+      setDetailSuiteStatus(`已加入 ${modules.length} 张详情图，同一套风格开始跑。`, 'ok');
+      setStatus(`电商详情套图已加入队列：${modules.length} 张，同时生成 ${parallelism} 张。`, 'ok');
+      processQueue();
     }
 
     function enqueueTasks() {
@@ -1353,7 +1664,7 @@
         body.appendChild(createDurationLine(task));
         const loading = document.createElement('div');
         loading.className = 'task-loading';
-        loading.innerHTML = `<div class="spinner"></div><span>正在${task.mode === 'edit' ? '参考改图' : '生成图片'}...</span>`;
+        loading.innerHTML = `<div class="spinner"></div><span>${task.detailSuite ? '正在生成详情图' : `正在${task.mode === 'edit' ? '参考改图' : '生成图片'}`}...</span>`;
         body.appendChild(loading);
       } else if (task.status === 'failed') {
         appendTaskSourceThumbs(body, task);
@@ -1386,6 +1697,12 @@
 
     function createTaskInfoBlock(task) {
       const fragment = document.createDocumentFragment();
+      if (task.detailSuite) {
+        const detail = document.createElement('div');
+        detail.className = 'detail-task-kicker';
+        detail.innerHTML = `<strong>电商详情套图</strong><span>${String(task.detailSuite.moduleIndex).padStart(2, '0')}/${task.detailSuite.total} ${escapeHtml(task.detailSuite.moduleTitle)} · ${escapeHtml(task.detailSuite.productName)}</span>`;
+        fragment.appendChild(detail);
+      }
       const prompt = document.createElement('div');
       prompt.className = 'xi-task-prompt';
       prompt.textContent = task.prompt;
@@ -1426,6 +1743,7 @@
         `#${task.index}`,
         displaySize,
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
+        task.detailSuite ? task.detailSuite.moduleTitle : '',
         `${task.count} 张`,
         `质量${getQualityLabel(task.quality)}`,
         task.createdAt
@@ -1534,7 +1852,7 @@
       if (urls.length > 0) {
         urls.forEach((url, index) => {
           const img = document.createElement('img');
-          img.src = url;
+          setProtectedImageSource(img, url);
           img.alt = `参考图 ${index + 1}`;
           img.title = names[index] || `参考图 ${index + 1}`;
           img.addEventListener('click', () => {
@@ -1650,7 +1968,7 @@
         const item = document.createElement('div');
         item.className = 'xi-image-card';
         const img = document.createElement('img');
-        img.src = url;
+        setProtectedImageSource(img, url);
         img.alt = `任务 ${task.index} 图片 ${index + 1}`;
         img.addEventListener('click', () => openImagePreview(url, task, index));
         const link = document.createElement('a');
@@ -1672,9 +1990,7 @@
     async function downloadImageFile(url, filename) {
       const safeName = filename || 'xi_xu_image.png';
       try {
-        const response = await fetch(resolveAssetUrl(url), { credentials: 'same-origin', cache: 'no-store' });
-        if (!response.ok) throw new Error('下载失败');
-        const blob = await response.blob();
+        const blob = await fetchAssetBlob(url);
         const objectUrl = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = objectUrl;
@@ -1685,36 +2001,56 @@
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         setStatus(`已开始下载 ${safeName}，请在浏览器下载列表或下载文件夹查看。`, 'ok');
       } catch (err) {
-        window.open(resolveAssetUrl(url), '_blank', 'noopener');
-        setStatus('浏览器下载失败，已打开原图，可以右键另存为。', 'error');
+        setStatus('浏览器下载失败，请重新登录后再试。', 'error');
+      }
+    }
+
+    async function openImageInNewTab(url) {
+      try {
+        const blob = await fetchAssetBlob(url);
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank', 'noopener');
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+      } catch {
+        setStatus('原图打开失败，请重新登录后再试。', 'error');
       }
     }
 
     function openImagePreview(url, task, index) {
       const filename = buildImageDownloadName(task, index);
       currentPreviewImage = { url, filename, title: `任务 #${task.index} · 图片 ${index + 1}` };
-      previewImage.src = url;
+      setProtectedImageSource(previewImage, url);
       previewImage.alt = `任务 ${task.index} 图片 ${index + 1}`;
       previewTitle.textContent = `任务 #${task.index} · 图片 ${index + 1} · ${task.mode === 'edit' ? '改图' : '生图'}`;
       previewDownload.href = url;
       previewDownload.download = filename;
-      previewOpen.href = url;
+      previewOpen.href = '#';
       previewOverlay.classList.add('show');
       previewOverlay.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
     }
 
     function buildImageDownloadName(task, imageIndex = 0) {
-      const parts = [
-        '御弟哥哥 · gpt-image-2 生图',
-        task.index ? `${task.index}` : '',
-        getDisplayImageSize(task.size, task.outputDimensions),
-        `${task.count || 1} 张`,
-        `质量${getQualityLabel(task.quality)}`,
-        task.createdAt || task.doneAt || '',
-        `第${imageIndex + 1}张`
-      ].filter(Boolean);
-      return sanitizeDownloadFilename(parts.join(' · ')) + '.png';
+      const parts = task.detailSuite
+        ? [
+          '御弟哥哥 · 电商详情套图',
+          task.detailSuite.productName,
+          `${String(task.detailSuite.moduleIndex).padStart(2, '0')}-${task.detailSuite.moduleTitle}`,
+          getDisplayImageSize(task.size, task.outputDimensions),
+          `质量${getQualityLabel(task.quality)}`,
+          task.createdAt || task.doneAt || '',
+          `第${imageIndex + 1}张`
+        ]
+        : [
+          '御弟哥哥 · gpt-image-2 生图',
+          task.index ? `${task.index}` : '',
+          getDisplayImageSize(task.size, task.outputDimensions),
+          `${task.count || 1} 张`,
+          `质量${getQualityLabel(task.quality)}`,
+          task.createdAt || task.doneAt || '',
+          `第${imageIndex + 1}张`
+        ];
+      return sanitizeDownloadFilename(parts.filter(Boolean).join(' · ')) + '.png';
     }
 
     function sanitizeDownloadFilename(name) {
@@ -1727,12 +2063,12 @@
 
     function openStandaloneImagePreview(url, title = '图片预览', filename = 'preview.png') {
       currentPreviewImage = { url, filename, title };
-      previewImage.src = url;
+      setProtectedImageSource(previewImage, url);
       previewImage.alt = title;
       previewTitle.textContent = title;
       previewDownload.href = url;
       previewDownload.download = filename;
-      previewOpen.href = url;
+      previewOpen.href = '#';
       previewOverlay.classList.add('show');
       previewOverlay.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
@@ -1776,9 +2112,7 @@
     }
 
     async function imageUrlToFile(url, filename) {
-      const response = await fetch(resolveAssetUrl(url), { credentials: 'same-origin', cache: 'no-store' });
-      if (!response.ok) throw new Error('图片读取失败，请下载后手动上传。');
-      const blob = await response.blob();
+      const blob = await fetchAssetBlob(url);
       if (!blob.type.startsWith('image/')) throw new Error('当前文件不是图片，不能用于改图。');
       return new File([blob], filename || 'preview.png', { type: blob.type || 'image/png' });
     }
@@ -2585,6 +2919,7 @@
 
     updateEstimate();
     updateQualityPrices();
+    renderDetailSuitePreview();
     renderTaskPage();
     updateStats();
   </script>
