@@ -498,10 +498,18 @@ function getUserStats(userId) {
 }
 
 // 修改密码（用户自己改）
+function validatePasswordPolicy(password) {
+  if (typeof password !== 'string' || password.length < 8) return '密码长度至少8位';
+  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) return '密码需包含大小写字母和数字';
+  return null;
+}
+
 function changePassword(userId, oldPassword, newPassword) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (!user) return { success: false, error: '用户不存在' };
   if (!bcrypt.compareSync(oldPassword, user.password_hash)) return { success: false, error: '旧密码不正确' };
+  const passwordError = validatePasswordPolicy(newPassword);
+  if (passwordError) return { success: false, error: passwordError };
   
   const hash = bcrypt.hashSync(newPassword, 10);
   db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
@@ -512,11 +520,8 @@ function changePassword(userId, oldPassword, newPassword) {
 function adminResetPassword(userId, newPassword) {
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
   if (!user) return { success: false, error: '用户不存在' };
-  
-  if (newPassword.length < 8) return { success: false, error: '密码长度至少8位' };
-  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
-    return { success: false, error: '密码需包含大小写字母和数字' };
-  }
+  const passwordError = validatePasswordPolicy(newPassword);
+  if (passwordError) return { success: false, error: passwordError };
   
   const hash = bcrypt.hashSync(newPassword, 10);
   db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
@@ -619,20 +624,28 @@ function getAllCdkeys(options = {}) {
   return { list, total };
 }
 
-// 兑换卡密
+// 兑换卡密（原子占位：只在未使用时才标记，防止并发重复兑换）
 function redeemCdkey(code, userId) {
   const cdkey = db.prepare('SELECT * FROM cdkeys WHERE code = ?').get(code);
   if (!cdkey) return { success: false, error: '卡密不存在' };
   if (cdkey.used === 1) return { success: false, error: '卡密已被使用' };
-  
+
   const transaction = db.transaction(() => {
-    db.prepare('UPDATE cdkeys SET used = 1, used_by = ?, used_at = CURRENT_TIMESTAMP WHERE id = ?').run(userId, cdkey.id);
+    // 关键：WHERE used = 0 保证并发下只有一方能占用，changes === 0 说明被别人抢先
+    const claim = db.prepare('UPDATE cdkeys SET used = 1, used_by = ?, used_at = CURRENT_TIMESTAMP WHERE id = ? AND used = 0')
+      .run(userId, cdkey.id);
+    if (claim.changes === 0) throw new Error('卡密已被使用');
     const result = rechargePoints(userId, cdkey.points, `卡密兑换 ${code}`);
     return result;
   });
-  
-  const result = transaction();
-  return { success: true, points: cdkey.points, balance: result.balance };
+
+  try {
+    const result = transaction();
+    return { success: true, points: cdkey.points, balance: result.balance };
+  } catch (e) {
+    if (e.message === '卡密已被使用') return { success: false, error: '卡密已被使用' };
+    throw e;
+  }
 }
 
 // 验证邀请码（注册用，只检查不绑定用户）
@@ -664,21 +677,28 @@ function createPaymentOrder(userId, amount, points, channel) {
   return db.prepare('SELECT * FROM payment_orders WHERE order_no = ?').get(orderNo);
 }
 
-// 支付成功回调
+// 支付成功回调（原子占位：只在 pending 时才入账，防止并发回调重复充值）
 function paySuccess(orderNo, tradeNo) {
   const order = db.prepare('SELECT * FROM payment_orders WHERE order_no = ?').get(orderNo);
   if (!order) return { success: false, error: '订单不存在' };
   if (order.status !== 'pending') return { success: false, error: '订单已处理' };
-  
+
   const transaction = db.transaction(() => {
-    db.prepare('UPDATE payment_orders SET status = ?, trade_no = ?, paid_at = CURRENT_TIMESTAMP WHERE order_no = ?')
-      .run('paid', tradeNo, orderNo);
+    // 关键：WHERE status = 'pending' 保证并发回调下只有一方能入账
+    const claim = db.prepare("UPDATE payment_orders SET status = 'paid', trade_no = ?, paid_at = CURRENT_TIMESTAMP WHERE order_no = ? AND status = 'pending'")
+      .run(tradeNo, orderNo);
+    if (claim.changes === 0) throw new Error('订单已处理');
     const result = rechargePoints(order.user_id, order.points, `支付充值 ${order.channel} ${orderNo}`);
     return result;
   });
-  
-  const result = transaction();
-  return { success: true, balance: result.balance };
+
+  try {
+    const result = transaction();
+    return { success: true, balance: result.balance };
+  } catch (e) {
+    if (e.message === '订单已处理') return { success: false, error: '订单已处理' };
+    throw e;
+  }
 }
 
 function closePaymentOrder(orderNo) {

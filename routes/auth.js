@@ -7,6 +7,34 @@ const { generateToken, authMiddleware } = require('../middleware/auth');
 // 注册接口：每小时最多3次，防止批量注册
 const registerLimiter = rateLimit({ windowMs: 3600000, max: 3, message: { error: '注册过于频繁，请稍后再试' } });
 
+// 登录失败计数：按"用户名+IP"维度，连续失败5次锁定15分钟，防暴力破解
+const loginFailCounts = new Map(); // key -> { count, lockedUntilMs }
+const LOGIN_FAIL_MAX = 5;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+
+function isLoginLocked(username, ip) {
+  const key = `${username}:${ip}`;
+  const entry = loginFailCounts.get(key);
+  if (!entry) return false;
+  if (Date.now() < entry.lockedUntilMs) return true;
+  loginFailCounts.delete(key); // 锁定期过了，清除
+  return false;
+}
+
+function recordLoginFailure(username, ip) {
+  const key = `${username}:${ip}`;
+  const entry = loginFailCounts.get(key) || { count: 0, lockedUntilMs: 0 };
+  entry.count += 1;
+  if (entry.count >= LOGIN_FAIL_MAX) {
+    entry.lockedUntilMs = Date.now() + LOGIN_LOCK_MS;
+  }
+  loginFailCounts.set(key, entry);
+}
+
+function clearLoginFailures(username, ip) {
+  loginFailCounts.delete(`${username}:${ip}`);
+}
+
 function isPrivateAddress(value = '') {
   const text = String(value || '').toLowerCase().replace(/^::ffff:/, '');
   if (!text) return false;
@@ -88,13 +116,25 @@ router.post('/login', (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' });
   }
+
+  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+  if (isLoginLocked(username, clientIp)) {
+    return res.status(429).json({ error: '登录失败次数过多，请15分钟后再试' });
+  }
   
   const user = verifyUser(username, password);
   
   if (!user) {
+    recordLoginFailure(username, clientIp);
+    const key = `${username}:${clientIp}`;
+    const remaining = LOGIN_FAIL_MAX - (loginFailCounts.get(key)?.count || 0);
+    if (remaining <= 0) {
+      return res.status(429).json({ error: '登录失败次数过多，请15分钟后再试' });
+    }
     return res.status(401).json({ error: '用户名或密码错误' });
   }
-  
+
+  clearLoginFailures(username, clientIp);
   const token = generateToken(user);
   
   res.json({

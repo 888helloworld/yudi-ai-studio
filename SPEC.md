@@ -96,6 +96,8 @@ CREATE INDEX idx_point_logs_user_id ON point_logs(user_id);
 | 方法 | 路径 | 说明 | 变化 |
 |------|------|------|------|
 | POST | `/generate` | 图片生成 | 需登录，扣积分 |
+| POST | `/api/amazon-image/generate` | 亚马逊主图批量生成 | 需登录，扣积分 |
+| POST | `/api/xi-image/generate` | OpenAI 兼容图片生成 | 需登录，支持 `count` |
 | POST | `/generate-copy` | 文案生成 | 需登录，扣积分 |
 | POST | `/rewrite` | 文案改写 | 需登录，扣积分 |
 

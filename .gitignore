@@ -9,6 +9,7 @@ node_modules/
 data.db
 data.db-*
 history.json
+test_body*.json
 uploads/
 output/
 logs/
@@ -26,6 +27,12 @@ server.err.log
 .vscode/
 .claude/
 .workbuddy/
+
+# 本地测试/实验副本（可能含 .env、data.db，绝不可提交）
+测试/
+test_*.js
+test_body*.json
+check_index.html
 
 # OS artifacts
 Thumbs.db

@@ -181,7 +181,7 @@
               </div>
               <div class="profile-form-group">
                 <label for="newPassword">新密码</label>
-                <input type="password" id="newPassword" placeholder="至少6个字符" minlength="6">
+                <input type="password" id="newPassword" placeholder="至少8位，需含大小写字母和数字" minlength="8">
               </div>
               <div class="profile-form-group">
                 <label for="confirmPassword">确认新密码</label>
@@ -618,7 +618,8 @@
       msgEl.className = 'profile-msg';
 
       if (!oldPw || !newPw) { msgEl.textContent = '请填写完整'; msgEl.className = 'profile-msg error'; return; }
-      if (newPw.length < 6) { msgEl.textContent = '新密码至少6个字符'; msgEl.className = 'profile-msg error'; return; }
+      if (newPw.length < 8) { msgEl.textContent = '新密码至少8位'; msgEl.className = 'profile-msg error'; return; }
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPw)) { msgEl.textContent = '新密码需包含大小写字母和数字'; msgEl.className = 'profile-msg error'; return; }
       if (newPw !== confirmPw) { msgEl.textContent = '两次密码不一致'; msgEl.className = 'profile-msg error'; return; }
 
       try {

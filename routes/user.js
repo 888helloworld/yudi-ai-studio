@@ -113,7 +113,6 @@ router.post('/invites/generate', authMiddleware, (req, res) => {
 router.post('/change-password', authMiddleware, async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword) return res.status(400).json({ error: '请填写旧密码和新密码' });
-  if (newPassword.length < 6) return res.status(400).json({ error: '新密码至少6个字符' });
 
   const result = changePassword(req.userId, oldPassword, newPassword);
   if (!result.success) return res.status(400).json({ error: result.error });

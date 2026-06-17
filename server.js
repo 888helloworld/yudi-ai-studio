@@ -650,10 +650,43 @@ app.use('/uploads', express.static(UPLOAD_DIR, {
   }
 }));
 
+// SSRF 防护：拒绝下载内网/环回/链路本地地址，防止被诱导访问内网或云元数据接口
+function isInternalHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!host) return true;
+  if (host === 'localhost' || host === '::1' || host === '::' || host === '0.0.0.0') return true;
+  if (host.endsWith('.localhost')) return true;
+  if (host.startsWith('127.')) return true;
+  if (host.startsWith('10.')) return true;
+  if (host.startsWith('192.168.')) return true;
+  if (host.startsWith('169.254.')) return true; // 链路本地 + 云元数据 169.254.169.254
+  const match = host.match(/^172\.(\d+)\./);
+  if (match && Number(match[1]) >= 16 && Number(match[1]) <= 31) return true;
+  // IPv6 私有/唯一本地 fc00::/7、链路本地 fe80::/10
+  if (/^(fc|fd|fe8|fe9|fea|feb)/.test(host)) return true;
+  return false;
+}
+
+function assertSafeExternalUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error('图片地址格式无效');
+  }
+  if (!/^https?:$/.test(parsed.protocol)) {
+    throw new Error('仅允许 http/https 图片地址');
+  }
+  if (isInternalHost(parsed.hostname)) {
+    throw new Error('禁止下载内网图片地址');
+  }
+}
+
 async function downloadAndSaveImage(url, prefix) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
   try {
+    assertSafeExternalUrl(url);
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw new Error(`下载失败: ${response.status}`);
     const contentType = response.headers.get('content-type') || '';
@@ -922,13 +955,18 @@ app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImag
   if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
 
   const totalCost = POINTS.image * imageCount;
-  const pointsResult = db.deductPoints(req.userId, totalCost, `图片生成 x${imageCount}`);
-  if (!pointsResult.success) return res.status(400).json({ error: '积分不足，请充值' });
+  let charged = false;
+  try {
+    chargePoints(req.userId, totalCost, `图片生成 x${imageCount}`);
+    charged = true;
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
+  }
 
   const size = SIZE_MAP[ratio];
   const API_KEY = getRequiredEnv('ARK_API_KEY');
   if (!API_KEY) {
-    db.rechargePoints(req.userId, totalCost, '图片生成失败退款');
+    refundPoints(req.userId, totalCost, '图片生成失败退款');
     return res.status(500).json({ error: '图片服务未配置' });
   }
   try {
@@ -946,7 +984,7 @@ app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImag
     const remoteUrls = await generateArkImageUrls(ARK_IMAGE_BASE_URL, API_KEY, requestBody, imageCount);
     
     if (remoteUrls.length === 0) {
-      db.rechargePoints(req.userId, totalCost, '图片生成失败退款');
+      refundPoints(req.userId, totalCost, '图片生成失败退款');
       return res.status(500).json({ error: '图片生成失败' });
     }
 
@@ -956,17 +994,16 @@ app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImag
     )));
     const missingCount = Math.max(imageCount - localUrls.length, 0);
     if (missingCount > 0) {
-      db.rechargePoints(req.userId, POINTS.image * missingCount, `图片生成少出${missingCount}张退款`);
+      refundPoints(req.userId, POINTS.image * missingCount, `图片生成少出${missingCount}张退款`);
     }
     const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
     localUrls.forEach((localUrl) => {
       db.addHistory(req.userId, 'image', { sub_type: 'generate', image_url: localUrl, prompt: prompt, ratio: ratio, cost_points: POINTS.image });
     });
-    const remainingPoints = pointsResult.balance + (POINTS.image * missingCount);
 
-    res.json({ imageUrl: localUrls[0], imageUrls: localUrls, remainingPoints, createdAt });
+    res.json({ imageUrl: localUrls[0], imageUrls: localUrls, remainingPoints: db.getUserPoints(req.userId), createdAt });
   } catch (err) {
-    db.rechargePoints(req.userId, totalCost, '图片生成失败退款');
+    if (charged) refundPoints(req.userId, totalCost, '图片生成失败退款');
     console.error('小红书图片生成失败:', err.message || err);
     res.status(502).json({ error: formatUpstreamError(err.message || err, '图片生成失败，请稍后再试') });
   }

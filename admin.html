@@ -416,8 +416,8 @@
           <td>${u.role === 'admin' ? '管理员' : '用户'}</td>
           <td>${escapeHtml(u.created_at)}</td>
           <td>
-            <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openRechargeModal(${Number(u.id)}, decodeURIComponent('${encodeURIComponent(u.username || '')}'))">充值</button>
-            <button class="admin-btn admin-btn-sm" onclick="openResetPasswordModal(${Number(u.id)}, decodeURIComponent('${encodeURIComponent(u.username || '')}'))">改密码</button>
+            <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openRechargeModal(${Number(u.id)}, decodeURIComponent('${escapeJsString(encodeURIComponent(u.username || ''))}'))">充值</button>
+            <button class="admin-btn admin-btn-sm" onclick="openResetPasswordModal(${Number(u.id)}, decodeURIComponent('${escapeJsString(encodeURIComponent(u.username || ''))}'))">改密码</button>
             ${u.role !== 'admin' ? `<button class="admin-btn admin-btn-danger admin-btn-sm" onclick="deleteUser(${Number(u.id)})">删除</button>` : ''}
           </td>
         </tr>
