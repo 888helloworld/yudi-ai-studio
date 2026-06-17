@@ -1478,6 +1478,10 @@
           throw new Error(data.error || '结果还没取到');
         }
         const job = data.job;
+        const previousStatus = task.status;
+        const previousImageCount = (task.imageUrls || []).length;
+        const previousSourceCount = (task.sourcePreviewUrls || []).length;
+        const previousError = task.error || '';
         task.status = job.status;
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
         task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
@@ -1493,8 +1497,17 @@
         task.fallbackReason = job.fallbackReason || task.fallbackReason || '';
         task.saved = Boolean(task.historyId);
         updateNavPoints(job.remainingPoints);
-        updateTaskCard(task);
         updateStats();
+        const canPatchRunningCard = previousStatus === 'running'
+          && job.status === 'running'
+          && previousImageCount === (task.imageUrls || []).length
+          && previousSourceCount === (task.sourcePreviewUrls || []).length
+          && previousError === task.error;
+        if (canPatchRunningCard) {
+          updateRunningTaskDuration(task);
+        } else {
+          updateTaskCard(task);
+        }
         if (job.status === 'done') {
           if (resolve) resolve({ job });
           return;
@@ -1780,8 +1793,14 @@
       const line = document.createElement('div');
       line.className = 'xi-duration';
       const label = task.status === 'running' ? '已用时' : '生成用时';
-      line.innerHTML = `<span>${label}</span><strong>${getTaskDurationText(task)}</strong>`;
+      line.innerHTML = `<span>${label}</span><strong data-role="task-duration">${getTaskDurationText(task)}</strong>`;
       return line;
+    }
+
+    function updateRunningTaskDuration(task) {
+      const card = document.getElementById(task.id);
+      const duration = card?.querySelector('[data-role="task-duration"]');
+      if (duration) duration.textContent = getTaskDurationText(task);
     }
 
     function formatTaskError(message) {
@@ -2538,7 +2557,7 @@
     function startTaskTimer(task) {
       stopTaskTimer(task);
       task.timerId = setInterval(() => {
-        if (task.status === 'running') updateTaskCard(task);
+        if (task.status === 'running') updateRunningTaskDuration(task);
       }, 1000);
     }
 
