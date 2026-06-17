@@ -530,6 +530,8 @@
 
   <script>
     const token = localStorage.getItem('token');
+    const protectedImageUrlCache = new Map();
+
     function isProtectedUploadUrl(url) {
       try {
         const parsed = new URL(String(url || ''), window.location.origin);
@@ -542,22 +544,33 @@
       const headers = isProtectedUploadUrl(url) && token ? { 'Authorization': 'Bearer ' + token } : {};
       return { headers, credentials: 'same-origin', cache: 'no-store' };
     }
+
     async function fetchAssetBlob(url) {
       const response = await fetch(resolveAssetUrl(url), buildAssetFetchOptions(url));
       if (!response.ok) throw new Error('图片读取失败');
       return response.blob();
     }
+
+    async function getDisplayImageUrl(url) {
+      if (!isProtectedUploadUrl(url)) return url;
+      const cacheKey = resolveAssetUrl(url);
+      if (protectedImageUrlCache.has(cacheKey)) {
+        return protectedImageUrlCache.get(cacheKey);
+      }
+      const blob = await fetchAssetBlob(url);
+      const objectUrl = URL.createObjectURL(blob);
+      protectedImageUrlCache.set(cacheKey, objectUrl);
+      return objectUrl;
+    }
+
     function setProtectedImageSource(img, url) {
       if (!img || !url) return;
-      if (!isProtectedUploadUrl(url)) {
-        img.src = url;
-        return;
-      }
-      fetchAssetBlob(url)
-        .then((blob) => {
-          const objectUrl = URL.createObjectURL(blob);
-          img.onload = () => setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-          img.src = objectUrl;
+      const sourceKey = resolveAssetUrl(url);
+      img.dataset.sourceUrl = sourceKey;
+      getDisplayImageUrl(url)
+        .then((displayUrl) => {
+          if (img.dataset.sourceUrl !== sourceKey) return;
+          if (img.src !== displayUrl) img.src = displayUrl;
         })
         .catch(() => {
           img.alt = '图片需要登录后查看';
@@ -2096,7 +2109,7 @@
     function closeImagePreview() {
       previewOverlay.classList.remove('show');
       previewOverlay.setAttribute('aria-hidden', 'true');
-      previewImage.src = '';
+      delete previewImage.dataset.sourceUrl;
       currentPreviewImage = null;
       document.body.style.overflow = '';
     }
