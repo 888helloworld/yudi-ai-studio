@@ -2133,6 +2133,26 @@ async function runXiJob(job) {
     }));
     saveXiJobFailureHistory(job);
   }
+  // 内存泄漏防护：任务结束后立即释放原图 buffer（改图任务可能携带数 MB 的 PNG），
+  // 并在 10 分钟后从 xiJobs 移除该条目，给前端留出轮询取结果的时间。
+  scheduleXiJobCleanup(job);
+}
+
+const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
+const xiJobCleanupTimers = new Map();
+
+function scheduleXiJobCleanup(job) {
+  // 立即清空大块 buffer，减轻内存压力（历史记录里只存了 URL，不依赖 buffer）
+  if (Array.isArray(job.sourceFiles)) {
+    job.sourceFiles.forEach((file) => { if (file) file.buffer = null; });
+  }
+  // 已有定时器则不重复设置
+  if (xiJobCleanupTimers.has(job.id)) return;
+  const timer = setTimeout(() => {
+    xiJobs.delete(job.id);
+    xiJobCleanupTimers.delete(job.id);
+  }, XI_JOB_CLEANUP_DELAY_MS);
+  xiJobCleanupTimers.set(job.id, timer);
 }
 
 app.get('/api/xi-image/jobs', authMiddleware, (req, res) => {

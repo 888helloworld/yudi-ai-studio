@@ -1,12 +1,11 @@
 const jwt = require('jsonwebtoken');
 const { getUserById } = require('../db');
-const crypto = require('crypto');
 
-// 生产环境必须显式配置 JWT_SECRET；开发环境才允许临时随机密钥。
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  throw new Error('生产环境必须配置 JWT_SECRET');
+// JWT_SECRET 必须显式配置，避免随机回退导致重启后所有 token 失效、或弱密钥被伪造。
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim().length < 16) {
+  throw new Error('必须配置 JWT_SECRET（至少 16 个字符的高强度随机字符串）');
 }
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const JWT_SECRET = process.env.JWT_SECRET.trim();
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // 生成Token
