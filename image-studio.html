@@ -1258,6 +1258,7 @@
 
       modules.forEach((module, index) => {
         const createdAtMs = Date.now() + index;
+        const taskSourcePreviewUrls = createTaskSourcePreviewUrls(selectedSources);
         const task = {
           id: 'xi-task-' + (++state.taskSeq),
           index: state.taskSeq,
@@ -1268,7 +1269,8 @@
           count: 1,
           quality: state.quality,
           sourceFiles: selectedSources.map((source) => source.file),
-          sourcePreviewUrls: selectedSources.map((source) => source.previewUrl),
+          sourcePreviewUrls: taskSourcePreviewUrls,
+          localSourcePreviewUrls: taskSourcePreviewUrls,
           sourceFileNames: selectedSources.map((_, sourceIndex) => getSourceImageName(sourceIndex)),
           detailSuite: {
             setId,
@@ -1319,6 +1321,7 @@
 
       for (let i = 0; i < batchCount; i += 1) {
         const createdAtMs = Date.now();
+        const taskSourcePreviewUrls = createTaskSourcePreviewUrls(selectedSources);
         const task = {
           id: 'xi-task-' + (++state.taskSeq),
           index: state.taskSeq,
@@ -1329,7 +1332,8 @@
           count,
           quality: state.quality,
           sourceFiles: selectedSources.map((source) => source.file),
-          sourcePreviewUrls: selectedSources.map((source) => source.previewUrl),
+          sourcePreviewUrls: taskSourcePreviewUrls,
+          localSourcePreviewUrls: taskSourcePreviewUrls,
           sourceFileNames: selectedSources.map((_, index) => getSourceImageName(index)),
           createdAt: formatBeijingTime(),
           createdAtMs,
@@ -1493,7 +1497,7 @@
         const job = data.job;
         const previousStatus = task.status;
         const previousImageCount = (task.imageUrls || []).length;
-        const previousSourceCount = (task.sourcePreviewUrls || []).length;
+        const previousSourceSignature = (task.sourcePreviewUrls || []).join('|');
         const previousError = task.error || '';
         task.status = job.status;
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
@@ -1514,7 +1518,7 @@
         const canPatchRunningCard = previousStatus === 'running'
           && job.status === 'running'
           && previousImageCount === (task.imageUrls || []).length
-          && previousSourceCount === (task.sourcePreviewUrls || []).length
+          && previousSourceSignature === (task.sourcePreviewUrls || []).join('|')
           && previousError === task.error;
         if (canPatchRunningCard) {
           updateRunningTaskDuration(task);
@@ -2213,6 +2217,7 @@
         state.queue = state.queue.filter((item) => item.id !== taskId);
       }
       state.tasks = state.tasks.filter((item) => item.id !== taskId);
+      releaseTaskSourcePreviewUrls(task);
       renderTaskPage();
       updateStats();
       if (task.historyId) {
@@ -2241,6 +2246,9 @@
 
     function clearQueuedTasks() {
       const queuedIds = new Set(state.queue.map((task) => task.id));
+      state.tasks.forEach((task) => {
+        if (queuedIds.has(task.id)) releaseTaskSourcePreviewUrls(task);
+      });
       state.queue = [];
       state.tasks = state.tasks.filter((task) => {
         if (!queuedIds.has(task.id)) return true;
@@ -2500,6 +2508,17 @@
       return state.sourceFiles
         .map((file, index) => ({ file, previewUrl: state.sourcePreviewUrls[index] }))
         .filter((source) => source.file);
+    }
+
+    function createTaskSourcePreviewUrls(sources) {
+      return (sources || []).map((source) => URL.createObjectURL(source.file));
+    }
+
+    function releaseTaskSourcePreviewUrls(task) {
+      (task?.localSourcePreviewUrls || []).forEach((url) => {
+        if (String(url || '').startsWith('blob:')) URL.revokeObjectURL(url);
+      });
+      if (task) task.localSourcePreviewUrls = [];
     }
 
     function getSourceImageName(index) {
