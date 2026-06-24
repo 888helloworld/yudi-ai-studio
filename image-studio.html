@@ -1641,17 +1641,11 @@
     }
 
     function orderTasksForDisplay() {
-      const priority = (task) => {
-        if (task.status === 'running') return 0;
-        if (task.status === 'queued') return 1;
-        return 2;
-      };
       const timeValue = (task) => Number(task.createdAtMs || task.finishedAtMs || task.startedAtMs || task.historyId || task.index || 0);
       state.tasks.sort((a, b) => {
-        const pa = priority(a);
-        const pb = priority(b);
-        if (pa !== pb) return pa - pb;
-        return timeValue(b) - timeValue(a);
+        const diff = timeValue(b) - timeValue(a);
+        if (diff !== 0) return diff;
+        return Number(b.index || 0) - Number(a.index || 0);
       });
     }
 
