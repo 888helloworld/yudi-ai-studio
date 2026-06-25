@@ -2526,7 +2526,9 @@
 
       const dataUrl = await readFileAsDataUrl(file);
       const image = await loadImage(dataUrl);
-      const maxSides = [1536, 1280, 1024, 768];
+      // 提高起始分辨率上限：API 支持最大 2048px 的参考图，
+      // 尽量保留原图细节，减少被压缩到低分辨率导致输出图糊的问题。
+      const maxSides = [2048, 1792, 1536, 1280, 1024, 768];
       let lastBlob = null;
 
       for (const maxSide of maxSides) {
