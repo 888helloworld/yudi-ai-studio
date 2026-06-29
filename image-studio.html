@@ -1968,7 +1968,6 @@
         link.click();
         link.remove();
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-        setStatus(`已开始下载 ${safeName}，请在浏览器下载列表或下载文件夹查看。`, 'ok');
       } catch (err) {
         setStatus('浏览器下载失败，请重新登录后再试。', 'error');
       }
