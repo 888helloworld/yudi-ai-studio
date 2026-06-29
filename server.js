@@ -1784,9 +1784,18 @@ const XI_IMAGE_MIN_DIMENSION = 16;
 const XI_IMAGE_MAX_WIDTH = 3840;
 const XI_IMAGE_MAX_HEIGHT = 3840;
 const XI_IMAGE_MAX_AREA = 3840 * 2160;
+const XI_IMAGE_SIZE_ALIASES = {
+  '1254x1254': '1024x1024',
+  '1672x941': '2048x1152',
+  '941x1672': '1152x2048'
+};
+
+function normalizeXiImageSizeText(size) {
+  return String(size || '').trim().toLowerCase().replace(/[×＊*]/g, 'x');
+}
 
 function parseXiImageSizeDimensions(size) {
-  const match = /^(\d{2,4})x(\d{2,4})$/i.exec(String(size || '').trim());
+  const match = /^(\d{2,4})x(\d{2,4})$/i.exec(normalizeXiImageSizeText(size));
   if (!match) return null;
   return { width: Number(match[1]), height: Number(match[2]) };
 }
@@ -1804,8 +1813,9 @@ function isExplicitXiImageSizeSupported(size) {
 }
 
 function parseXiImageSize(size) {
-  const value = String(size || '').trim();
+  const value = normalizeXiImageSizeText(size);
   if (!value) return '1024x1536';
+  if (XI_IMAGE_SIZE_ALIASES[value]) return XI_IMAGE_SIZE_ALIASES[value];
   return isExplicitXiImageSizeSupported(value) ? value.toLowerCase() : '';
 }
 
