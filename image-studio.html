@@ -2000,26 +2000,40 @@
     }
 
     function buildImageDownloadName(task, imageIndex = 0) {
+      const displaySize = getDisplayImageSize(task.size, task.outputDimensions);
+      const sizeLabel = getLabeledImageSize(displaySize).replace(/\s+/g, '-');
+      const qualityLabel = getQualityLabel(task.quality);
+      const dateLabel = formatDownloadDate(task.createdAt || task.doneAt || '');
+      const imageLabel = `第${imageIndex + 1}张`;
       const parts = task.detailSuite
         ? [
-          '御弟哥哥 · 电商详情套图',
+          '御弟哥哥',
+          '详情套图',
           task.detailSuite.productName,
           `${String(task.detailSuite.moduleIndex).padStart(2, '0')}-${task.detailSuite.moduleTitle}`,
-          getDisplayImageSize(task.size, task.outputDimensions),
-          `质量${getQualityLabel(task.quality)}`,
-          task.createdAt || task.doneAt || '',
-          `第${imageIndex + 1}张`
+          sizeLabel,
+          qualityLabel,
+          imageLabel,
+          dateLabel
         ]
         : [
-          '御弟哥哥 · gpt-image-2 生图',
-          task.index ? `${task.index}` : '',
-          getDisplayImageSize(task.size, task.outputDimensions),
-          `${task.count || 1} 张`,
-          `质量${getQualityLabel(task.quality)}`,
-          task.createdAt || task.doneAt || '',
-          `第${imageIndex + 1}张`
+          '御弟哥哥',
+          'gpt-image2',
+          task.index ? `#${task.index}` : '',
+          task.mode === 'edit' ? '参考改图' : '文生图',
+          sizeLabel,
+          qualityLabel,
+          imageLabel,
+          dateLabel
         ];
-      return sanitizeDownloadFilename(parts.filter(Boolean).join(' · ')) + '.png';
+      return sanitizeDownloadFilename(parts.filter(Boolean).join('-')) + '.png';
+    }
+
+    function formatDownloadDate(value) {
+      const text = String(value || '').trim();
+      const match = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(text);
+      if (match) return `${match[1]}-${match[2]}-${match[3]}-${match[4]}-${match[5]}`;
+      return text.replace(/[年月日时分秒/:]+/g, '-').replace(/\s+/g, '-');
     }
 
     function sanitizeDownloadFilename(name) {
