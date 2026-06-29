@@ -21,6 +21,7 @@
     body .user-actions a{padding:4px 8px;font-size:12px;line-height:1.2;border-radius:6px}
     .xi-workspace{display:grid;grid-template-columns:minmax(380px,460px) minmax(960px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
+    .xi-main-panel{padding:14px}
     .xi-control-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;align-items:start}
     .xi-control-grid + .generate-btn{margin-top:16px}
     .xi-control-grid .form-group{margin-bottom:0}
@@ -259,7 +260,7 @@
   <main class="container">
     <div class="xi-workspace">
       <div class="xi-left-column">
-      <section class="panel">
+      <section class="panel xi-main-panel">
         <div class="form-group">
           <div class="field-label-row">
             <label for="prompt">图片描述</label>
