@@ -1677,7 +1677,7 @@
       const displaySize = getDisplayImageSize(task.size, task.outputDimensions);
       meta.textContent = [
         `#${task.index}`,
-        displaySize,
+        getLabeledImageSize(displaySize),
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
         Number(task.count) > 1 ? `${task.count} 张` : '',
@@ -1913,6 +1913,24 @@
 
     function getDisplayImageSize(size, outputDimensions) {
       return getFirstDimensionSize(outputDimensions) || DISPLAY_IMAGE_SIZES[size] || size || '';
+    }
+
+    function parseImageSizeText(size) {
+      const match = /^(\d+)\s*[x×]\s*(\d+)$/i.exec(String(size || '').trim());
+      if (!match) return null;
+      return { width: Number(match[1]), height: Number(match[2]) };
+    }
+
+    function getImageOrientationLabel(size) {
+      const parsed = parseImageSizeText(size);
+      if (!parsed || !parsed.width || !parsed.height) return '';
+      if (parsed.width === parsed.height) return '方图';
+      return parsed.width > parsed.height ? '横图' : '竖图';
+    }
+
+    function getLabeledImageSize(size) {
+      const label = getImageOrientationLabel(size);
+      return [label, size].filter(Boolean).join(' ');
     }
 
     function createImageGrid(task) {
