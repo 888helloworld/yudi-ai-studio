@@ -748,12 +748,53 @@ function getLocalUploadPath(url) {
   return path.join(UPLOAD_DIR, filename);
 }
 
-function getPngDimensionsFromBuffer(buffer) {
+function getJpegDimensionsFromBuffer(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 0xff) return null;
+    const marker = buffer[offset + 1];
+    const length = buffer.readUInt16BE(offset + 2);
+    if (length < 2) return null;
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      const height = buffer.readUInt16BE(offset + 5);
+      const width = buffer.readUInt16BE(offset + 7);
+      return { width, height, size: `${width}x${height}` };
+    }
+    offset += 2 + length;
+  }
+  return null;
+}
+
+function getWebpDimensionsFromBuffer(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 30) return null;
+  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return null;
+  const chunk = buffer.toString('ascii', 12, 16);
+  if (chunk === 'VP8X' && buffer.length >= 30) {
+    const width = 1 + buffer.readUIntLE(24, 3);
+    const height = 1 + buffer.readUIntLE(27, 3);
+    return { width, height, size: `${width}x${height}` };
+  }
+  if (chunk === 'VP8 ' && buffer.length >= 30) {
+    const width = buffer.readUInt16LE(26) & 0x3fff;
+    const height = buffer.readUInt16LE(28) & 0x3fff;
+    return { width, height, size: `${width}x${height}` };
+  }
+  if (chunk === 'VP8L' && buffer.length >= 25) {
+    const bits = buffer.readUInt32LE(21);
+    const width = (bits & 0x3fff) + 1;
+    const height = ((bits >> 14) & 0x3fff) + 1;
+    return { width, height, size: `${width}x${height}` };
+  }
+  return null;
+}
+
+function getImageDimensionsFromBuffer(buffer) {
   try {
     const png = PNG.sync.read(buffer);
     return { width: png.width, height: png.height, size: `${png.width}x${png.height}` };
   } catch {
-    return null;
+    return getJpegDimensionsFromBuffer(buffer) || getWebpDimensionsFromBuffer(buffer);
   }
 }
 
@@ -761,12 +802,12 @@ function getLocalImageDimensions(localUrls) {
   return (localUrls || []).map((url) => {
     const filepath = getLocalUploadPath(url);
     if (!filepath || !fs.existsSync(filepath)) return null;
-    return getPngDimensionsFromBuffer(fs.readFileSync(filepath));
+    return getImageDimensionsFromBuffer(fs.readFileSync(filepath));
   });
 }
 
 function getUploadedImageDimensions(files) {
-  return (files || []).map((file) => getPngDimensionsFromBuffer(file.buffer));
+  return (files || []).map((file) => getImageDimensionsFromBuffer(file.buffer));
 }
 
 function resizePngContainOnWhite(source, targetWidth, targetHeight) {
@@ -818,7 +859,7 @@ function resizePngContainOnWhite(source, targetWidth, targetHeight) {
 }
 
 function normalizeSavedImageDimensions(localUrls, expectedSize) {
-  if (!expectedSize || !XI_IMAGE_SIZES.includes(expectedSize)) return;
+  if (!isExplicitXiImageSizeSupported(expectedSize)) return;
   const [expectedWidth, expectedHeight] = expectedSize.split('x').map(Number);
   for (const url of localUrls) {
     const filepath = getLocalUploadPath(url);
@@ -841,12 +882,12 @@ function normalizeSavedImageDimensions(localUrls, expectedSize) {
 }
 
 function assertSavedImageDimensions(localUrls, expectedSize) {
-  if (!expectedSize || !XI_IMAGE_SIZES.includes(expectedSize)) return;
+  if (!isExplicitXiImageSizeSupported(expectedSize)) return;
   const [expectedWidth, expectedHeight] = expectedSize.split('x').map(Number);
   for (const url of localUrls) {
     const filepath = getLocalUploadPath(url);
     if (!filepath || !fs.existsSync(filepath)) continue;
-    const dimensions = getPngDimensionsFromBuffer(fs.readFileSync(filepath));
+    const dimensions = getImageDimensionsFromBuffer(fs.readFileSync(filepath));
     if (!dimensions) continue;
     if (dimensions.width !== expectedWidth || dimensions.height !== expectedHeight) {
       console.warn('上游返回图片尺寸不匹配，已保留原图继续返回:', JSON.stringify({
@@ -1708,21 +1749,51 @@ function xiSizeToArkSize(size) {
     '1024x1024': { width: 1920, height: 1920 },
     '1024x1536': { width: 1920, height: 2560 },
     '1536x1024': { width: 2560, height: 1920 },
-    '2560x1440': { width: 2560, height: 1440 }
+    '2560x1440': { width: 2560, height: 1440 },
+    '2048x2048': { width: 2048, height: 2048 },
+    '2048x1152': { width: 2048, height: 1152 },
+    '1152x2048': { width: 1152, height: 2048 },
+    '3840x2160': { width: 3840, height: 2160 },
+    '2160x3840': { width: 2160, height: 3840 }
   };
-  return map[size] || map['1024x1024'];
+  if (map[size]) return map[size];
+  const parsed = parseXiImageSizeDimensions(size);
+  if (parsed) return parsed;
+  return map['1024x1024'];
 }
 
-const XI_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440'];
+const XI_IMAGE_MIN_DIMENSION = 16;
+const XI_IMAGE_MAX_WIDTH = 3840;
+const XI_IMAGE_MAX_HEIGHT = 3840;
+const XI_IMAGE_MAX_AREA = 3840 * 2160;
+
+function parseXiImageSizeDimensions(size) {
+  const match = /^(\d{2,4})x(\d{2,4})$/i.exec(String(size || '').trim());
+  if (!match) return null;
+  return { width: Number(match[1]), height: Number(match[2]) };
+}
+
+function isExplicitXiImageSizeSupported(size) {
+  const dimensions = parseXiImageSizeDimensions(size);
+  if (!dimensions) return false;
+  const { width, height } = dimensions;
+  if (width < XI_IMAGE_MIN_DIMENSION || height < XI_IMAGE_MIN_DIMENSION) return false;
+  if (width > XI_IMAGE_MAX_WIDTH || height > XI_IMAGE_MAX_HEIGHT) return false;
+  if (width * height > XI_IMAGE_MAX_AREA) return false;
+  if (width % 16 !== 0 || height % 16 !== 0) return false;
+  const ratio = width / height;
+  return ratio >= 1 / 3 && ratio <= 3;
+}
+
 function parseXiImageSize(size) {
   const value = String(size || '').trim();
-  if (!value) return '1024x1536';
-  return XI_IMAGE_SIZES.includes(value) ? value : '';
+  if (!value) return '1024x1024';
+  return isExplicitXiImageSizeSupported(value) ? value.toLowerCase() : '';
 }
 
 function assertXiImageSizeSupported(size) {
-  if (!XI_IMAGE_SIZES.includes(size)) {
-    const err = new Error('无效的图片尺寸');
+  if (!isExplicitXiImageSizeSupported(size)) {
+    const err = new Error('无效的图片尺寸：宽高必须是16的倍数，比例在1:3到3:1之间，且不超过3840x2160等量像素');
     err.statusCode = 400;
     throw err;
   }
