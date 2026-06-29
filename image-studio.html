@@ -671,7 +671,7 @@
       return Math.ceil(grid * (2000000 + pixels) / 4000000);
     };
     const getGptImage2Price = (quality, size) => {
-      const tokens = getGptImage2OutputTokens(quality, DISPLAY_IMAGE_SIZES[size] || size);
+      const tokens = getGptImage2OutputTokens(quality, size);
       return tokens > 0 ? tokens * 30 / 1000000 : NaN;
     };
     const formatGptImage2Price = (price) => {
@@ -2283,7 +2283,7 @@
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
       const unitPrice = getGptImage2Price(state.quality, state.selectedSize);
-      const priceText = Number.isFinite(unitPrice) ? ` · 预估 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
+      const priceText = Number.isFinite(unitPrice) ? ` · 按请求尺寸预估 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
       if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 同时生成 ${parallelism} 张${priceText}`;
     }
 
