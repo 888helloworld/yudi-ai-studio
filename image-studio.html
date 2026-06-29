@@ -336,9 +336,9 @@
           <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.00474</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.04116</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.16464</span></div>
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">预估 $0.00474</span></div>
+              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">预估 $0.04116</span></div>
+              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">预估 $0.16464</span></div>
             </div>
           </div>
         </div>
@@ -661,8 +661,6 @@
       const longSide = Math.max(width, height);
       const shortSide = Math.min(width, height);
       if (
-        width % 16 !== 0 ||
-        height % 16 !== 0 ||
         pixels < 655360 ||
         pixels > 8294400 ||
         longSide > 3840 ||
@@ -673,7 +671,7 @@
       return Math.ceil(grid * (2000000 + pixels) / 4000000);
     };
     const getGptImage2Price = (quality, size) => {
-      const tokens = getGptImage2OutputTokens(quality, size);
+      const tokens = getGptImage2OutputTokens(quality, DISPLAY_IMAGE_SIZES[size] || size);
       return tokens > 0 ? tokens * 30 / 1000000 : NaN;
     };
     const formatGptImage2Price = (price) => {
@@ -2285,7 +2283,7 @@
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
       const unitPrice = getGptImage2Price(state.quality, state.selectedSize);
-      const priceText = Number.isFinite(unitPrice) ? ` · 约 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
+      const priceText = Number.isFinite(unitPrice) ? ` · 预估 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
       if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 同时生成 ${parallelism} 张${priceText}`;
     }
 
@@ -2293,7 +2291,7 @@
       qualityPriceEls.forEach((el) => {
         const quality = el.dataset.priceQuality;
         const price = getGptImage2Price(quality, state.selectedSize);
-        el.textContent = formatGptImage2Price(price);
+        el.textContent = price ? `预估 ${formatGptImage2Price(price)}` : '按实际结算';
       });
     }
 
