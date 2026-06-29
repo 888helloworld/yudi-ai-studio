@@ -1619,25 +1619,21 @@
 
     function createTaskInfoBlock(task) {
       const fragment = document.createDocumentFragment();
-      const stateLine = document.createElement('div');
-      stateLine.className = 'xi-task-state';
       const statusMap = {
         queued: '等待中',
         running: '出图中',
         done: '完成',
         failed: '失败'
       };
-      const badge = document.createElement('span');
-      badge.className = 'task-type' + (task.status === 'done' ? ' copy-type' : '');
-      badge.textContent = statusMap[task.status] || task.status;
-      stateLine.appendChild(badge);
-      if (task.status === 'done') {
-        const duration = document.createElement('span');
-        duration.className = 'task-duration-inline';
-        duration.textContent = getTaskDurationText(task);
-        stateLine.appendChild(duration);
+      if (task.status !== 'done') {
+        const stateLine = document.createElement('div');
+        stateLine.className = 'xi-task-state';
+        const badge = document.createElement('span');
+        badge.className = 'task-type';
+        badge.textContent = statusMap[task.status] || task.status;
+        stateLine.appendChild(badge);
+        fragment.appendChild(stateLine);
       }
-      fragment.appendChild(stateLine);
 
       if (task.detailSuite) {
         const detail = document.createElement('div');
@@ -1677,6 +1673,7 @@
       const displaySize = getDisplayImageSize(task.size, task.outputDimensions);
       meta.textContent = [
         `#${task.index}`,
+        task.status === 'done' ? `完成 ${getTaskDurationText(task)}` : '',
         getLabeledImageSize(displaySize),
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
