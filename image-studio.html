@@ -13,10 +13,15 @@
   <link rel="stylesheet" href="style.css">
   <style>
     body .container{width:min(1920px,calc(100% - 12px));padding-top:4px}
-    body .user-bar{width:min(1920px,calc(100% - 12px))}
-    .xi-workspace{display:grid;grid-template-columns:minmax(520px,600px) minmax(820px,1fr);gap:4px;align-items:start}
+    body .user-bar{width:min(1920px,calc(100% - 12px));min-height:0;margin:4px auto 6px;padding:5px 10px;border-radius:8px;gap:10px}
+    body .brand-mini{font-size:13px;line-height:1.2}
+    body .user-info{gap:8px}
+    body .user-name,body .user-points{font-size:12px;line-height:1.2}
+    body .user-actions{gap:4px}
+    body .user-actions a{padding:4px 8px;font-size:12px;line-height:1.2;border-radius:6px}
+    .xi-workspace{display:grid;grid-template-columns:minmax(380px,460px) minmax(960px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
-    .xi-control-grid{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:10px;align-items:start}
+    .xi-control-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;align-items:start}
     .xi-control-grid + .generate-btn{margin-top:16px}
     .xi-control-grid .form-group{margin-bottom:0}
     .xi-control-grid input{padding:9px 10px;font-size:13px}
@@ -36,17 +41,12 @@
     #sizeSelector .ratio-btn.active .ratio-size{color:var(--neon-pink)}
     .field-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
     .field-label-row label{margin:0}
-    .xi-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:8px}
-    .xi-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 8px;text-align:center}
-    .xi-stat strong{display:block;font-size:13px;font-weight:900;color:var(--neon-cyan);line-height:1}
-    .xi-stat span{display:block;margin-top:3px;color:var(--text-muted);font-size:10px}
     .param-help{margin:-4px 0 18px;padding:14px;border:1px solid rgba(0,240,255,0.14);border-radius:var(--radius-md);background:rgba(0,240,255,0.045)}
     .param-help-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--text-primary);font-size:13px;font-weight:800}
     .param-help-total{color:var(--neon-cyan);white-space:nowrap}
     .param-help p{color:var(--text-secondary);font-size:12px;line-height:1.7;margin:0}
     .param-help p+p{margin-top:4px}
     .xi-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-    .xi-toolbar-actions{display:flex;gap:6px;flex-wrap:wrap}
     .xi-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0;flex-wrap:wrap}
     .xi-pager-left,.xi-pager-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .xi-pager label{color:var(--text-muted);font-size:12px;font-weight:700}
@@ -61,8 +61,8 @@
     .xi-record-panel .section-heading p{font-size:12px;line-height:1.4}
     .xi-task-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
     .xi-task-card .task-body{display:flex;flex-direction:column;gap:12px}
-    .task-close{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-surface);color:var(--text-muted);font-size:18px;line-height:1;transition:var(--fast)}
-    .task-close:hover{background:var(--neon-red);color:#fff}
+    .xi-task-card .task-header{display:none}
+    .xi-task-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .xi-source-preview{position:relative;width:100%;display:grid;place-items:center;z-index:3}
     .xi-source-preview img{width:62px;height:62px;border-radius:var(--radius-sm);display:block;object-fit:cover;border:1px solid var(--border);cursor:zoom-in;transition:var(--base)}
     .xi-source-preview img:hover{border-color:var(--neon-cyan);filter:brightness(1.08)}
@@ -170,8 +170,6 @@
     .prompt-block{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
     .prompt-block-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg-secondary);border-bottom:1px solid var(--border)}
     .prompt-block-header h3{font-size:14px;font-weight:800;margin:0}
-    .copy-btn{padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:12px;font-weight:800;transition:var(--base)}
-    .copy-btn:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
     .prompt-content{padding:14px;color:var(--text-primary);font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
     .prompt-content.muted{color:var(--text-secondary)}
     .prompt-block-actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 14px}
@@ -186,7 +184,7 @@
     .login-overlay.show{display:flex}
     body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:8px auto 0;z-index:10}
     @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(440px,520px) minmax(620px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
   </style>
@@ -251,13 +249,6 @@
     <div class="xi-workspace">
       <div class="xi-left-column">
       <section class="panel">
-        <div class="panel-header">
-          <div class="header-icon">🖼</div>
-          <div>
-            <h2>画面工坊</h2>
-          </div>
-        </div>
-
         <div class="form-group">
           <div class="field-label-row">
             <label for="prompt">图片描述</label>
@@ -328,12 +319,6 @@
           </div>
 
           <div class="form-group">
-            <label for="parallelism">同时生成几张</label>
-            <input type="number" id="parallelism" min="1" value="10">
-            <div class="field-hint">一次并发几张；太高可能让上游变慢。</div>
-          </div>
-
-          <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
               <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">预估 $0.00474</span></div>
@@ -345,92 +330,6 @@
 
         <button id="generateBtn" class="generate-btn" type="button"><span>开始出图</span></button>
         <div id="status" class="xi-status"></div>
-      </section>
-
-      <section class="panel" id="detailSuitePanel">
-        <div class="panel-header">
-          <div class="header-icon">▦</div>
-          <div>
-            <h2>电商详情套图</h2>
-            <p>一键生成同一风格的主图、卖点、场景、对比和品牌图</p>
-          </div>
-        </div>
-        <div class="detail-suite-hint">先在上方参考图放产品图，再填写卖点。系统会统一光线、色调、构图和字体气质；AI 不直接画文字，后续文字用本地统一字体叠加。</div>
-
-        <div class="detail-suite-grid">
-          <div class="form-group">
-            <label for="detailProductName">产品名称</label>
-            <input type="text" id="detailProductName" maxlength="80" placeholder="例如：不锈钢保温杯">
-          </div>
-          <div class="form-group">
-            <label for="detailPlatform">平台</label>
-            <select id="detailPlatform">
-              <option value="Amazon">Amazon</option>
-              <option value="淘宝/天猫">淘宝/天猫</option>
-              <option value="小红书">小红书</option>
-              <option value="独立站">独立站</option>
-            </select>
-          </div>
-          <div class="form-group wide">
-            <label for="detailSellingPoints">核心卖点</label>
-            <textarea id="detailSellingPoints" rows="4" maxlength="1000" placeholder="一行一个卖点，例如：&#10;24小时长效保温&#10;316不锈钢内胆&#10;一键开盖不漏水"></textarea>
-          </div>
-          <div class="form-group wide">
-            <label for="detailSpecs">产品参数/结构锁定</label>
-            <textarea id="detailSpecs" rows="3" maxlength="800" placeholder="尺寸、材质、颜色、组件、按钮/接口/配件位置等，越具体越不容易画错。"></textarea>
-          </div>
-          <div class="form-group">
-            <label for="detailStyle">整体风格</label>
-            <select id="detailStyle">
-              <option value="Minimal Premium">极简高级</option>
-              <option value="Luxury Tech">轻奢科技</option>
-              <option value="Warm Home">温暖家居</option>
-              <option value="Scandinavian Lifestyle">北欧生活方式</option>
-              <option value="Industrial Professional">专业工业风</option>
-              <option value="Outdoor Adventure">户外场景</option>
-              <option value="Soft Baby Style">母婴柔和风</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="detailTone">品牌调性</label>
-            <input type="text" id="detailTone" maxlength="80" placeholder="例如：干净、可信、轻奢、专业">
-          </div>
-          <div class="form-group">
-            <label for="detailBrandColor">品牌主色</label>
-            <input type="color" id="detailBrandColor" value="#111827">
-          </div>
-          <div class="form-group">
-            <label for="detailFont">统一字体气质</label>
-            <select id="detailFont">
-              <option value="modern sans-serif">现代无衬线</option>
-              <option value="premium serif">高级衬线</option>
-              <option value="bold condensed">粗窄标题体</option>
-              <option value="rounded friendly sans-serif">圆润亲和体</option>
-              <option value="clean technical sans-serif">干净科技体</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="detailCount">套图张数</label>
-            <select id="detailCount">
-              <option value="6">6 张</option>
-              <option value="8" selected>8 张</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="detailSize">套图尺寸</label>
-            <select id="detailSize">
-              <option value="1024x1024">1:1 方图 · 1254×1254</option>
-              <option value="1024x1536" selected>2:3 竖图 · 1024×1536</option>
-              <option value="1536x1024">3:2 横图 · 1536×1024</option>
-              <option value="2048x1152">高清横图 · 1672×941</option>
-              <option value="1152x2048">高清竖图 · 941×1672</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="detail-suite-preview" id="detailSuitePreview"></div>
-        <button class="generate-btn" id="detailSuiteBtn" type="button"><span>生成详情套图</span></button>
-        <div class="xi-status" id="detailSuiteStatus"></div>
       </section>
 
       <section class="panel" id="reversePrompt">
@@ -489,20 +388,6 @@
           <div class="section-heading">
         <h2>生成记录</h2>
           </div>
-          <div class="xi-toolbar-actions">
-            <button class="xi-small-btn" id="reloadHistoryBtn" type="button">刷新历史</button>
-            <button class="xi-small-btn danger" id="clearQueuedBtn" type="button">清空排队</button>
-          </div>
-        </div>
-
-        <div class="xi-stats">
-          <div class="xi-stat"><strong id="statQueued">0</strong><span>排队</span></div>
-          <div class="xi-stat"><strong id="statRunning">0</strong><span>运行</span></div>
-          <div class="xi-stat"><strong id="statDone">0</strong><span>完成</span></div>
-          <div class="xi-stat"><strong id="statTotal">0</strong><span>总记录</span></div>
-          <div class="xi-stat"><strong id="statImages">0</strong><span>图片</span></div>
-          <div class="xi-stat"><strong id="statFailed">0</strong><span>失败</span></div>
-          <div class="xi-stat"><strong id="statConcurrency">10</strong><span>同时生成</span></div>
         </div>
 
         <div id="empty" class="xi-empty">还没有作品。写一句画面描述，点“开始出图”，这里就会出现你的生成结果。</div>
@@ -713,7 +598,7 @@
       document.getElementById('loginPrompt').classList.add('show');
       generateBtn.disabled = true;
       reverseBtn.disabled = true;
-      detailSuiteBtn.disabled = true;
+      if (detailSuiteBtn) detailSuiteBtn.disabled = true;
     } else {
       initUser();
     }
@@ -724,7 +609,7 @@
       document.getElementById('loginPrompt').classList.add('show');
       generateBtn.disabled = true;
       reverseBtn.disabled = true;
-      detailSuiteBtn.disabled = true;
+      if (detailSuiteBtn) detailSuiteBtn.disabled = true;
       setStatus(message || '登录已过期，请重新登录。', 'error');
     }
 
@@ -747,7 +632,7 @@
       });
     });
 
-    parallelismEl.addEventListener('input', () => {
+    parallelismEl?.addEventListener('input', () => {
       parallelismEl.value = Math.max(Math.floor(Number(parallelismEl.value || 1)), 1);
       updateEstimate();
       updateStats();
@@ -855,7 +740,7 @@
     });
     clearSourcesBtn.addEventListener('click', clearAllSourceImages);
     reverseBtn.addEventListener('click', runReversePrompt);
-    detailSuiteBtn.addEventListener('click', enqueueDetailSuite);
+    detailSuiteBtn?.addEventListener('click', enqueueDetailSuite);
     [
       detailProductNameEl,
       detailPlatformEl,
@@ -868,11 +753,12 @@
       detailCountEl,
       detailSizeEl
     ].forEach((el) => {
+      if (!el) return;
       el.addEventListener('input', renderDetailSuitePreview);
       el.addEventListener('change', renderDetailSuitePreview);
     });
-    reloadHistoryBtn.addEventListener('click', () => loadSavedTasks({ force: true }));
-    clearQueuedBtn.addEventListener('click', clearQueuedTasks);
+    reloadHistoryBtn?.addEventListener('click', () => loadSavedTasks({ force: true }));
+    clearQueuedBtn?.addEventListener('click', clearQueuedTasks);
     reversePrevPageBtn.addEventListener('click', () => {
       state.reversePage = Math.max(1, state.reversePage - 1);
       renderReverseHistoryPage();
@@ -1158,6 +1044,7 @@
     }
 
     function setDetailSuiteStatus(text, type) {
+      if (!detailSuiteStatusEl) return;
       detailSuiteStatusEl.textContent = text || '';
       detailSuiteStatusEl.className = 'xi-status' + (type ? ' ' + type : '');
     }
@@ -1177,6 +1064,7 @@
     }
 
     function getDetailSuiteForm() {
+      if (!detailProductNameEl) return null;
       const sellingPoints = String(detailSellingPointsEl.value || '')
         .split(/\n|；|;|、/)
         .map((item) => item.trim())
@@ -1198,6 +1086,7 @@
 
     function renderDetailSuitePreview() {
       const form = getDetailSuiteForm();
+      if (!form || !detailSuitePreviewEl) return;
       const modules = getDetailSuiteModules(form.count);
       detailSuitePreviewEl.innerHTML = '';
       modules.forEach((module, index) => {
@@ -1234,6 +1123,7 @@
 
     function enqueueDetailSuite() {
       const form = getDetailSuiteForm();
+      if (!form) return;
       if (!form.productName) {
         setDetailSuiteStatus('先填产品名称。', 'error');
         detailProductNameEl.focus();
@@ -1255,7 +1145,7 @@
       const modules = getDetailSuiteModules(form.count);
       const parallelism = getParallelism();
       const setId = 'detail-' + (++state.detailSetSeq) + '-' + Date.now();
-      parallelismEl.value = parallelism;
+      if (parallelismEl) parallelismEl.value = parallelism;
 
       modules.forEach((module, index) => {
         const createdAtMs = Date.now() + index;
@@ -1299,7 +1189,7 @@
       renderTaskPage();
       updateStats();
       setDetailSuiteStatus(`已加入 ${modules.length} 张详情图，同一套风格开始跑。`, 'ok');
-      setStatus(`电商详情套图已加入队列：${modules.length} 张，同时生成 ${parallelism} 张。`, 'ok');
+      setStatus(`电商详情套图已加入队列：${modules.length} 张。`, 'ok');
       processQueue();
     }
 
@@ -1317,7 +1207,7 @@
       const mode = selectedSources.length > 0 ? 'edit' : 'generate';
       countEl.value = count;
       batchCountEl.value = batchCount;
-      parallelismEl.value = parallelism;
+      if (parallelismEl) parallelismEl.value = parallelism;
       updateEstimate();
 
       for (let i = 0; i < batchCount; i += 1) {
@@ -1349,7 +1239,7 @@
 
       state.taskPage = 1;
       renderTaskPage();
-      setStatus(`已开始生成 ${batchCount} 张${mode === 'edit' ? '参考图改图' : '新图'}，同时生成 ${parallelism} 张。`, 'ok');
+      setStatus(`已开始生成 ${batchCount} 张${mode === 'edit' ? '参考图改图' : '新图'}。`, 'ok');
       updateStats();
       resetImageForm();
       processQueue();
@@ -1360,7 +1250,7 @@
       sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
-      parallelismEl.value = DEFAULT_PARALLELISM;
+      if (parallelismEl) parallelismEl.value = DEFAULT_PARALLELISM;
       state.selectedSize = DEFAULT_SIZE;
       state.quality = DEFAULT_QUALITY;
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
@@ -1606,13 +1496,8 @@
       card.className = 'task-card xi-task-card';
       card.id = task.id;
       card.innerHTML = `
-        <div class="task-header">
-          <span class="task-type">排队</span>
-          <button class="task-close" type="button" aria-label="删除任务">×</button>
-        </div>
         <div class="task-body"></div>
       `;
-      card.querySelector('.task-close').addEventListener('click', () => removeTask(task.id));
       taskListEl.appendChild(card);
       updateTaskCard(task);
     }
@@ -1657,25 +1542,7 @@
     function updateTaskCard(task) {
       const card = document.getElementById(task.id);
       if (!card) return;
-      const badge = card.querySelector('.task-type');
       const body = card.querySelector('.task-body');
-
-      const statusMap = {
-        queued: '等待中',
-        running: '出图中',
-        done: '完成',
-        failed: '失败'
-      };
-      badge.textContent = statusMap[task.status] || task.status;
-      badge.className = 'task-type' + (task.status === 'done' ? ' copy-type' : '');
-      const header = card.querySelector('.task-header');
-      header.querySelector('.task-duration-inline')?.remove();
-      if (task.status === 'done') {
-        const duration = document.createElement('span');
-        duration.className = 'task-duration-inline';
-        duration.textContent = getTaskDurationText(task);
-        badge.insertAdjacentElement('afterend', duration);
-      }
 
       body.innerHTML = '';
       const infoBlock = createTaskInfoBlock(task);
@@ -1709,8 +1576,8 @@
         body.appendChild(actions);
       } else if (task.status === 'done') {
         body.appendChild(createImageGrid(task));
-        appendTaskSourceThumbs(body, task);
         body.appendChild(infoBlock);
+        appendTaskSourceThumbs(body, task);
       }
     }
 
@@ -1722,6 +1589,26 @@
 
     function createTaskInfoBlock(task) {
       const fragment = document.createDocumentFragment();
+      const stateLine = document.createElement('div');
+      stateLine.className = 'xi-task-state';
+      const statusMap = {
+        queued: '等待中',
+        running: '出图中',
+        done: '完成',
+        failed: '失败'
+      };
+      const badge = document.createElement('span');
+      badge.className = 'task-type' + (task.status === 'done' ? ' copy-type' : '');
+      badge.textContent = statusMap[task.status] || task.status;
+      stateLine.appendChild(badge);
+      if (task.status === 'done') {
+        const duration = document.createElement('span');
+        duration.className = 'task-duration-inline';
+        duration.textContent = getTaskDurationText(task);
+        stateLine.appendChild(duration);
+      }
+      fragment.appendChild(stateLine);
+
       if (task.detailSuite) {
         const detail = document.createElement('div');
         detail.className = 'detail-task-kicker';
@@ -1735,16 +1622,10 @@
 
       const promptTools = document.createElement('div');
       promptTools.className = 'xi-prompt-tools';
-      const copyPrompt = document.createElement('button');
-      copyPrompt.className = 'xi-small-btn';
-      copyPrompt.type = 'button';
-      copyPrompt.textContent = '复制提示词';
-      copyPrompt.addEventListener('click', () => copyTaskPrompt(copyPrompt, task.prompt || ''));
-      promptTools.appendChild(copyPrompt);
       const refillPrompt = document.createElement('button');
       refillPrompt.className = 'xi-small-btn';
       refillPrompt.type = 'button';
-      refillPrompt.textContent = '重新生图';
+      refillPrompt.textContent = '提示词重新生图';
       refillPrompt.addEventListener('click', () => refillPromptFromTask(task));
       promptTools.appendChild(refillPrompt);
       if ((task.prompt || '').trim()) {
@@ -2263,13 +2144,17 @@
       const images = state.tasks.reduce((sum, task) => sum + (task.imageUrls?.length || 0), 0);
       const totalPages = getTaskTotalPages();
       state.taskPage = Math.min(Math.max(state.taskPage, 1), totalPages);
-      document.getElementById('statQueued').textContent = queued;
-      document.getElementById('statRunning').textContent = running;
-      document.getElementById('statDone').textContent = done;
-      document.getElementById('statTotal').textContent = total;
-      document.getElementById('statImages').textContent = images;
-      document.getElementById('statFailed').textContent = failed;
-      document.getElementById('statConcurrency').textContent = getParallelism();
+      const setStat = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+      setStat('statQueued', queued);
+      setStat('statRunning', running);
+      setStat('statDone', done);
+      setStat('statTotal', total);
+      setStat('statImages', images);
+      setStat('statFailed', failed);
+      setStat('statConcurrency', getParallelism());
       if (state.tasks.length > 0) {
         taskPageInfoEl.textContent = `第 ${state.taskPage} / ${totalPages} 页 · 共 ${state.tasks.length} 条`;
         taskPrevPageBtn.disabled = state.taskPage <= 1;
@@ -2855,14 +2740,6 @@
       const h3 = document.createElement('h3');
       h3.textContent = title;
       header.appendChild(h3);
-      if (copyable) {
-        const btn = document.createElement('button');
-        btn.className = 'copy-btn';
-        btn.type = 'button';
-        btn.textContent = '复制';
-        btn.addEventListener('click', () => copyReverseText(btn, text));
-        header.appendChild(btn);
-      }
       const content = document.createElement('div');
       content.className = 'prompt-content' + (copyable ? '' : ' muted');
       content.textContent = text;
@@ -2887,28 +2764,6 @@
       promptEl.focus();
       promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setStatus(`已填入${title}，可以直接开始出图。`, 'ok');
-    }
-
-    function copyReverseText(btn, text) {
-      copyTextToClipboard(text).then(() => {
-        const old = btn.textContent;
-        btn.textContent = '已复制';
-        setTimeout(() => { btn.textContent = old; }, 1400);
-      }).catch(() => {
-        setReverseStatus('复制失败，请手动选择文本复制。', 'error');
-      });
-    }
-
-    function copyTaskPrompt(btn, text) {
-      if (!text) return;
-      copyTextToClipboard(text).then(() => {
-        const old = btn.textContent;
-        btn.textContent = '已复制';
-        setStatus('提示词已复制。', 'ok');
-        setTimeout(() => { btn.textContent = old; }, 1400);
-      }).catch(() => {
-        setStatus('复制失败，请手动选择提示词复制。', 'error');
-      });
     }
 
     async function copyTextToClipboard(text) {
@@ -2952,7 +2807,7 @@
     }
 
     function getParallelism() {
-      return clamp(Number(parallelismEl.value || 1), 1, MAX_PARALLELISM);
+      return clamp(Number(parallelismEl?.value || DEFAULT_PARALLELISM), 1, MAX_PARALLELISM);
     }
 
     function clamp(value, min, max) {
@@ -2967,7 +2822,7 @@
 
     updateEstimate();
     updateQualityPrices();
-    renderDetailSuitePreview();
+    if (detailSuitePreviewEl) renderDetailSuitePreview();
     renderTaskPage();
     updateStats();
   </script>
