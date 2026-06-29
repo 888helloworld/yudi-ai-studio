@@ -931,6 +931,24 @@ function buildImageVariationPrompt(prompt, index, total) {
 这是同一主题的第 ${index + 1}/${total} 张图，请生成不同角度、不同构图或不同细节版本，保持同一小红书爆款风格，但避免和其他图片重复。`;
 }
 
+function getXiCanvasLabel(size = '') {
+  const [width, height] = String(size || '').split('x').map(Number);
+  if (!width || !height) return '目标画布';
+  if (width === height) return '方图画布';
+  if (width > height) return width / height > 1.7 ? '16:9 横图画布' : '横图画布';
+  return height / width > 1.7 ? '竖图画布' : '竖图画布';
+}
+
+function buildXiGeneratePrompt(prompt, size = '') {
+  if (!size) return prompt;
+  return [
+    `最终图片目标画布是 ${size}，这是${getXiCanvasLabel(size)}。`,
+    `请严格按照 ${size} 的画布比例构图，不要输出其他比例，不要把横图生成竖图或把竖图生成方图。`,
+    '主体必须完整出现在画面内，四周保留安全留白；不要加边框，不要加文字，不要加水印。',
+    `用户要求：${prompt}`
+  ].join('\n\n');
+}
+
 function buildAmazonMainImagePrompt(prompt, ratio) {
   const ratioHint = ratio === '3:4'
     ? '竖版主图候选，主体占画面 85% 以上，适合电商移动端首屏浏览'
@@ -1682,7 +1700,7 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
       }),
       body: JSON.stringify({
         model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
-        prompt,
+        prompt: buildXiGeneratePrompt(prompt, size),
         size,
         n: count,
         quality,
@@ -2383,7 +2401,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
       }),
       body: JSON.stringify({
         model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
-        prompt,
+        prompt: buildXiGeneratePrompt(prompt, size),
         size,
         n: count,
         quality,
