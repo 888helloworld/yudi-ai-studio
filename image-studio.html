@@ -59,7 +59,7 @@
     .xi-record-panel{padding:20px}
     .xi-record-panel .section-heading h2{font-size:16px;margin-bottom:3px}
     .xi-record-panel .section-heading p{font-size:12px;line-height:1.4}
-    .xi-task-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+    .xi-task-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
     .xi-task-card .task-body{display:flex;flex-direction:column;gap:12px}
     .xi-task-card .task-header{display:none}
     .xi-task-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -127,6 +127,10 @@
     .quality-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1);font-weight:800}
     .quality-price{display:block;margin-top:3px;color:var(--text-muted);font-size:10px;font-weight:700;line-height:1}
     .quality-btn.active .quality-price{color:var(--neon-cyan)}
+    .count-picker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+    .count-btn{min-height:30px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:800;transition:var(--base)}
+    .count-btn:hover{border-color:rgba(0,240,255,0.35);color:var(--neon-cyan);background:rgba(0,240,255,0.05)}
+    .count-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,240,255,0.1)}
     .detail-suite-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .detail-suite-grid .form-group{margin-bottom:0}
     .detail-suite-grid .form-group.wide{grid-column:1/-1}
@@ -183,8 +187,8 @@
     .login-overlay{display:none}
     .login-overlay.show{display:flex}
     body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:8px auto 0;z-index:10}
-    @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
   </style>
@@ -267,7 +271,6 @@
               <input type="file" class="source-image-input" accept="image/*">
               <div class="drop-hint">
                 <div class="upload-icon">+</div>
-                <p>图1</p>
               </div>
               <div class="xi-source-preview"></div>
             </div>
@@ -275,7 +278,6 @@
               <input type="file" class="source-image-input" accept="image/*">
               <div class="drop-hint">
                 <div class="upload-icon">+</div>
-                <p>图2</p>
               </div>
               <div class="xi-source-preview"></div>
             </div>
@@ -283,7 +285,6 @@
               <input type="file" class="source-image-input" accept="image/*">
               <div class="drop-hint">
                 <div class="upload-icon">+</div>
-                <p>图3</p>
               </div>
               <div class="xi-source-preview"></div>
             </div>
@@ -291,7 +292,6 @@
               <input type="file" class="source-image-input" accept="image/*">
               <div class="drop-hint">
                 <div class="upload-icon">+</div>
-                <p>图4</p>
               </div>
               <div class="xi-source-preview"></div>
             </div>
@@ -314,16 +314,27 @@
 
           <div class="form-group">
             <label for="batchCount">要生成几张</label>
-            <input type="number" id="batchCount" min="1" max="1000" value="1">
-            <div class="field-hint">想要几张成品图，就填几。</div>
+            <input type="hidden" id="batchCount" value="1">
+            <div class="count-picker" id="batchCountPicker">
+              <button class="count-btn active" type="button" data-count="1">1</button>
+              <button class="count-btn" type="button" data-count="2">2</button>
+              <button class="count-btn" type="button" data-count="3">3</button>
+              <button class="count-btn" type="button" data-count="4">4</button>
+              <button class="count-btn" type="button" data-count="5">5</button>
+              <button class="count-btn" type="button" data-count="6">6</button>
+              <button class="count-btn" type="button" data-count="7">7</button>
+              <button class="count-btn" type="button" data-count="8">8</button>
+              <button class="count-btn" type="button" data-count="9">9</button>
+              <button class="count-btn" type="button" data-count="10">10</button>
+            </div>
           </div>
 
           <div class="form-group">
             <label>质量</label>
             <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">预估 $0.00474</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">预估 $0.04116</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">预估 $0.16464</span></div>
+              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.00474</span></div>
+              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.04116</span></div>
+              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.16464</span></div>
             </div>
           </div>
         </div>
@@ -521,7 +532,7 @@
     const detailSuiteBtn = document.getElementById('detailSuiteBtn');
     const detailSuiteStatusEl = document.getElementById('detailSuiteStatus');
     const detailSuitePreviewEl = document.getElementById('detailSuitePreview');
-    const MAX_BATCH_COUNT = 1000;
+    const MAX_BATCH_COUNT = 10;
     const MAX_PARALLELISM = Number.MAX_SAFE_INTEGER;
     const SUPPORTED_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2048x1152', '1152x2048'];
     const DISPLAY_IMAGE_SIZES = {
@@ -628,6 +639,15 @@
         document.querySelectorAll('#qualitySelector .quality-btn').forEach((item) => item.classList.remove('active'));
         btn.classList.add('active');
         state.quality = btn.dataset.quality;
+        updateEstimate();
+      });
+    });
+
+    document.querySelectorAll('#batchCountPicker .count-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#batchCountPicker .count-btn').forEach((item) => item.classList.remove('active'));
+        btn.classList.add('active');
+        batchCountEl.value = btn.dataset.count || '1';
         updateEstimate();
       });
     });
@@ -1207,6 +1227,7 @@
       const mode = selectedSources.length > 0 ? 'edit' : 'generate';
       countEl.value = count;
       batchCountEl.value = batchCount;
+      updateBatchCountButtons();
       if (parallelismEl) parallelismEl.value = parallelism;
       updateEstimate();
 
@@ -1250,6 +1271,7 @@
       sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
+      updateBatchCountButtons();
       if (parallelismEl) parallelismEl.value = DEFAULT_PARALLELISM;
       state.selectedSize = DEFAULT_SIZE;
       state.quality = DEFAULT_QUALITY;
@@ -1668,6 +1690,7 @@
       state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : state.quality;
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
+      updateBatchCountButtons();
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
       });
@@ -1809,6 +1832,7 @@
         state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : DEFAULT_QUALITY;
         countEl.value = 1;
         batchCountEl.value = DEFAULT_BATCH_COUNT;
+        updateBatchCountButtons();
         document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
           btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
         });
@@ -2176,7 +2200,15 @@
       qualityPriceEls.forEach((el) => {
         const quality = el.dataset.priceQuality;
         const price = getGptImage2Price(quality, state.selectedSize);
-        el.textContent = price ? `预估 ${formatGptImage2Price(price)}` : '按实际结算';
+        el.textContent = price ? formatGptImage2Price(price) : '按实际结算';
+      });
+    }
+
+    function updateBatchCountButtons() {
+      const value = String(clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT));
+      batchCountEl.value = value;
+      document.querySelectorAll('#batchCountPicker .count-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.count === value);
       });
     }
 
