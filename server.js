@@ -1787,7 +1787,7 @@ function isExplicitXiImageSizeSupported(size) {
 
 function parseXiImageSize(size) {
   const value = String(size || '').trim();
-  if (!value) return '1024x1024';
+  if (!value) return '1024x1536';
   return isExplicitXiImageSizeSupported(value) ? value.toLowerCase() : '';
 }
 

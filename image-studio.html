@@ -29,7 +29,7 @@
     .xi-status{min-height:22px;color:var(--text-muted);font-size:13px;line-height:1.5;margin-top:12px}
     .xi-status.ok{color:var(--neon-green)}
     .xi-status.error{color:var(--neon-red)}
-    #sizeSelector{display:grid;grid-template-columns:1fr;gap:8px}
+    #sizeSelector{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     #sizeSelector .ratio-btn{min-width:0;min-height:54px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;white-space:normal;overflow:hidden;line-height:1.2;gap:3px}
     #sizeSelector .ratio-main{display:block;font-weight:800;white-space:nowrap}
     #sizeSelector .ratio-size{display:block;font-size:11px;color:var(--text-muted);white-space:nowrap}
@@ -310,7 +310,10 @@
         <div class="form-group">
           <label>图片尺寸</label>
           <div class="ratio-selector" id="sizeSelector">
-            <div class="ratio-btn active" data-size="1024x1024"><span class="ratio-main">当前实测方图</span><span class="ratio-size">实际约 1254×1254</span></div>
+            <div class="ratio-btn" data-size="1024x1024"><span class="ratio-main">1:1 方图</span><span class="ratio-size">1254×1254</span></div>
+            <div class="ratio-btn active" data-size="1024x1536"><span class="ratio-main">2:3 竖图</span><span class="ratio-size">1024×1536</span></div>
+            <div class="ratio-btn" data-size="1536x1024"><span class="ratio-main">3:2 横图</span><span class="ratio-size">1536×1024</span></div>
+            <div class="ratio-btn" data-size="2560x1440"><span class="ratio-main">16:9 横图</span><span class="ratio-size">1672×941</span></div>
           </div>
         </div>
 
@@ -415,7 +418,10 @@
           <div class="form-group">
             <label for="detailSize">套图尺寸</label>
             <select id="detailSize">
-              <option value="1024x1024" selected>当前实测方图 · 实际约 1254×1254</option>
+              <option value="1024x1024">1:1 方图 · 1254×1254</option>
+              <option value="1024x1536" selected>2:3 竖图 · 1024×1536</option>
+              <option value="1536x1024">3:2 横图 · 1536×1024</option>
+              <option value="2560x1440">16:9 横图 · 1672×941</option>
             </select>
           </div>
         </div>
@@ -630,8 +636,14 @@
     const detailSuitePreviewEl = document.getElementById('detailSuitePreview');
     const MAX_BATCH_COUNT = 1000;
     const MAX_PARALLELISM = Number.MAX_SAFE_INTEGER;
-    const SUPPORTED_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2048x1152', '2048x2048', '1152x2048', '2560x1440', '3840x2160', '2160x3840'];
-    const DEFAULT_SIZE = '1024x1024';
+    const SUPPORTED_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2560x1440'];
+    const DISPLAY_IMAGE_SIZES = {
+      '1024x1024': '1254x1254',
+      '1024x1536': '1024x1536',
+      '1536x1024': '1536x1024',
+      '2560x1440': '1672x941'
+    };
+    const DEFAULT_SIZE = '1024x1536';
     const DEFAULT_QUALITY = 'high';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
@@ -1976,7 +1988,7 @@
     }
 
     function getDisplayImageSize(size, outputDimensions) {
-      return getFirstDimensionSize(outputDimensions) || size || '';
+      return getFirstDimensionSize(outputDimensions) || DISPLAY_IMAGE_SIZES[size] || size || '';
     }
 
     function createImageGrid(task) {
@@ -2985,10 +2997,10 @@
     }
 
     function applyImageStudioDefaults() {
-      setNativeControl('select, input[type="radio"], input[type="checkbox"]', '1024x1024');
+      setNativeControl('select, input[type="radio"], input[type="checkbox"]', '1024x1536');
       setNativeControl('select, input[type="radio"], input[type="checkbox"]', 'high');
       ['data-size', 'data-value', 'data-ratio', 'data-quality'].forEach((attr) => {
-        clickSegmentButton(attr, '1024x1024');
+        clickSegmentButton(attr, '1024x1536');
         clickSegmentButton(attr, 'high');
       });
     }
