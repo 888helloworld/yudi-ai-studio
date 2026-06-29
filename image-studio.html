@@ -1679,8 +1679,8 @@
         displaySize,
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
-        `${task.count} 张`,
-        `质量${getQualityLabel(task.quality)}`,
+        Number(task.count) > 1 ? `${task.count} 张` : '',
+        getQualityLabel(task.quality),
         task.createdAt
       ].filter(Boolean).join(' · ');
       fragment.appendChild(meta);
