@@ -104,6 +104,7 @@
     .xi-prompt-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:-3px}
     .xi-prompt-tools .xi-small-btn{padding:4px 7px;font-size:10px}
     .prompt-toggle{align-self:flex-start;margin-top:-6px;padding:3px 0;color:var(--neon-cyan);font-size:10px;font-weight:800}
+    .prompt-toggle.hidden{display:none}
     .xi-prompt-tools .prompt-toggle{margin-top:0}
     .prompt-toggle:hover{color:var(--neon-pink)}
     .xi-image-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px}
@@ -1606,6 +1607,7 @@
         body.appendChild(infoBlock);
         appendTaskSourceThumbs(body, task);
       }
+      updatePromptToggleVisibility(card);
     }
 
     function appendTaskSourceThumbs(target, task) {
@@ -1657,7 +1659,7 @@
       promptTools.appendChild(refillPrompt);
       if ((task.prompt || '').trim()) {
         const toggle = document.createElement('button');
-        toggle.className = 'prompt-toggle';
+        toggle.className = 'prompt-toggle hidden';
         toggle.type = 'button';
         toggle.textContent = '查看完整提示词';
         toggle.addEventListener('click', () => {
@@ -1683,6 +1685,16 @@
       ].filter(Boolean).join(' · ');
       fragment.appendChild(meta);
       return fragment;
+    }
+
+    function updatePromptToggleVisibility(card) {
+      const prompt = card?.querySelector('.xi-task-prompt');
+      const toggle = card?.querySelector('.prompt-toggle');
+      if (!prompt || !toggle || prompt.classList.contains('expanded')) return;
+      requestAnimationFrame(() => {
+        const isOverflowing = prompt.scrollHeight > prompt.clientHeight + 1 || prompt.scrollWidth > prompt.clientWidth + 1;
+        toggle.classList.toggle('hidden', !isOverflowing);
+      });
     }
 
     function refillPromptFromTask(task) {
