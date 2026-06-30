@@ -2801,7 +2801,7 @@
       const statusText = item.status === 'running' ? '识图中' : (item.status === 'failed' ? '失败' : '完成');
       const thumb = item.previewUrl || item.data?.previewUrl || '';
       const thumbHtml = thumb
-        ? `<img class="reverse-history-thumb" src="${escapeHtml(thumb)}" alt="识图缩略图">`
+        ? '<img class="reverse-history-thumb" alt="识图缩略图">'
         : '<div class="reverse-history-thumb placeholder">图</div>';
       card.innerHTML = `${thumbHtml}<div class="reverse-history-info">
           <h4>${escapeHtml(item.title)}</h4>
@@ -2816,6 +2816,7 @@
       }
       const thumbEl = card.querySelector('img.reverse-history-thumb');
       if (thumbEl) {
+        setProtectedImageSource(thumbEl, thumb);
         thumbEl.addEventListener('click', () => {
           openStandaloneImagePreview(thumb, item.title || '看图写 Prompt 原图', `reverse_prompt_${item.historyId || Date.now()}.png`);
         });
