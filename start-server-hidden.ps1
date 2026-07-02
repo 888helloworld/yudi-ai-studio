@@ -15,9 +15,10 @@ if (-not (Test-Path $logDir)) {
 
 $stdoutLog = Join-Path $logDir 'server-autostart.out.log'
 $stderrLog = Join-Path $logDir 'server-autostart.err.log'
+$nodePath = (Get-Command 'node.exe' -ErrorAction Stop).Source
 
 Start-Process `
-  -FilePath 'node.exe' `
+  -FilePath $nodePath `
   -ArgumentList 'server.js' `
   -WorkingDirectory $projectRoot `
   -WindowStyle Hidden `
