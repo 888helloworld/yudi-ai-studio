@@ -1032,6 +1032,7 @@
         createdAt: job.createdAt || '',
         startedAtMs: job.startedAtMs || 0,
         finishedAtMs: job.finishedAtMs || 0,
+        durationMs: job.durationMs || 0,
         imageUrls: job.imageUrls || [],
         error: job.error || '',
         historyId: job.historyId || '',
@@ -1370,8 +1371,9 @@
       try {
         const data = await requestImageTask(task);
         task.status = 'done';
-        task.finishedAtMs = Date.now();
         const result = data.job || data;
+        task.finishedAtMs = result.finishedAtMs || Date.now();
+        task.durationMs = result.durationMs || task.durationMs || 0;
         task.imageUrls = result.imageUrls || [];
         task.sourceDimensions = result.sourceDimensions || task.sourceDimensions || [];
         task.outputDimensions = result.outputDimensions || task.outputDimensions || [];
@@ -1474,6 +1476,7 @@
         task.status = job.status;
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
         task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
+        task.durationMs = job.durationMs || task.durationMs || 0;
         task.imageUrls = job.imageUrls || task.imageUrls || [];
         task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
         task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
@@ -1548,7 +1551,8 @@
             historyId: recovered.historyId || task.historyId || '',
             saved: true,
             error: '',
-            finishedAtMs: recovered.finishedAtMs || Date.now()
+            finishedAtMs: recovered.finishedAtMs || Date.now(),
+            durationMs: recovered.durationMs || task.durationMs || 0
           });
           updateTaskCard(task);
           updateStats();
@@ -1818,9 +1822,8 @@
     }
 
     function getTaskDurationText(task) {
-      return task.durationMs
-        ? formatDurationMs(task.durationMs)
-        : (task.startedAtMs ? formatDurationMs((task.finishedAtMs || Date.now()) - task.startedAtMs) : '历史记录');
+      if (task.status !== 'running' && task.durationMs) return formatDurationMs(task.durationMs);
+      return task.startedAtMs ? formatDurationMs((task.finishedAtMs || Date.now()) - task.startedAtMs) : '历史记录';
     }
 
     function createSourceThumbStrip(task) {

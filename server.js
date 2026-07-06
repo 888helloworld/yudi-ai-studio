@@ -1639,6 +1639,9 @@ function scheduleXiJobs() {
 }
 
 function serializeXiJob(job) {
+  const durationMs = job.startedAtMs
+    ? ((job.finishedAtMs || (job.status === 'running' ? Date.now() : 0)) - job.startedAtMs)
+    : 0;
   return {
     id: job.id,
     status: job.status,
@@ -1655,6 +1658,7 @@ function serializeXiJob(job) {
     createdAt: formatBeijingDateTime(new Date(job.createdAtMs), { date: false }),
     startedAtMs: job.startedAtMs,
     finishedAtMs: job.finishedAtMs,
+    durationMs: Math.max(durationMs, 0),
     imageUrls: job.imageUrls || [],
     imageUrl: job.imageUrls?.[0] || '',
     error: job.error || '',
