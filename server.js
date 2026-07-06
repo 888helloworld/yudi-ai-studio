@@ -1939,28 +1939,29 @@ async function callArkEditFallbackForXiJob({ prompt, size, count, sourceFiles, p
   return saveXiXuImages(remoteUrls, `xixu_ark_edit_fallback_${size.replace('x', '_')}`, size);
 }
 
-function getXiEditLabels() {
-  return [
-    '图1：第1张上传的参考图',
-    '图2：第2张上传的参考图',
-    '图3：第3张上传的参考图',
-    '图4：第4张上传的参考图'
-  ];
-}
-
 function getSourceImageFilename(index) {
   return `图${index + 1}.png`;
 }
 
+function normalizeSourceImageFilename(name, index) {
+  const match = /图\s*([1-4])/i.exec(String(name || ''));
+  return match ? `图${match[1]}.png` : getSourceImageFilename(index);
+}
+
+function getSourceImageLabel(file, index) {
+  const match = /图\s*([1-4])/i.exec(String(file?.originalname || ''));
+  return match ? `图${match[1]}` : `图${index + 1}`;
+}
+
 function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
-  const labels = getXiEditLabels();
   const sourceList = sourceFiles
-    .map((_, index) => labels[index] || `图${index + 1}：参考图${index + 1}`)
+    .map((file, index) => `${getSourceImageLabel(file, index)}：${file?.originalname || getSourceImageFilename(index)}，第 ${index + 1} 个原始参考图`)
     .join('\n');
   return [
-    '请严格按上传顺序理解参考图，不要只参考第一张图。',
+    '请严格按参考图编号理解图片，不要只参考第一张图。',
+    sourceFiles.length > 1 ? '本次还会额外提供一张 reference_board.png 编号参考板；参考板里的数字就是图1、图2、图3、图4的编号，请用它确认每张图的对应关系。' : '',
     sourceList ? `参考图说明：\n${sourceList}` : '',
-    '如果用户提到“图1、图2、图3、图4”，必须对应上面的上传顺序。',
+    '如果用户提到“图1、图2、图3、图4”，必须对应上面的编号说明和参考板数字，不要按任意顺序重新解释。',
     '需要把用户指定的各参考图元素组合到同一张最终图片里；不要遗漏用户点名的参考图元素。',
     size ? `最终图片目标画布是 ${size}，请按这个画布比例重新构图。` : '',
     '必须让主体完整出现在画面内，四周保留安全留白；不要裁掉脚尖、脚跟、袜口、袜身、产品边缘或用户要求保留的细节。',
@@ -1971,9 +1972,8 @@ function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
 }
 
 function buildReferenceBoardPrompt(prompt, sourceFiles = []) {
-  const labels = getXiEditLabels();
   const sourceList = sourceFiles
-    .map((_, index) => labels[index] || `图${index + 1}：参考图${index + 1}`)
+    .map((file, index) => `${getSourceImageLabel(file, index)}：${file?.originalname || getSourceImageFilename(index)}`)
     .join('\n');
   return [
     `上传图片是一张参考板，里面按数字标出了 ${sourceFiles.length} 张原始参考图。`,
@@ -2090,6 +2090,7 @@ function pasteResizedImage(target, source, destX, destY, destW, destH) {
 function createReferenceBoardFile(sourceFiles = []) {
   const images = sourceFiles.map((file, index) => ({
     index,
+    labelNumber: Number((/图\s*([1-4])/i.exec(String(file?.originalname || '')) || [])[1]) || index + 1,
     image: PNG.sync.read(file.buffer)
   }));
   const count = images.length;
@@ -2101,7 +2102,7 @@ function createReferenceBoardFile(sourceFiles = []) {
   const board = new PNG({ width: cols * cell, height: rows * cell });
   drawFilledRect(board, 0, 0, board.width, board.height, [246, 246, 242, 255]);
 
-  images.forEach(({ image }, index) => {
+  images.forEach(({ image, labelNumber }, index) => {
     const col = index % cols;
     const row = Math.floor(index / cols);
     const cellX = col * cell;
@@ -2114,7 +2115,7 @@ function createReferenceBoardFile(sourceFiles = []) {
     const destX = cellX + Math.round((cell - destW) / 2);
     const destY = cellY + Math.round((cell - destH) / 2);
     pasteResizedImage(board, image, destX, destY, destW, destH);
-    drawNumberBadge(board, cellX + 14, cellY + 14, index + 1);
+    drawNumberBadge(board, cellX + 14, cellY + 14, labelNumber);
   });
 
   return {
@@ -2137,7 +2138,10 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
   const timeoutMs = Math.max(XI_XU_EDIT_TIMEOUT_MS, 30000);
   try {
     const form = new FormData();
-    sourceFiles.forEach((file, index) => {
+    const requestSourceFiles = sourceFiles.length > 1
+      ? [createReferenceBoardFile(sourceFiles), ...sourceFiles]
+      : sourceFiles;
+    requestSourceFiles.forEach((file, index) => {
       const imageBlob = new Blob([file.buffer], { type: file.mimetype });
       form.append('image', imageBlob, file.originalname || getSourceImageFilename(index));
     });
@@ -2153,6 +2157,7 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
       quality,
       count,
       sourceDimensions: getUploadedImageDimensions(sourceFiles),
+      requestFiles: summarizeImageFiles(requestSourceFiles),
       sourceBytes: sourceFiles.map((file) => file.buffer?.length || 0)
     }));
 
@@ -2397,7 +2402,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
   sourceFiles.forEach((file, index) => {
-    file.originalname = getSourceImageFilename(index);
+    file.originalname = normalizeSourceImageFilename(file.originalname, index);
   });
   const sourceDimensions = getUploadedImageDimensions(sourceFiles);
   if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
@@ -2652,7 +2657,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
   const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
   sourceFiles.forEach((file, index) => {
-    file.originalname = getSourceImageFilename(index);
+    file.originalname = normalizeSourceImageFilename(file.originalname, index);
   });
   const sourceDimensions = getUploadedImageDimensions(sourceFiles);
   const startedAtMs = Date.now();

@@ -1237,7 +1237,7 @@
           sourceFiles: selectedSources.map((source) => source.file),
           sourcePreviewUrls: taskSourcePreviewUrls,
           localSourcePreviewUrls: taskSourcePreviewUrls,
-          sourceFileNames: selectedSources.map((_, sourceIndex) => getSourceImageName(sourceIndex)),
+          sourceFileNames: selectedSources.map((source) => getSourceImageName(source.slotIndex ?? 0)),
           detailSuite: {
             setId,
             productName: form.productName,
@@ -1301,7 +1301,7 @@
           sourceFiles: selectedSources.map((source) => source.file),
           sourcePreviewUrls: taskSourcePreviewUrls,
           localSourcePreviewUrls: taskSourcePreviewUrls,
-          sourceFileNames: selectedSources.map((_, index) => getSourceImageName(index)),
+          sourceFileNames: selectedSources.map((source) => getSourceImageName(source.slotIndex ?? 0)),
           createdAt: formatBeijingTime(),
           createdAtMs,
           startedAtMs: 0,
@@ -2534,7 +2534,7 @@
 
     function getSelectedSourceImages() {
       return state.sourceFiles
-        .map((file, index) => ({ file, previewUrl: state.sourcePreviewUrls[index] }))
+        .map((file, index) => ({ file, previewUrl: state.sourcePreviewUrls[index], slotIndex: index }))
         .filter((source) => source.file);
     }
 
