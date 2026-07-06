@@ -1019,6 +1019,50 @@ async function generateArkImageUrls(baseUrl, apiKey, requestBody, count, buildVa
   return urls;
 }
 
+const GPT_IMAGE_2_QUALITY_BASE = { low: 16, medium: 48, high: 96 };
+
+function normalizeXiQuality(value) {
+  const quality = String(value || '').trim().toLowerCase();
+  return ['low', 'medium', 'high'].includes(quality) ? quality : '';
+}
+
+function getGPTImage2OutputTokens(quality, size) {
+  const base = GPT_IMAGE_2_QUALITY_BASE[normalizeXiQuality(quality)];
+  const dimensions = parseXiImageSizeDimensions(size);
+  if (!base || !dimensions) return 0;
+  const { width, height } = dimensions;
+  const long = Math.max(width, height);
+  const short = Math.min(width, height);
+  const scaledShort = Math.round(base * short / long);
+  const grid = base * scaledShort;
+  return Math.ceil(grid * (2000000 + width * height) / 4000000);
+}
+
+function extractXiXuImageMetadata(data = {}, requested = {}) {
+  const first = Array.isArray(data.data) ? data.data.find((item) => item && typeof item === 'object') : null;
+  const requestedQuality = normalizeXiQuality(data.requested_quality || first?.requested_quality || requested.quality) || normalizeXiQuality(requested.quality);
+  const actualQuality = normalizeXiQuality(data.quality || first?.quality) || requestedQuality;
+  const requestedSize = normalizeXiImageSizeText(data.requested_size || first?.requested_size || requested.size);
+  const actualSize = normalizeXiImageSizeText(data.size || first?.size) || requestedSize;
+  const billingOutputTokens = getGPTImage2OutputTokens(actualQuality, actualSize);
+  const usageOutputTokens = Number(data.usage?.output_tokens);
+  return {
+    requested_quality: requestedQuality,
+    actual_quality: actualQuality,
+    requested_size: requestedSize,
+    actual_size: actualSize,
+    billing_output_tokens: billingOutputTokens || 0,
+    usage_output_tokens: Number.isFinite(usageOutputTokens) ? usageOutputTokens : 0,
+    billing_mode: data.billing_mode || first?.billing_mode || '',
+    billing_note: data.billing_note || first?.billing_note || '',
+    image_parameter_mode: data.image_parameter_mode || first?.image_parameter_mode || '',
+    image_parameter_note: data.image_parameter_note || first?.image_parameter_note || '',
+    size_source: data.size_source || first?.size_source || '',
+    size_parameter_affects_output_guarantee: data.size_parameter_affects_output_guarantee,
+    quality_parameter_affects_output_guarantee: data.quality_parameter_affects_output_guarantee
+  };
+}
+
 // 图片生成
 app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImage'), validateUploadedImageFiles, async (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 2000);
@@ -1491,6 +1535,19 @@ function buildXiJobHistoryContent(job, status, extra = {}) {
     provider: job.provider || '',
     fallback_reason: job.fallbackReason || '',
     quality: job.quality,
+    requested_quality: job.upstreamMeta?.requested_quality || job.quality,
+    actual_quality: job.upstreamMeta?.actual_quality || '',
+    requested_size: job.upstreamMeta?.requested_size || job.size,
+    actual_size: job.upstreamMeta?.actual_size || '',
+    billing_output_tokens: job.upstreamMeta?.billing_output_tokens || 0,
+    usage_output_tokens: job.upstreamMeta?.usage_output_tokens || 0,
+    billing_mode: job.upstreamMeta?.billing_mode || '',
+    billing_note: job.upstreamMeta?.billing_note || '',
+    image_parameter_mode: job.upstreamMeta?.image_parameter_mode || '',
+    image_parameter_note: job.upstreamMeta?.image_parameter_note || '',
+    size_source: job.upstreamMeta?.size_source || '',
+    size_parameter_affects_output_guarantee: job.upstreamMeta?.size_parameter_affects_output_guarantee,
+    quality_parameter_affects_output_guarantee: job.upstreamMeta?.quality_parameter_affects_output_guarantee,
     count: job.count,
     sources: job.sourceFileNames || [],
     source_urls: job.sourcePreviewUrls || [],
@@ -1590,6 +1647,7 @@ function serializeXiJob(job) {
     size: job.size,
     count: job.count,
     quality: job.quality,
+    upstreamMeta: job.upstreamMeta || {},
     sourceFileNames: job.sourceFileNames || [],
     sourcePreviewUrls: job.sourcePreviewUrls || [],
     sourceDimensions: job.sourceDimensions || [],
@@ -1721,7 +1779,11 @@ async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
     }
     const imageUrls = parseXiXuImages(data);
     if (imageUrls.length === 0) throw new Error('上游未返回图片');
-    return saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
+    const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
+    return {
+      localUrls,
+      upstreamMeta: extractXiXuImageMetadata(data, { size, quality })
+    };
   } catch (err) {
     const normalizedErr = err.name === 'AbortError'
       ? new Error(`gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
@@ -2116,7 +2178,10 @@ async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, pro
     if (imageUrls.length === 0) throw new Error('上游未返回图片');
     const localUrls = await saveXiXuImages(imageUrls, `xixu_edit_${size.replace('x', '_')}`, size);
     markXiXuEditSuccess();
-    return localUrls;
+    return {
+      localUrls,
+      upstreamMeta: extractXiXuImageMetadata(data, { size, quality })
+    };
   } catch (err) {
     const normalizedErr = err.name === 'AbortError'
       ? new Error(`gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
@@ -2154,8 +2219,8 @@ async function callXiXuEdit(job) {
 
 async function callXiEditWithFallback(job) {
   try {
-    const localUrls = await callXiXuEdit(job);
-    return { localUrls, provider: 'xixu', fallbackReason: '' };
+    const result = await callXiXuEdit(job);
+    return { localUrls: result.localUrls, upstreamMeta: result.upstreamMeta || {}, provider: 'xixu', fallbackReason: '' };
   } catch (err) {
     const fallbackReason = err.message || 'gpt-image-2 改图失败';
     if (!ARK_FALLBACK_ENABLED) {
@@ -2171,7 +2236,7 @@ async function callXiEditWithFallback(job) {
           sourceFiles: [referenceBoard],
           promptOverride: buildReferenceBoardPrompt(job.prompt, job.sourceFiles || [])
         });
-        return { localUrls, provider: 'ark-reference-board-fallback', fallbackReason };
+        return { localUrls, upstreamMeta: {}, provider: 'ark-reference-board-fallback', fallbackReason };
       } catch (boardErr) {
         const combinedReason = `${fallbackReason}; 参考板备用改图失败: ${boardErr.message || boardErr}`;
         const error = new Error('多参考图改图请求失败，上游服务没有完成处理。系统已尝试把参考图合成参考板走备用改图，但仍未成功，请稍后再试。');
@@ -2181,7 +2246,7 @@ async function callXiEditWithFallback(job) {
     }
 
     const localUrls = await callArkEditFallbackForXiJob(job);
-    return { localUrls, provider: 'ark-edit-fallback', fallbackReason };
+    return { localUrls, upstreamMeta: {}, provider: 'ark-edit-fallback', fallbackReason };
   }
 }
 
@@ -2194,11 +2259,14 @@ async function runXiJob(job) {
     if (job.mode === 'edit') {
       const editResult = await callXiEditWithFallback(job);
       localUrls = editResult.localUrls;
+      job.upstreamMeta = editResult.upstreamMeta || {};
       job.provider = editResult.provider;
       job.fallbackReason = editResult.fallbackReason;
     } else {
       try {
-        localUrls = await callXiXuGenerate(job);
+        const generateResult = await callXiXuGenerate(job);
+        localUrls = generateResult.localUrls;
+        job.upstreamMeta = generateResult.upstreamMeta || {};
         job.provider = 'xixu';
       } catch (err) {
         job.fallbackReason = err.message || 'gpt-image-2 生图失败';
@@ -2206,6 +2274,7 @@ async function runXiJob(job) {
           throw new Error(formatUpstreamError(job.fallbackReason, '图片服务暂时不可用，请稍后重试。本次没有生成图片，积分已退回。'));
         }
         localUrls = await callArkGenerateForXiJob(job);
+        job.upstreamMeta = {};
         job.provider = 'ark-fallback';
       }
     }
@@ -2221,6 +2290,7 @@ async function runXiJob(job) {
       size: job.size,
       outputDimensions: job.outputDimensions,
       quality: job.quality,
+      upstreamMeta: job.upstreamMeta || {},
       count: job.count,
       durationMs
     }));
@@ -2440,6 +2510,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
       charged = false;
       return res.status(502).json({ error: '上游未返回图片' });
     }
+    const upstreamMeta = extractXiXuImageMetadata(data, { size, quality });
     const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
     const outputDimensions = getLocalImageDimensions(localUrls);
     const actualCount = Math.min(localUrls.length, count);
@@ -2452,7 +2523,26 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
     const historyId = db.addHistory(req.userId, 'image', {
       sub_type: 'xi-generate',
       image_url: JSON.stringify(localUrls),
-      content: JSON.stringify({ model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2', quality, count, duration_ms: durationMs, output_dimensions: outputDimensions }),
+      content: JSON.stringify({
+        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+        quality,
+        requested_quality: upstreamMeta.requested_quality || quality,
+        actual_quality: upstreamMeta.actual_quality || '',
+        requested_size: upstreamMeta.requested_size || size,
+        actual_size: upstreamMeta.actual_size || '',
+        billing_output_tokens: upstreamMeta.billing_output_tokens || 0,
+        usage_output_tokens: upstreamMeta.usage_output_tokens || 0,
+        billing_mode: upstreamMeta.billing_mode || '',
+        billing_note: upstreamMeta.billing_note || '',
+        image_parameter_mode: upstreamMeta.image_parameter_mode || '',
+        image_parameter_note: upstreamMeta.image_parameter_note || '',
+        size_source: upstreamMeta.size_source || '',
+        size_parameter_affects_output_guarantee: upstreamMeta.size_parameter_affects_output_guarantee,
+        quality_parameter_affects_output_guarantee: upstreamMeta.quality_parameter_affects_output_guarantee,
+        count,
+        duration_ms: durationMs,
+        output_dimensions: outputDimensions
+      }),
       prompt,
       ratio: size,
       cost_points: actualCost
@@ -2465,6 +2555,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
       historyId,
       remainingPoints: db.getUserPoints(req.userId),
       model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+      upstreamMeta,
       outputDimensions,
       createdAt
     });
@@ -2601,6 +2692,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
       }))
     });
     const localUrls = editResult.localUrls;
+    const upstreamMeta = editResult.upstreamMeta || {};
     const outputDimensions = getLocalImageDimensions(localUrls);
     const actualCount = Math.min(localUrls.length, count);
     const actualCost = POINTS.image * actualCount;
@@ -2618,6 +2710,19 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
         provider: editResult.provider,
         fallback_reason: editResult.fallbackReason || '',
         quality,
+        requested_quality: upstreamMeta.requested_quality || quality,
+        actual_quality: upstreamMeta.actual_quality || '',
+        requested_size: upstreamMeta.requested_size || size,
+        actual_size: upstreamMeta.actual_size || '',
+        billing_output_tokens: upstreamMeta.billing_output_tokens || 0,
+        usage_output_tokens: upstreamMeta.usage_output_tokens || 0,
+        billing_mode: upstreamMeta.billing_mode || '',
+        billing_note: upstreamMeta.billing_note || '',
+        image_parameter_mode: upstreamMeta.image_parameter_mode || '',
+        image_parameter_note: upstreamMeta.image_parameter_note || '',
+        size_source: upstreamMeta.size_source || '',
+        size_parameter_affects_output_guarantee: upstreamMeta.size_parameter_affects_output_guarantee,
+        quality_parameter_affects_output_guarantee: upstreamMeta.quality_parameter_affects_output_guarantee,
         count,
         sources: sourceFiles.map((file, index) => file.originalname || getSourceImageFilename(index)),
         source_urls: sourcePreviewUrls,
@@ -2638,6 +2743,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
       mode: 'edit',
       remainingPoints: db.getUserPoints(req.userId),
       model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+      upstreamMeta,
       sourceDimensions,
       outputDimensions,
       durationMs,

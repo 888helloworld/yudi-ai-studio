@@ -945,6 +945,10 @@
             size: item.ratio || DEFAULT_SIZE,
             count: imageUrls.length || meta.count || 1,
             quality: meta.quality || 'medium',
+            requestedQuality: meta.requested_quality || meta.quality || 'medium',
+            actualQuality: meta.actual_quality || '',
+            actualSize: meta.actual_size || '',
+            billingOutputTokens: meta.billing_output_tokens || 0,
             sourceFiles: [],
             sourcePreviewUrls: meta.source_urls || [],
             sourceFileNames: meta.sources || (meta.source ? [meta.source] : []),
@@ -1016,6 +1020,10 @@
         size: job.size || DEFAULT_SIZE,
         count: job.count || 1,
         quality: job.quality || 'medium',
+        requestedQuality: job.upstreamMeta?.requested_quality || job.quality || 'medium',
+        actualQuality: job.upstreamMeta?.actual_quality || '',
+        actualSize: job.upstreamMeta?.actual_size || '',
+        billingOutputTokens: job.upstreamMeta?.billing_output_tokens || 0,
         sourceFiles: [],
         sourcePreviewUrls: job.sourcePreviewUrls || [],
         sourceFileNames: job.sourceFileNames || [],
@@ -1367,6 +1375,10 @@
         task.imageUrls = result.imageUrls || [];
         task.sourceDimensions = result.sourceDimensions || task.sourceDimensions || [];
         task.outputDimensions = result.outputDimensions || task.outputDimensions || [];
+        task.requestedQuality = result.upstreamMeta?.requested_quality || task.requestedQuality || task.quality;
+        task.actualQuality = result.upstreamMeta?.actual_quality || task.actualQuality || '';
+        task.actualSize = result.upstreamMeta?.actual_size || task.actualSize || '';
+        task.billingOutputTokens = result.upstreamMeta?.billing_output_tokens || task.billingOutputTokens || 0;
         task.historyId = result.historyId || task.historyId || '';
         task.saved = Boolean(task.historyId);
         task.doneAt = result.createdAt || formatBeijingDateTime();
@@ -1467,6 +1479,10 @@
         task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
         task.sourceDimensions = job.sourceDimensions || task.sourceDimensions || [];
         task.outputDimensions = job.outputDimensions || task.outputDimensions || [];
+        task.requestedQuality = job.upstreamMeta?.requested_quality || task.requestedQuality || task.quality;
+        task.actualQuality = job.upstreamMeta?.actual_quality || task.actualQuality || '';
+        task.actualSize = job.upstreamMeta?.actual_size || task.actualSize || '';
+        task.billingOutputTokens = job.upstreamMeta?.billing_output_tokens || task.billingOutputTokens || 0;
         task.error = formatTaskError(job.error || '');
         task.historyId = job.historyId || task.historyId || '';
         if (task.historyId) task.index = task.historyId;
@@ -1524,6 +1540,10 @@
             status: 'done',
             imageUrls: recovered.imageUrls || [],
             outputDimensions: recovered.outputDimensions || [],
+            requestedQuality: recovered.requestedQuality || task.requestedQuality || task.quality,
+            actualQuality: recovered.actualQuality || task.actualQuality || '',
+            actualSize: recovered.actualSize || task.actualSize || '',
+            billingOutputTokens: recovered.billingOutputTokens || task.billingOutputTokens || 0,
             sourceDimensions: recovered.sourceDimensions || [],
             historyId: recovered.historyId || task.historyId || '',
             saved: true,
@@ -1718,7 +1738,8 @@
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
         Number(task.count) > 1 ? `${task.count} 张` : '',
-        getQualityLabel(task.quality),
+        getTaskQualityText(task),
+        task.billingOutputTokens ? `计费token ${task.billingOutputTokens}` : '',
         task.createdAt
       ].filter(Boolean).join(' · ');
       fragment.appendChild(meta);
@@ -1937,6 +1958,15 @@
     function getQualityLabel(quality) {
       const map = { low: '快速', medium: '标准', high: '精细' };
       return map[quality] || '标准';
+    }
+
+    function getTaskQualityText(task) {
+      const requested = task.requestedQuality || task.quality;
+      const actual = task.actualQuality || '';
+      if (actual && requested && actual !== requested) {
+        return `${getQualityLabel(requested)}→实际${getQualityLabel(actual)}`;
+      }
+      return getQualityLabel(requested || task.quality);
     }
 
     function getFirstDimensionSize(dimensions) {
