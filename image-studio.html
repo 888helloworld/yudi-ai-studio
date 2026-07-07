@@ -1625,11 +1625,12 @@
     }
 
     function orderTasksForDisplay() {
-      const timeValue = (task) => Number(task.createdAtMs || task.finishedAtMs || task.startedAtMs || task.historyId || task.index || 0);
+      const sequenceValue = (task) => Number(task.historyId || task.index || 0);
+      const timeValue = (task) => Number(task.createdAtMs || task.finishedAtMs || task.startedAtMs || 0);
       state.tasks.sort((a, b) => {
-        const diff = timeValue(b) - timeValue(a);
-        if (diff !== 0) return diff;
-        return Number(b.index || 0) - Number(a.index || 0);
+        const sequenceDiff = sequenceValue(b) - sequenceValue(a);
+        if (sequenceDiff !== 0) return sequenceDiff;
+        return timeValue(b) - timeValue(a);
       });
     }
 
