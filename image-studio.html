@@ -19,7 +19,7 @@
     body .user-name,body .user-points{font-size:12px;line-height:1.2}
     body .user-actions{gap:4px}
     body .user-actions a{padding:4px 8px;font-size:12px;line-height:1.2;border-radius:6px}
-    .xi-workspace{display:grid;grid-template-columns:minmax(380px,460px) minmax(960px,1fr);gap:4px;align-items:start}
+    .xi-workspace{display:grid;grid-template-columns:minmax(320px,380px) minmax(1080px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
     .xi-main-panel{padding:14px}
     .xi-control-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;align-items:start}
@@ -60,7 +60,7 @@
     .xi-record-panel{padding:12px}
     .xi-record-panel .section-heading h2{font-size:13px;margin-bottom:0;line-height:1.2}
     .xi-record-panel .section-heading p{font-size:12px;line-height:1.4}
-    .xi-task-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+    .xi-task-list{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
     .xi-task-card .task-body{display:flex;flex-direction:column;gap:7px;padding:9px}
     .xi-task-card .task-header{display:none}
     .xi-task-card .task-loading{min-height:58px;gap:8px;font-size:11px}
@@ -195,8 +195,8 @@
     .login-overlay{display:none}
     .login-overlay.show{display:flex}
     body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:8px auto 0;z-index:10}
-    @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(5,minmax(0,1fr))}}
+    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(320px,380px) minmax(700px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
   </style>
