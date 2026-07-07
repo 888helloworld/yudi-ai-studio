@@ -1033,6 +1033,7 @@
         startedAtMs: job.startedAtMs || 0,
         finishedAtMs: job.finishedAtMs || 0,
         durationMs: job.durationMs || 0,
+        displayStartedAtMs: job.status === 'running' && job.durationMs ? Date.now() - job.durationMs : (job.startedAtMs || 0),
         imageUrls: job.imageUrls || [],
         error: job.error || '',
         historyId: job.historyId || '',
@@ -1362,6 +1363,7 @@
     async function runTask(task) {
       task.status = 'running';
       task.startedAtMs = Date.now();
+      task.displayStartedAtMs = task.startedAtMs;
       task.finishedAtMs = 0;
       state.running += 1;
       updateTaskCard(task);
@@ -1477,6 +1479,9 @@
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
         task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
         task.durationMs = job.durationMs || task.durationMs || 0;
+        if (task.status === 'running' && !task.displayStartedAtMs) {
+          task.displayStartedAtMs = task.durationMs ? Date.now() - task.durationMs : Date.now();
+        }
         task.imageUrls = job.imageUrls || task.imageUrls || [];
         task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
         task.sourceFileNames = job.sourceFileNames || task.sourceFileNames || [];
@@ -1823,7 +1828,8 @@
 
     function getTaskDurationText(task) {
       if (task.status !== 'running' && task.durationMs) return formatDurationMs(task.durationMs);
-      return task.startedAtMs ? formatDurationMs((task.finishedAtMs || Date.now()) - task.startedAtMs) : '历史记录';
+      const startMs = task.status === 'running' ? (task.displayStartedAtMs || task.startedAtMs) : task.startedAtMs;
+      return startMs ? formatDurationMs((task.finishedAtMs || Date.now()) - startMs) : '历史记录';
     }
 
     function createSourceThumbStrip(task) {
@@ -2253,6 +2259,7 @@
       task.error = '';
       task.imageUrls = [];
       task.startedAtMs = 0;
+      task.displayStartedAtMs = 0;
       task.finishedAtMs = 0;
       state.queue.push(task);
       state.taskPage = 1;
