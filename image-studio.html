@@ -908,20 +908,39 @@
           removeLoadedHistoryTasks();
         }
 
-        const res = await fetch('/api/user/history?type=image&limit=500', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (!res.ok) {
+        const historyPageSize = 100;
+        const loadHistoryPage = async (page) => {
+          const params = new URLSearchParams({
+            type: 'image',
+            limit: String(historyPageSize),
+            page: String(page)
+          });
+          const res = await fetch('/api/user/history?' + params.toString(), {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
           const data = await res.json().catch(() => ({}));
-          if (res.status === 401) {
-            handleAuthExpired(data.error || '登录已过期，请重新登录。');
-            return;
+          if (!res.ok) {
+            if (res.status === 401) {
+              handleAuthExpired(data.error || '登录已过期，请重新登录。');
+              return null;
+            }
+            throw new Error(data.error || '历史记录读取失败，请重新登录后再试。');
           }
-          setStatus(data.error || '历史记录读取失败，请重新登录后再试。', 'error');
-          return;
+          return data;
+        };
+
+        const firstPage = await loadHistoryPage(1);
+        if (!firstPage) return;
+
+        const history = [...(firstPage.history || [])];
+        const totalPages = Math.max(1, Number(firstPage.totalPages) || 1);
+        for (let page = 2; page <= totalPages; page += 1) {
+          const data = await loadHistoryPage(page);
+          if (!data) return;
+          history.push(...(data.history || []));
         }
-        const data = await res.json();
-        const saved = (data.history || [])
+
+        const saved = history
           .filter((item) => {
             if (item.sub_type !== 'xi-generate' && item.sub_type !== 'xi-edit') return false;
             const meta = parseJson(item.content) || {};
