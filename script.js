@@ -20,6 +20,7 @@ let xhsReverseFile = null;
 let xhsReversePreviewUrl = '';
 let selectedReverseMode = 'general';
 const PENDING_XHS_TASKS_KEY = 'yudi_xhs_pending_tasks';
+const XHS_ACTIVE_TOOL_KEY = 'yudi_xhs_active_tool';
 let pendingTaskPollTimer = null;
 
 const REVERSE_TEMPLATE_HINTS = {
@@ -200,7 +201,7 @@ function initXhsToolTabs() {
   if (!tabs.length || !panels.length) return;
 
   window.switchXhsTool = function(tool) {
-    const nextTool = tool || 'image';
+    const nextTool = tabs.some((tab) => tab.dataset.xhsTool === tool) ? tool : 'image';
     tabs.forEach(tab => {
       const active = tab.dataset.xhsTool === nextTool;
       tab.classList.toggle('active', active);
@@ -209,6 +210,7 @@ function initXhsToolTabs() {
     panels.forEach(panel => {
       panel.hidden = panel.dataset.xhsPanel !== nextTool;
     });
+    sessionStorage.setItem(XHS_ACTIVE_TOOL_KEY, nextTool);
     updateXhsHistoryView(nextTool);
   };
 
@@ -216,7 +218,7 @@ function initXhsToolTabs() {
     tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
     tab.addEventListener('click', () => window.switchXhsTool(tab.dataset.xhsTool));
   });
-  window.switchXhsTool('image');
+  window.switchXhsTool(sessionStorage.getItem(XHS_ACTIVE_TOOL_KEY) || 'image');
 }
 
 function updateXhsHistoryView(tool) {
