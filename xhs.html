@@ -9,9 +9,14 @@
 <title>先写一篇工作台 - 御弟哥哥</title>
 <link rel="stylesheet" href="style.css">
 <style>
-body .container{width:min(1920px,calc(100% - 12px))}
-body .user-bar{width:min(1920px,calc(100% - 12px))}
-#toolSection{--xhs-header-clearance:64px;padding-top:4px!important;scroll-margin-top:var(--xhs-header-clearance)}
+body .container{width:min(1920px,calc(100% - 12px));padding-top:4px}
+body .user-bar{position:relative;top:auto;left:auto;transform:none;width:min(1920px,calc(100% - 12px));min-height:0;margin:4px auto 6px;padding:5px 10px;border-radius:8px;gap:10px}
+body .brand-mini{font-size:13px;line-height:1.2}
+body .user-info{gap:8px}
+body .user-name,body .user-points{font-size:12px;line-height:1.2}
+body .user-actions{gap:4px}
+body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-height:1.2}
+#toolSection{--xhs-header-clearance:48px;padding-top:4px!important;scroll-margin-top:var(--xhs-header-clearance)}
 #toolSection #userBar{display:none!important}
 #toolSection .dual-panel{grid-template-columns:1fr;gap:16px}
 #toolSection .both-panel,#toolSection .rewrite-panel{margin-top:0}
@@ -31,10 +36,12 @@ body .user-bar{width:min(1920px,calc(100% - 12px))}
 .xhs-history-column::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px}
 .xhs-history-column #historySection,.xhs-history-column #tasksSection{display:block}
 .xhs-history-column #historySection[style*="display:none"],.xhs-history-column #tasksSection[style*="display:none"]{display:none}
-.xhs-history-column .section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px!important}
-.xhs-history-column .section-heading h2{font-size:18px}
-.xhs-history-column .section-heading p{font-size:12px;max-width:260px;text-align:right}
-.xhs-history-column .history-header{position:sticky;top:0;z-index:2;background:var(--bg-card);padding:10px 0;border-bottom:1px solid var(--border)}
+.xhs-history-column .section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px!important}
+.xhs-history-column .section-heading h2{font-size:13px;line-height:1.2}
+.xhs-history-column .section-heading p{font-size:11px;line-height:1.35;max-width:260px;text-align:right}
+.xhs-history-column .history-header{position:sticky;top:0;z-index:2;background:var(--bg-card);padding:6px 0;border-bottom:1px solid var(--border)}
+.xhs-history-column .history-title{margin:0;font-size:12px;line-height:1.2}
+.xhs-history-column .history-count{font-size:10px;line-height:1.2}
 .xhs-history-column .pagination-settings{position:sticky;bottom:0;background:rgba(10,14,23,.94);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;margin-top:16px;backdrop-filter:blur(16px)}
 .xhs-history-column .history-card{background:var(--bg-input);border-radius:var(--radius-sm);box-shadow:none;transform:none}
 .xhs-history-column .history-card:hover{border-color:var(--border-light);box-shadow:none;transform:none}
