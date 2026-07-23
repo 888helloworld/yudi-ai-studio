@@ -542,7 +542,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         <div class="section-block" id="historySection" style="display:none;">
       <div class="history-wrapper">
         <!-- 图片历史 -->
-        <div>
+        <div data-xhs-history-section="image">
           <div class="history-header">
             <span class="history-title">图片记录</span>
             <span class="history-count" id="imageCount">共 0 条</span>
@@ -551,7 +551,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           <div class="pagination" id="imagePagination"></div>
         </div>
         <!-- 文案历史 -->
-        <div>
+        <div data-xhs-history-section="copy">
           <div class="history-header">
             <span class="history-title purple">文案记录</span>
             <span class="history-count" id="copyCount">共 0 条</span>
@@ -560,7 +560,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           <div class="pagination" id="copyPagination"></div>
         </div>
         <!-- 图文一体历史 -->
-        <div>
+        <div data-xhs-history-section="both">
           <div class="history-header">
             <span class="history-title both-title">图文一体</span>
             <span class="history-count" id="bothCount">共 0 条</span>
@@ -569,13 +569,22 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           <div class="pagination" id="bothPagination"></div>
         </div>
         <!-- 看图写 Prompt 历史 -->
-        <div>
+        <div data-xhs-history-section="reverse">
           <div class="history-header">
             <span class="history-title">反推记录</span>
             <span class="history-count" id="reverseCount">共 0 条</span>
           </div>
           <div class="history-grid" id="reverseHistoryGrid"></div>
           <div class="pagination" id="reversePagination"></div>
+        </div>
+        <!-- 文案改写历史 -->
+        <div data-xhs-history-section="rewrite">
+          <div class="history-header">
+            <span class="history-title purple">改写记录</span>
+            <span class="history-count" id="rewriteCount">共 0 条</span>
+          </div>
+          <div class="history-grid" id="rewriteHistoryGrid"></div>
+          <div class="pagination" id="rewritePagination"></div>
         </div>
       </div>
       <!-- 分页设置 -->

@@ -14,6 +14,7 @@ let imagePage = 1;
 let copyPage = 1;
 let bothPage = 1;
 let reversePage = 1;
+let rewritePage = 1;
 
 let currentUser = null;
 let referencePreviewUrl = '';
@@ -206,12 +207,32 @@ function initXhsToolTabs() {
     panels.forEach(panel => {
       panel.hidden = panel.dataset.xhsPanel !== nextTool;
     });
+    updateXhsHistoryView(nextTool);
   };
 
   tabs.forEach(tab => {
     tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
     tab.addEventListener('click', () => window.switchXhsTool(tab.dataset.xhsTool));
   });
+  window.switchXhsTool('image');
+}
+
+function updateXhsHistoryView(tool) {
+  document.querySelectorAll('[data-xhs-history-section]').forEach((section) => {
+    section.hidden = section.dataset.xhsHistorySection !== tool;
+  });
+
+  const activeHistorySection = document.querySelector(`[data-xhs-history-section="${tool}"]`);
+  const paginationSettings = document.querySelector('.pagination-settings');
+  if (paginationSettings) {
+    paginationSettings.hidden = !activeHistorySection?.querySelector('.history-card');
+  }
+
+  const tasksSection = document.getElementById('tasksSection');
+  const taskCards = Array.from(document.querySelectorAll('.task-card'));
+  const visibleTasks = taskCards.filter((card) => card.dataset.taskType === tool);
+  taskCards.forEach((card) => { card.hidden = card.dataset.taskType !== tool; });
+  if (tasksSection) tasksSection.style.display = visibleTasks.length ? 'block' : 'none';
 }
 
 function initXhsWorkStats() {
@@ -856,7 +877,7 @@ async function rewriteCopy() {
   updateButtonState('rewriteBtn', true, '改写中...');
 
   const taskId = 'task_' + Date.now();
-  const taskCard = createTaskCard(taskId, 'copy', '改写中...');
+  const taskCard = createTaskCard(taskId, 'rewrite', '改写中...');
   addTask(taskCard);
 
   try {
@@ -904,6 +925,7 @@ function createTaskCard(id, type, message) {
   card.className = 'task-card';
   card.id = id;
   card.dataset.status = 'running';
+  card.dataset.taskType = type;
   card.innerHTML = `
     <div class="task-header">
       <span class="task-type ${type}">${typeLabel}</span>
@@ -927,6 +949,7 @@ function addTask(card) {
   activeTasks.push(card.id);
   updateXhsWorkStats();
   
+  updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
   tasksSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -998,6 +1021,7 @@ function updateTaskCard(taskId, data) {
   }
   hydrateProtectedImages(body);
   updateXhsWorkStats();
+  updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
 }
 
 function escapeForAttr(str) {
@@ -1534,6 +1558,7 @@ function renderHistory() {
   const copyHistoryGrid = document.getElementById('copyHistoryGrid');
   const bothHistoryGrid = document.getElementById('bothHistoryGrid');
   const reverseHistoryGrid = document.getElementById('reverseHistoryGrid');
+  const rewriteHistoryGrid = document.getElementById('rewriteHistoryGrid');
   
   const xhsHistory = getXhsHistory();
   const reverseHistory = getReverseHistory();
@@ -1547,26 +1572,32 @@ function renderHistory() {
   copyHistoryGrid.innerHTML = '';
   if (bothHistoryGrid) bothHistoryGrid.innerHTML = '';
   if (reverseHistoryGrid) reverseHistoryGrid.innerHTML = '';
+  if (rewriteHistoryGrid) rewriteHistoryGrid.innerHTML = '';
   
   const imageHistory = xhsHistory.filter(item => item.type === 'image' && getHistoryImageUrl(item));
-  const copyHistory = xhsHistory.filter(item => item.type === 'copy' && getHistoryCopyContent(item));
-  const bothHistory = xhsHistory.filter(item => item.type === 'both');
+  const copyHistory = xhsHistory.filter(item => item.type === 'copy' && item.sub_type !== 'both-copy' && !isRewriteHistory(item) && getHistoryCopyContent(item));
+  const rewriteHistory = xhsHistory.filter(item => item.type === 'copy' && isRewriteHistory(item) && getHistoryCopyContent(item));
+  const bothHistory = xhsHistory.filter(item => item.type === 'both' || item.sub_type === 'both-copy');
   
   // 璁＄畻鍒嗛〉
   const imageTotalPages = Math.ceil(imageHistory.length / pageSize);
   const copyTotalPages = Math.ceil(copyHistory.length / pageSize);
+  const rewriteTotalPages = Math.ceil(rewriteHistory.length / pageSize);
   const bothTotalPages = Math.ceil(bothHistory.length / pageSize);
   const reverseTotalPages = Math.ceil(reverseHistory.length / pageSize);
   
   // 纭繚椤电爜鍦ㄦ湁鏁堣寖鍥村唴
   if (imagePage > imageTotalPages && imageTotalPages > 0) imagePage = imageTotalPages;
   if (copyPage > copyTotalPages && copyTotalPages > 0) copyPage = copyTotalPages;
+  if (rewritePage > rewriteTotalPages && rewriteTotalPages > 0) rewritePage = rewriteTotalPages;
   if (bothPage > bothTotalPages && bothTotalPages > 0) bothPage = bothTotalPages;
   if (reversePage > reverseTotalPages && reverseTotalPages > 0) reversePage = reverseTotalPages;
   
   // 鏇存柊璁℃暟
   document.getElementById('imageCount').textContent = `共 ${imageHistory.length} 条`;
   document.getElementById('copyCount').textContent = `共 ${copyHistory.length} 条`;
+  const rewriteCountEl = document.getElementById('rewriteCount');
+  if (rewriteCountEl) rewriteCountEl.textContent = `共 ${rewriteHistory.length} 条`;
   const bothCountEl = document.getElementById('bothCount');
   if (bothCountEl) bothCountEl.textContent = `共 ${bothHistory.length} 条`;
   const reverseCountEl = document.getElementById('reverseCount');
@@ -1584,6 +1615,13 @@ function renderHistory() {
   copyHistory.slice(copyStart, copyEnd).forEach(item => {
     const card = createHistoryCard(item);
     copyHistoryGrid.appendChild(card);
+  });
+
+  const rewriteStart = (rewritePage - 1) * pageSize;
+  const rewriteEnd = rewriteStart + pageSize;
+  rewriteHistory.slice(rewriteStart, rewriteEnd).forEach(item => {
+    const card = createHistoryCard(item);
+    if (rewriteHistoryGrid) rewriteHistoryGrid.appendChild(card);
   });
   
   const bothStart = (bothPage - 1) * pageSize;
@@ -1610,6 +1648,14 @@ function renderHistory() {
     copyPage = page;
     renderHistory();
   });
+
+  const rewritePagination = document.getElementById('rewritePagination');
+  if (rewritePagination) {
+    renderPagination('rewritePagination', rewritePage, rewriteTotalPages, rewriteHistory.length, (page) => {
+      rewritePage = page;
+      renderHistory();
+    });
+  }
   
   const bothPagination = document.getElementById('bothPagination');
   if (bothPagination) {
@@ -1626,6 +1672,7 @@ function renderHistory() {
       renderHistory();
     });
   }
+  updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
 }
 
 function createHistoryCard(item) {
