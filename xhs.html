@@ -55,10 +55,10 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
 .xhs-history-column .delete-btn{top:5px;right:5px;width:22px;height:22px;font-size:13px}
 .xhs-history-column .task-card{background:var(--bg-input);border-radius:var(--radius-sm);box-shadow:none;transform:none}
 .xhs-history-column .task-card:hover{border-color:var(--border-light);box-shadow:none;transform:none}
-.xhs-history-column .task-header{min-height:31px;padding:6px 8px;background:var(--bg-secondary)}
+.xhs-history-column .task-header{display:none}
+.xhs-history-column .task-body{display:flex;flex-direction:column;gap:7px;padding:9px}
+.xhs-history-column .xhs-task-state{display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
 .xhs-history-column .task-type{min-height:19px;padding:0 7px;font-size:10px;line-height:19px}
-.xhs-history-column .task-close{width:20px;height:20px;font-size:14px}
-.xhs-history-column .task-body{padding:8px}
 .xhs-history-column .task-loading{min-height:42px;gap:6px;font-size:11px;line-height:1.35}
 .xhs-history-column .spinner{width:15px;height:15px;border-width:2px}
 .xhs-history-column .task-image-grid{gap:5px}
@@ -545,10 +545,6 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
 
         <!-- 任务区 -->
         <div class="section-block" id="tasksSection" style="display:none;">
-      <div class="section-heading" style="margin-bottom:16px;">
-        <h2>当前任务</h2>
-        <p>正在处理的任务会显示在这里</p>
-      </div>
       <div class="tasks-grid" id="tasksGrid"></div>
         </div>
 

@@ -985,6 +985,7 @@ function createTaskCard(id, type, message) {
       <button class="task-close" onclick="removeTask('${id}')">×</button>
     </div>
     <div class="task-body">
+      <div class="xhs-task-state"><span class="task-type ${type}">生成中</span></div>
       <div class="task-loading">
         <div class="spinner"></div>
         <span>${message}</span>
@@ -1015,7 +1016,7 @@ function updateTaskCard(taskId, data) {
 
   if (data.error) {
     card.dataset.status = 'failed';
-    body.innerHTML = `<div class="task-error">${escapeHtml(data.error)}</div>`;
+    body.innerHTML = `<div class="xhs-task-state"><span class="task-type">失败</span></div><div class="task-error">${escapeHtml(data.error)}</div>`;
     forgetPendingTask(taskId);
     updateXhsWorkStats();
     return;
@@ -1032,6 +1033,7 @@ function updateTaskCard(taskId, data) {
       : '';
     body.innerHTML = `
       <div class="task-image-grid">${imageHtml}</div>
+      <div class="xhs-task-state"><span class="task-type">完成</span></div>
       <div class="task-meta">${escapeHtml(data.ratio || '1:1')} · ${imageUrls.length} 张 · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
         ${actionsHtml}
@@ -1045,6 +1047,7 @@ function updateTaskCard(taskId, data) {
     if (typeSpan) typeSpan.textContent = typeLabel;
     
     body.innerHTML = `
+      <div class="xhs-task-state"><span class="task-type copy-type">完成</span></div>
       <div class="task-copy">${escapeHtml(data.copy)}</div>
       <div class="task-meta">${escapeHtml(typeLabel)} · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
@@ -1066,6 +1069,7 @@ function updateTaskCard(taskId, data) {
       : '';
     body.innerHTML = `
       ${imageHtml ? `<div class="task-image-grid">${imageHtml}</div>` : ''}
+      <div class="xhs-task-state"><span class="task-type">完成</span></div>
       <div class="task-copy" style="font-size:13px;margin-top:8px;">${escapeHtml(copyPreview)}</div>
       <div class="task-meta">${escapeHtml(data.ratio || '1:1')} · ${imageUrls.length} 张 · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
