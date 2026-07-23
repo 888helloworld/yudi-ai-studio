@@ -26,11 +26,6 @@ body .user-bar{width:min(1920px,calc(100% - 12px))}
 .xhs-tool-tab:hover{border-color:rgba(0,240,255,.25);color:var(--neon-cyan);background:rgba(0,240,255,.05)}
 .xhs-tool-tab.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(255,45,120,.2),rgba(0,240,255,.14));box-shadow:0 0 0 1px rgba(0,240,255,.12)}
 .xhs-tool-panel[hidden]{display:none!important}
-.xhs-work-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
-.xhs-work-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;text-align:center;min-width:0}
-.xhs-work-stat strong{display:block;font-size:18px;font-weight:900;color:var(--neon-cyan);line-height:1}
-.xhs-work-stat span{display:block;margin-top:4px;color:var(--text-muted);font-size:11px}
-.xhs-work-stat input{width:100%;height:20px;padding:0;border:0;background:transparent;color:var(--neon-cyan);font-size:18px;font-weight:900;line-height:1;text-align:center;outline:none}
 .xhs-history-column{position:sticky;top:88px;display:grid;gap:16px;max-height:calc(100vh - 108px);overflow:auto;padding-right:4px;min-width:0}
 .xhs-history-column::-webkit-scrollbar{width:6px}
 .xhs-history-column::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px}
@@ -352,15 +347,6 @@ body .user-bar{width:min(1920px,calc(100% - 12px))}
           <button class="xhs-tool-tab" type="button" data-xhs-tool="copy">AI 文案生成</button>
           <button class="xhs-tool-tab" type="button" data-xhs-tool="both">图文一体生成</button>
           <button class="xhs-tool-tab" type="button" data-xhs-tool="rewrite">智能文案改写</button>
-        </div>
-        <div class="xhs-work-stats" id="xhsWorkStats">
-          <div class="xhs-work-stat"><strong id="xhsStatQueued">0</strong><span>排队</span></div>
-          <div class="xhs-work-stat"><strong id="xhsStatRunning">0</strong><span>运行</span></div>
-          <div class="xhs-work-stat"><strong id="xhsStatDone">0</strong><span>完成</span></div>
-          <div class="xhs-work-stat"><strong id="xhsStatTotal">0</strong><span>总记录</span></div>
-          <div class="xhs-work-stat"><strong id="xhsStatImages">0</strong><span>图片</span></div>
-          <div class="xhs-work-stat"><strong id="xhsStatFailed">0</strong><span>失败</span></div>
-          <div class="xhs-work-stat"><input id="xhsStatConcurrency" type="number" min="1" value="10" aria-label="同时开跑"><span>同时开跑</span></div>
         </div>
         <!-- 双面板：图片生成 + 文案生成 -->
         <div class="dual-panel">
