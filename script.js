@@ -1806,7 +1806,6 @@ function createHistoryCard(item) {
     const img = document.createElement('img');
     if (imgUrl) setProtectedImageSource(img, imgUrl);
     img.alt = '图文一体';
-    img.style.cssText = 'width:100%;height:120px;object-fit:cover;border-radius:var(--radius-sm) 0 0 0;';
     
     const infoDiv = document.createElement('div');
     infoDiv.className = 'history-info';
