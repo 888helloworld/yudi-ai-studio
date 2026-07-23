@@ -197,7 +197,7 @@ function initXhsToolTabs() {
   const panels = Array.from(document.querySelectorAll('[data-xhs-panel]'));
   if (!tabs.length || !panels.length) return;
 
-  window.switchXhsTool = function(tool, shouldScroll = true) {
+  window.switchXhsTool = function(tool) {
     const nextTool = tool || 'image';
     tabs.forEach(tab => {
       const active = tab.dataset.xhsTool === nextTool;
@@ -207,9 +207,6 @@ function initXhsToolTabs() {
     panels.forEach(panel => {
       panel.hidden = panel.dataset.xhsPanel !== nextTool;
     });
-    if (shouldScroll) {
-      switcher.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   };
 
   tabs.forEach(tab => {
