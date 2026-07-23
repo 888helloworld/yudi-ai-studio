@@ -6,8 +6,6 @@ let selectedRatio = '1:1';
 let selectedCopyType = '种草';
 let activePresets = new Set();
 
-let isGeneratingCopy = false;
-let isRewriting = false;
 
 let pageSize = 100;
 let imagePage = 1;
@@ -21,6 +19,8 @@ let referencePreviewUrl = '';
 let xhsReverseFile = null;
 let xhsReversePreviewUrl = '';
 let selectedReverseMode = 'general';
+const PENDING_XHS_TASKS_KEY = 'yudi_xhs_pending_tasks';
+let pendingTaskPollTimer = null;
 
 const REVERSE_TEMPLATE_HINTS = {
   general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
@@ -188,6 +188,8 @@ function initToolScript() {
   initXhsWorkStats();
   initXhsReversePrompt();
   initPagination();
+  restorePendingTasks();
+  startPendingTaskPolling();
 }
 
 function initXhsToolTabs() {
@@ -587,10 +589,6 @@ async function runXhsReversePrompt() {
     return;
   }
 
-  const btn = document.getElementById('xhsReverseBtn');
-  const span = btn?.querySelector('span');
-  if (btn) btn.disabled = true;
-  if (span) span.textContent = '反推中...';
   setXhsReverseStatus('正在识图并生成 Prompt...', '');
 
   try {
@@ -612,9 +610,6 @@ async function runXhsReversePrompt() {
     setXhsReverseStatus('Prompt 已生成，已保存到反推记录。', 'ok');
   } catch (err) {
     setXhsReverseStatus(err.message || '反推失败', 'error');
-  } finally {
-    if (span) span.textContent = '反推提示词';
-    if (btn) btn.disabled = !xhsReverseFile;
   }
 }
 
@@ -638,6 +633,75 @@ function createClientTaskId() {
   return `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getPendingTasks() {
+  try {
+    const tasks = JSON.parse(sessionStorage.getItem(PENDING_XHS_TASKS_KEY) || '[]');
+    return Array.isArray(tasks) ? tasks : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingTasks(tasks) {
+  sessionStorage.setItem(PENDING_XHS_TASKS_KEY, JSON.stringify(tasks));
+}
+
+function persistPendingTask(card) {
+  if (!card || card.dataset.status !== 'running') return;
+  const tasks = getPendingTasks().filter((task) => task.id !== card.id);
+  tasks.push({
+    id: card.id,
+    type: card.dataset.taskType,
+    message: card.dataset.taskMessage || '正在生成...',
+    historyKey: card.dataset.historyKey || '',
+    createdAt: Date.now()
+  });
+  savePendingTasks(tasks);
+}
+
+function forgetPendingTask(taskId) {
+  savePendingTasks(getPendingTasks().filter((task) => task.id !== taskId));
+}
+
+function restorePendingTasks() {
+  const cutoff = Date.now() - 15 * 60 * 1000;
+  const pending = getPendingTasks().filter((task) => task.createdAt >= cutoff);
+  savePendingTasks(pending);
+  const tasksGrid = document.getElementById('tasksGrid');
+  if (!tasksGrid) return;
+  pending.forEach((task) => {
+    if (document.getElementById(task.id)) return;
+    const card = createTaskCard(task.id, task.type, task.message);
+    card.dataset.historyKey = task.historyKey || '';
+    tasksGrid.appendChild(card);
+    activeTasks.push(card.id);
+  });
+  updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
+}
+
+function matchesPendingTask(task, history) {
+  if (task.type === 'image') return history.type === 'image' && history.prompt === task.historyKey;
+  if (task.type === 'copy') return history.type === 'copy' && history.sub_type === 'generate' && history.prompt === task.historyKey;
+  if (task.type === 'both') return (history.type === 'both' || history.sub_type === 'both-copy') && history.prompt === task.historyKey;
+  if (task.type === 'rewrite') return history.type === 'copy' && history.sub_type === 'rewrite';
+  return false;
+}
+
+function reconcilePendingTasks() {
+  const pending = getPendingTasks();
+  if (!pending.length) return;
+  pending.forEach((task) => {
+    if (serverHistory.some((history) => matchesPendingTask(task, history))) removeTask(task.id);
+  });
+}
+
+function startPendingTaskPolling() {
+  if (pendingTaskPollTimer) return;
+  pendingTaskPollTimer = window.setInterval(() => {
+    if (getPendingTasks().length) loadServerHistory();
+  }, 4000);
+}
+
 async function generateImage() {
   if (!localStorage.getItem('token')) {
     alert('请先登录');
@@ -656,6 +720,7 @@ async function generateImage() {
 
   const taskId = createClientTaskId();
   const taskCard = createTaskCard(taskId, 'image', `图片生成中（${imageCount}张）...`);
+  taskCard.dataset.historyKey = fullPrompt;
   addTask(taskCard);
 
   const formData = new FormData();
@@ -712,8 +777,6 @@ function initGenerateCopy() {
 }
 
 async function generateCopy() {
-  if (isGeneratingCopy) return;
-  
   if (!localStorage.getItem('token')) {
     alert('请先登录');
     return;
@@ -725,11 +788,9 @@ async function generateCopy() {
     return;
   }
 
-  isGeneratingCopy = true;
-  updateButtonState('generateCopyBtn', true, '生成中...');
-
-  const taskId = 'task_' + Date.now();
+  const taskId = createClientTaskId();
   const taskCard = createTaskCard(taskId, 'copy', '文案生成中...');
+  taskCard.dataset.historyKey = topic;
   addTask(taskCard);
 
   try {
@@ -758,9 +819,6 @@ async function generateCopy() {
     }
   } catch (err) {
     updateTaskCard(taskId, { error: '请求失败：' + err.message });
-  } finally {
-    isGeneratingCopy = false;
-    updateButtonState('generateCopyBtn', false, '生成文案');
   }
 }
 
@@ -820,6 +878,7 @@ async function generateBoth() {
   
   const taskId = createClientTaskId();
   const taskCard = createTaskCard(taskId, 'both', `图文生成中（${imageCount}张图）...`);
+  taskCard.dataset.historyKey = prompt;
   addTask(taskCard);
   
   try {
@@ -860,8 +919,6 @@ async function generateBoth() {
 window.generateBoth = generateBoth;
 
 async function rewriteCopy() {
-  if (isRewriting) return;
-  
   if (!localStorage.getItem('token')) {
     alert('请先登录');
     return;
@@ -873,11 +930,9 @@ async function rewriteCopy() {
     return;
   }
 
-  isRewriting = true;
-  updateButtonState('rewriteBtn', true, '改写中...');
-
-  const taskId = 'task_' + Date.now();
+  const taskId = createClientTaskId();
   const taskCard = createTaskCard(taskId, 'rewrite', '改写中...');
+  taskCard.dataset.historyKey = originalText;
   addTask(taskCard);
 
   try {
@@ -910,9 +965,6 @@ async function rewriteCopy() {
     }
   } catch (err) {
     updateTaskCard(taskId, { error: '请求失败：' + err.message });
-  } finally {
-    isRewriting = false;
-    updateButtonState('rewriteBtn', false, '智能改写');
   }
 }
 
@@ -920,12 +972,13 @@ async function rewriteCopy() {
 // 浠诲姟鍗＄墖绠＄悊
 // =============================================
 function createTaskCard(id, type, message) {
-  const typeLabel = type === 'image' ? '图片' : (type === 'both' ? '图文' : '文案');
+  const typeLabel = type === 'image' ? '图片' : (type === 'both' ? '图文' : (type === 'rewrite' ? '改写' : '文案'));
   const card = document.createElement('div');
   card.className = 'task-card';
   card.id = id;
   card.dataset.status = 'running';
   card.dataset.taskType = type;
+  card.dataset.taskMessage = message;
   card.innerHTML = `
     <div class="task-header">
       <span class="task-type ${type}">${typeLabel}</span>
@@ -947,6 +1000,7 @@ function addTask(card) {
   tasksSection.style.display = 'block';
   tasksGrid.appendChild(card);
   activeTasks.push(card.id);
+  persistPendingTask(card);
   updateXhsWorkStats();
   
   updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
@@ -962,6 +1016,7 @@ function updateTaskCard(taskId, data) {
   if (data.error) {
     card.dataset.status = 'failed';
     body.innerHTML = `<div class="task-error">${escapeHtml(data.error)}</div>`;
+    forgetPendingTask(taskId);
     updateXhsWorkStats();
     return;
   }
@@ -1020,6 +1075,7 @@ function updateTaskCard(taskId, data) {
     `;
   }
   hydrateProtectedImages(body);
+  forgetPendingTask(taskId);
   updateXhsWorkStats();
   updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
 }
@@ -1039,6 +1095,7 @@ function removeTask(taskId) {
     card.remove();
     activeTasks = activeTasks.filter(id => id !== taskId);
   }
+  forgetPendingTask(taskId);
   
   const tasksSection = document.getElementById('tasksSection');
   const tasksGrid = document.getElementById('tasksGrid');
@@ -1217,6 +1274,7 @@ async function loadServerHistory() {
     });
     const data = await res.json();
     serverHistory = data.history || [];
+    reconcilePendingTasks();
     renderHistory();
     updateHeroStatsFromHistory();
   } catch (e) {
