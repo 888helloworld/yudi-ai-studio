@@ -540,10 +540,6 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
 
         <!-- 历史记录区 -->
         <div class="section-block" id="historySection" style="display:none;">
-      <div class="section-heading" style="margin-bottom:16px;">
-        <h2>历史记录</h2>
-        <p>生成过的图文都会留下，方便复盘、下载和继续改</p>
-      </div>
       <div class="history-wrapper">
         <!-- 图片历史 -->
         <div>
@@ -589,12 +585,9 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           <option value="6">6 条</option>
           <option value="10">10 条</option>
           <option value="20">20 条</option>
-          <option value="50" selected>50 条</option>
+          <option value="50">50 条</option>
+          <option value="100" selected>100 条</option>
         </select>
-        <button class="clear-history-btn" onclick="clearAllHistory('image')">清空图片记录</button>
-        <button class="clear-history-btn purple" onclick="clearAllHistory('copy')">清空文案记录</button>
-        <button class="clear-history-btn both-btn" onclick="clearAllHistory('both')">清空图文记录</button>
-        <button class="clear-history-btn" onclick="clearAllHistory('reverse')">清空反推记录</button>
       </div>
         </div>
       </aside>

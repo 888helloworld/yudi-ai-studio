@@ -10,7 +10,7 @@ let isGeneratingImage = false;
 let isGeneratingCopy = false;
 let isRewriting = false;
 
-let pageSize = 50;
+let pageSize = 100;
 let imagePage = 1;
 let copyPage = 1;
 let bothPage = 1;
