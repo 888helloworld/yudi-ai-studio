@@ -49,7 +49,7 @@ router.get('/points/logs', authMiddleware, (req, res) => {
 router.get('/history', authMiddleware, (req, res) => {
   const { type, keyword } = req.query;
   const page = parsePositiveInt(req.query.page, 1, 100000);
-  const limit = parsePositiveInt(req.query.limit, 20, 100);
+  const limit = parsePositiveInt(req.query.limit, 20, 1000);
   
   const offset = (page - 1) * limit;
   const history = getUserHistory(req.userId, {

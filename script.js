@@ -6,7 +6,6 @@ let selectedRatio = '1:1';
 let selectedCopyType = '种草';
 let activePresets = new Set();
 
-let isGeneratingImage = false;
 let isGeneratingCopy = false;
 let isRewriting = false;
 
@@ -613,9 +612,12 @@ function initGenerateImage() {
   btn.addEventListener('click', generateImage);
 }
 
+function createClientTaskId() {
+  if (window.crypto?.randomUUID) return `task_${window.crypto.randomUUID()}`;
+  return `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 async function generateImage() {
-  if (isGeneratingImage) return;
-  
   if (!localStorage.getItem('token')) {
     alert('请先登录');
     return;
@@ -627,14 +629,11 @@ async function generateImage() {
     return;
   }
 
-  isGeneratingImage = true;
-  updateButtonState('generateBtn', true, '生成中...');
-
   const imageCount = getImageCountInput('imageGenerateCount');
   const styleText = [...activePresets].join('，');
   const fullPrompt = styleText ? `${prompt}，${styleText}` : prompt;
 
-  const taskId = 'task_' + Date.now();
+  const taskId = createClientTaskId();
   const taskCard = createTaskCard(taskId, 'image', `图片生成中（${imageCount}张）...`);
   addTask(taskCard);
 
@@ -650,8 +649,6 @@ async function generateImage() {
       formData.append('referenceImage', referenceFile, referenceFile.name || 'reference.jpg');
     } catch (err) {
       updateTaskCard(taskId, { error: err.message || '参考图处理失败' });
-      isGeneratingImage = false;
-      updateButtonState('generateBtn', false, '立即生成图片');
       return;
     }
   }
@@ -682,9 +679,6 @@ async function generateImage() {
     }
   } catch (err) {
     updateTaskCard(taskId, { error: '请求失败：' + err.message });
-  } finally {
-    isGeneratingImage = false;
-    updateButtonState('generateBtn', false, '立即生成图片');
   }
 }
 
@@ -789,8 +783,6 @@ function initGenerateBoth() {
 }
 
 async function generateBoth() {
-  if (isGeneratingImage) return;
-  
   if (!localStorage.getItem('token')) {
     alert('请先登录');
     return;
@@ -805,10 +797,7 @@ async function generateBoth() {
   const ratio = document.querySelector('.both-panel .ratio-btn.active')?.dataset.ratio || '1:1';
   const imageCount = getImageCountInput('bothImageCount');
   
-  isGeneratingImage = true;
-  updateButtonState('generateBothBtn', true, '生成中...');
-  
-  const taskId = 'task_' + Date.now();
+  const taskId = createClientTaskId();
   const taskCard = createTaskCard(taskId, 'both', `图文生成中（${imageCount}张图）...`);
   addTask(taskCard);
   
@@ -844,9 +833,6 @@ async function generateBoth() {
     document.getElementById('bothPrompt').value = '';
   } catch (err) {
     updateTaskCard(taskId, { error: err.message || '生成失败' });
-  } finally {
-    isGeneratingImage = false;
-    updateButtonState('generateBothBtn', false, '一键生成图文');
   }
 }
 
@@ -1012,14 +998,6 @@ function updateTaskCard(taskId, data) {
   }
   hydrateProtectedImages(body);
   updateXhsWorkStats();
-
-  // 3绉掑悗鑷姩绉诲埌鍘嗗彶
-  setTimeout(() => {
-    if (document.getElementById(taskId)) {
-      removeTask(taskId);
-      loadServerHistory();
-    }
-  }, 3000);
 }
 
 function escapeForAttr(str) {
