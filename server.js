@@ -229,7 +229,7 @@ function getRequiredEnv(name) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-const DEEPSEEK_TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-v4-pro';
+const DEEPSEEK_TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat';
 
 function buildXiXuUrl(pathname) {
   const baseUrl = (process.env.XI_XU_API_BASE_URL || 'https://api.xi-xu.me').replace(/\/+$/, '');
