@@ -1430,7 +1430,7 @@ document.addEventListener('click', (e) => {
     const downloadBtn = document.createElement('button');
     downloadBtn.className = 'task-btn';
     downloadBtn.textContent = '下载图片';
-    downloadBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
+    downloadBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-pink),#059050);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
     downloadBtn.onmouseover = () => { downloadBtn.style.opacity = '0.9'; };
     downloadBtn.onmouseout = () => { downloadBtn.style.opacity = '1'; };
     downloadBtn.onclick = () => downloadImage(imgUrl);
@@ -1466,7 +1466,7 @@ document.addEventListener('click', (e) => {
     const copyBtn = document.createElement('button');
     copyBtn.className = 'task-btn';
     copyBtn.textContent = '复制文案';
-    copyBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-green),#1da07a);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
+    copyBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-green),#059050);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
     copyBtn.onmouseover = () => { copyBtn.style.opacity = '0.9'; };
     copyBtn.onmouseout = () => { copyBtn.style.opacity = '1'; };
     copyBtn.onclick = () => {
@@ -1525,7 +1525,7 @@ document.addEventListener('click', (e) => {
       const downloadBtn = document.createElement('button');
       downloadBtn.className = 'task-btn';
       downloadBtn.textContent = imageUrls.length > 1 ? '下载全部图片' : '下载图片';
-      downloadBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-pink),#d92d6a);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
+      downloadBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-pink),#059050);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
       downloadBtn.onclick = () => downloadImages(imageUrls);
       btnWrapper.appendChild(downloadBtn);
     }
@@ -1534,7 +1534,7 @@ document.addEventListener('click', (e) => {
       const copyBtn = document.createElement('button');
       copyBtn.className = 'task-btn';
       copyBtn.textContent = '复制文案';
-      copyBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-green),#1da07a);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
+      copyBtn.style.cssText = 'padding:10px 24px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--neon-green),#059050);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;';
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(content).then(() => {
           copyBtn.textContent = '已复制 ✓';
@@ -2138,7 +2138,7 @@ function showModal(title, content, editable) {
     const textarea = document.createElement('textarea');
     textarea.value = content;
     textarea.style.cssText = 'width:100%;min-height:300px;padding:14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;line-height:1.8;resize:vertical;outline:none;font-family:inherit;';
-    textarea.addEventListener('focus', () => { textarea.style.borderColor = 'var(--neon-pink)'; textarea.style.boxShadow = '0 0 0 3px rgba(255,45,120,0.15)'; });
+    textarea.addEventListener('focus', () => { textarea.style.borderColor = 'var(--neon-pink)'; textarea.style.boxShadow = '0 0 0 3px rgba(7,193,96,0.15)'; });
     textarea.addEventListener('blur', () => { textarea.style.borderColor = ''; textarea.style.boxShadow = ''; });
     body.appendChild(textarea);
 
