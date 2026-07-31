@@ -11,9 +11,9 @@
 <style>
 body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
 .hero-section{position:relative;padding:80px 0 60px;text-align:center;overflow:hidden}
-.hero-section::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:900px;height:900px;background:radial-gradient(ellipse,rgba(7,193,96,0.1) 0%,rgba(7,193,96,0.04) 40%,transparent 70%);pointer-events:none}
+.hero-section::before{display:none}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:rgba(7,193,96,0.1);border:1px solid rgba(7,193,96,0.25);border-radius:999px;font-size:13px;font-weight:700;color:var(--neon-pink);margin-bottom:24px}
-.hero-section h1{font-size:clamp(42px,6vw,72px);font-weight:900;line-height:1.05;letter-spacing:-0.03em;background:linear-gradient(135deg,#fff 30%,var(--neon-pink) 60%,var(--neon-cyan));-webkit-background-clip:border-box;-webkit-text-fill-color:currentColor;background-clip:border-box;margin:0 auto 20px;max-width:800px}
+.hero-section h1{font-size:clamp(42px,6vw,72px);font-weight:900;line-height:1.05;letter-spacing:-0.03em;color:#fff;background:none;-webkit-text-fill-color:#fff;margin:0 auto 20px;max-width:800px}
 .hero-section .subtitle{font-size:clamp(16px,2.2vw,20px);color:var(--text-secondary);max-width:640px;margin:0 auto 32px;line-height:1.7}
 .hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .hero-btn{display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:var(--radius-md);font-weight:800;font-size:16px;transition:var(--base);text-decoration:none}
