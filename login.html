@@ -68,7 +68,7 @@
       </form>
 
       <div class="links">
-        <a href="register.html">还没有账号？立即注册</a>
+        <a href="register.html" id="registerLink">还没有账号？立即注册</a>
       </div>
       <div class="back-link">
         <a href="index.html">返回首页</a>
@@ -79,7 +79,7 @@
   <script>
     // 检测是否通过 file:// 协议打开
     if (window.location.protocol === 'file:') {
-      document.getElementById('error').textContent = '请通过 http://localhost:3000/login.html 访问，不要直接打开文件。';
+      document.getElementById('error').textContent = '请通过 http://localhost:3001/login.html 访问，不要直接打开文件。';
       document.getElementById('error').style.display = 'block';
       document.getElementById('submitBtn').disabled = true;
     }
@@ -87,6 +87,11 @@
     const form = document.getElementById('loginForm');
     const errorEl = document.getElementById('error');
     const submitBtn = document.getElementById('submitBtn');
+    const requestedNext = new URLSearchParams(window.location.search).get('next');
+    const safeNext = requestedNext && /^[a-z0-9_-]+\.html(?:[?#].*)?$/i.test(requestedNext) ? requestedNext : '';
+    document.getElementById('registerLink').href = safeNext
+      ? `register.html?next=${encodeURIComponent(safeNext)}`
+      : 'register.html';
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -109,7 +114,9 @@
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        if (data.user.role === 'admin') {
+        if (safeNext) {
+          window.location.href = safeNext;
+        } else if (data.user.role === 'admin') {
           window.location.href = 'admin.html';
         } else {
           window.location.href = 'index.html';

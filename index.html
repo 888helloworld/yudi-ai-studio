@@ -121,7 +121,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
 .footer-col a:hover{color:var(--neon-cyan)}
 .footer-bottom{text-align:center;padding-top:20px;border-top:1px solid var(--border);color:var(--text-dim);font-size:12px}
 @media(max-width:900px){.features-grid,.shop-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.features-grid,.shop-grid,.footer-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:1fr}.hero-actions{flex-direction:column;align-items:center}.hero-btn{width:100%;justify-content:center}.pay-channel-select{grid-template-columns:1fr}}
+@media(max-width:560px){.features-grid,.footer-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:1fr}.shop-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.shop-card{padding:20px 12px}.shop-card .points-num{font-size:32px}.shop-card .price{font-size:22px}.hero-actions{flex-direction:column;align-items:center}.hero-btn{width:100%;justify-content:center}.pay-channel-select{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -135,7 +135,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
       <a href="xhs.html">小红书工具</a>
         <a href="image-studio.html">画面工坊</a>
       <a href="#" onclick="showRedeemModal()">兑换</a>
-      <a href="#" onclick="showPayModal()">充值</a>
+      <a href="#" class="payment-entry" style="display:none" onclick="showPayModal()">充值</a>
       <a href="profile.html">个人中心</a>
       <a href="admin.html" class="admin-link" id="navAdmin" style="display:none;">管理后台</a>
       <a href="login.html" onclick="logout()">退出</a>
@@ -164,7 +164,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
       <a href="xhs.html" class="hero-btn hero-btn-primary" id="heroStartBtn">先写一篇</a>
         <a href="image-studio.html" class="hero-btn hero-btn-secondary">画面工坊</a>
       <a href="#" class="hero-btn hero-btn-secondary" onclick="showRedeemModal()">卡密兑换</a>
-      <a href="#" class="hero-btn hero-btn-secondary" onclick="showPayModal()">充值积分</a>
+      <a href="#" class="hero-btn hero-btn-secondary payment-entry" style="display:none" onclick="showPayModal()">充值积分</a>
     </div>
     <div class="hero-stats-row">
       <div class="hero-stat-item"><span class="num" id="statUsers">-</span><span class="label">注册用户</span></div>
@@ -242,7 +242,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
     </div>
   </section>
 
-  <section class="shop-section" id="shopSection">
+  <section class="shop-section" id="shopSection" style="display:none">
     <div class="section-header"><h2>积分商城</h2><p>写文、出图、改稿，积分够用，创作不断。</p></div>
     <div class="shop-grid" id="shopGrid"></div>
     <div style="text-align:center;margin-top:24px;">
@@ -263,7 +263,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
         <p>登录后就能生成图片、写文案、反推 Prompt，并保存自己的素材记录。</p>
         <div class="login-prompt-buttons">
           <a href="login.html" class="btn-login">去登录</a>
-          <a href="register.html" class="btn-register">免费注册</a>
+          <a href="register.html" class="btn-register">注册账号</a>
         </div>
       </div>
     </div>
@@ -494,7 +494,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
   <section class="cta-section" id="ctaSection">
     <h2>有想法了？让它先跑起来</h2>
     <p>先从一条主题、一张参考图或一段旧文案开始，御弟哥哥会把过程和结果都替你收好。</p>
-    <a href="register.html" class="hero-btn hero-btn-primary">免费注册</a>
+    <a href="register.html" class="hero-btn hero-btn-primary">注册账号</a>
     <a href="xhs.html" class="hero-btn hero-btn-secondary">进入小红书工作台</a>
   </section>
 </div>
@@ -504,7 +504,7 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
     <div class="footer-grid">
       <div class="footer-col"><h4>功能</h4><a href="xhs.html">小红书图片生成</a><a href="image-studio.html">画面工坊</a><a href="xhs.html">小红书文案生成</a><a href="xhs.html">文案改写</a><a href="#" onclick="showRedeemModal()">卡密兑换</a></div>
       <div class="footer-col"><h4>支持</h4><a href="help.html">帮助中心</a><a href="content-policy.html">内容规范</a><a href="profile.html">个人中心</a></div>
-      <div class="footer-col"><h4>关于</h4><a href="privacy.html">隐私政策</a><a href="terms.html">服务条款</a><a href="mailto:support@example.com">联系我们</a></div>
+      <div class="footer-col"><h4>关于</h4><a href="privacy.html">隐私政策</a><a href="terms.html">服务条款</a><a href="help.html">问题反馈</a></div>
     </div>
     <div class="footer-bottom">&copy; 2026 御弟哥哥 AI 图文创作工作台 All Rights Reserved</div>
   </div>
@@ -562,90 +562,33 @@ async function initNav() {
 function logout() { localStorage.removeItem('token'); }
 
 async function loadStats() {
-  const counters = {
-    users: { el: document.getElementById('statUsers'), value: 1286, target: 1286, minStep: 1, maxStep: 3 },
-    images: { el: document.getElementById('statImages'), value: 38642, target: 38642, minStep: 2, maxStep: 8 },
-    copies: { el: document.getElementById('statCopies'), value: 21875, target: 21875, minStep: 1, maxStep: 6 }
-  };
-
-  function formatStat(value) {
-    return Math.floor(value).toLocaleString('zh-CN');
-  }
-
-  function renderCounter(counter) {
-    counter.el.textContent = formatStat(counter.value);
-  }
-
-  function animateTo(counter, nextTarget, duration = 900) {
-    counter.target = Math.max(nextTarget, counter.value);
-    const startValue = counter.value;
-    const delta = counter.target - startValue;
-    const startAt = performance.now();
-
-    function tick(now) {
-      const progress = Math.min((now - startAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      counter.value = startValue + delta * eased;
-      renderCounter(counter);
-      if (progress < 1) requestAnimationFrame(tick);
-    }
-
-    requestAnimationFrame(tick);
-  }
-
-  function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  Object.values(counters).forEach(counter => {
-    counter.value = Math.max(0, counter.target - randomInt(80, 320));
-    renderCounter(counter);
-    animateTo(counter, counter.target, 1400 + randomInt(0, 800));
-  });
-
   try {
-    const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } });
+    const r = await fetch('/api/public/stats');
     if (r.ok) {
       const s = await r.json();
-      if (Number.isFinite(Number(s.totalUsers))) {
-        animateTo(counters.users, Math.max(counters.users.target, Number(s.totalUsers) + 1200), 900);
-      }
+      document.getElementById('statUsers').textContent = Number(s.totalUsers || 0).toLocaleString('zh-CN');
+      document.getElementById('statImages').textContent = Number(s.totalRecords || 0).toLocaleString('zh-CN');
+      document.getElementById('statCopies').textContent = Number(s.totalCopies || 0).toLocaleString('zh-CN');
     }
   } catch {}
-  try {
-    const r = await fetch('/api/admin/daily-stats?days=365', { headers: { 'Authorization': 'Bearer ' + token } });
-    if (r.ok) {
-      const d = await r.json();
-      const t = d.stats.reduce((a,b) => a + b.count, 0);
-      const c = d.stats.filter(s => s.type === 'copy').reduce((a,b) => a + b.count, 0);
-      animateTo(counters.images, Math.max(counters.images.target, t + 36000), 900);
-      animateTo(counters.copies, Math.max(counters.copies.target, c + 20000), 900);
-    }
-  } catch {}
-
-  Object.values(counters).forEach(counter => {
-    const scheduleNext = () => {
-      const delay = randomInt(2600, 7200);
-      setTimeout(() => {
-        const increment = randomInt(counter.minStep, counter.maxStep);
-        animateTo(counter, counter.target + increment, randomInt(650, 1200));
-        scheduleNext();
-      }, delay);
-    };
-    scheduleNext();
-  });
 }
 
 async function loadShop() {
   try {
     const r = await fetch('/api/packages');
     const d = await r.json();
+    document.querySelectorAll('.payment-entry').forEach((el) => { el.style.display = d.paymentAvailable ? '' : 'none'; });
+    if (!d.paymentAvailable) {
+      document.getElementById('shopSection').style.display = 'none';
+      return;
+    }
+    document.getElementById('shopSection').style.display = '';
     document.getElementById('shopGrid').innerHTML = d.packages.map((p,i) =>
       '<div class="shop-card' + (i===2?' featured':'') + '">' +
       '<span class="points-num">' + escapeHtml(p.points) + '</span>' +
       '<div class="points-label">积分</div>' +
       '<div class="price">&#165;' + escapeHtml(p.price) + ' <small>' + escapeHtml((p.price/p.points*100).toFixed(1)) + '元/百积分</small></div>' +
-      '<button class="shop-btn buy" onclick="startPay(' + Number(p.points) + ',' + Number(p.price) + ')">立即购买</button></div>'
+      '<button class="shop-btn buy" ' + (d.paymentAvailable ? 'onclick="startPay(' + Number(p.points) + ',' + Number(p.price) + ')"' : 'disabled') + '>' + (d.paymentAvailable ? '立即购买' : '在线充值未开放') + '</button></div>'
     ).join('');
   } catch {}
 }
@@ -728,7 +671,7 @@ async function createPayment() {
             '<div style="color:var(--neon-green);font-size:48px;margin-bottom:12px;">&#x2705;</div>' +
             '<div style="color:var(--text-primary);font-weight:800;font-size:18px;margin-bottom:4px;">支付成功！</div>' +
             '<div style="color:var(--neon-cyan);font-weight:700;">获得 ' + escapeHtml(sd.order.points) + ' 积分</div>';
-          document.getElementById('navPoints').textContent = sd.order.points + ' 积分';
+          document.getElementById('navPoints').textContent = Number(sd.balance || 0) + ' 积分';
           return;
         }
       } catch {}

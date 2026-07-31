@@ -185,6 +185,11 @@ function sanitizeInput(str, maxLen) {
   return str.slice(0, maxLen).replace(/[<>]/g, '').trim();
 }
 
+function normalizeClientTaskId(value) {
+  const taskId = String(value || '').trim();
+  return /^[a-zA-Z0-9_-]{1,100}$/.test(taskId) ? taskId : null;
+}
+
 function safeCompareSecret(actual, expected) {
   if (!actual || !expected) return false;
   const actualBuffer = Buffer.from(String(actual));
@@ -1068,6 +1073,7 @@ app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImag
   const prompt = sanitizeInput(req.body.prompt, 2000);
   const ratio = req.body.ratio || '1:1';
   const imageCount = parseImageCount(req.body.imageCount);
+  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
   if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
 
@@ -1115,7 +1121,7 @@ app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImag
     }
     const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
     localUrls.forEach((localUrl) => {
-      db.addHistory(req.userId, 'image', { sub_type: 'generate', image_url: localUrl, prompt: prompt, ratio: ratio, cost_points: POINTS.image });
+      db.addHistory(req.userId, 'image', { sub_type: 'generate', image_url: localUrl, prompt: prompt, ratio: ratio, cost_points: POINTS.image, client_task_id: clientTaskId });
     });
 
     res.json({ imageUrl: localUrls[0], imageUrls: localUrls, remainingPoints: db.getUserPoints(req.userId), createdAt });
@@ -1130,6 +1136,7 @@ app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImag
 app.post('/generate-copy', copyLimiter, authMiddleware, async (req, res) => {
   const topic = sanitizeInput(req.body.topic, 500);
   const type = req.body.type;
+  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
   if (!topic) return res.status(400).json({ error: '请输入主题' });
 
   const pointsResult = db.deductPoints(req.userId, POINTS.copy, '文案生成');
@@ -1226,7 +1233,7 @@ app.post('/generate-copy', copyLimiter, authMiddleware, async (req, res) => {
     const title = titleMatch ? titleMatch[1].trim().substring(0, 30) : (topic.length > 20 ? topic.substring(0, 20) + '...' : topic);
     const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
     
-    db.addHistory(req.userId, 'copy', { sub_type: 'generate', content: cleanText, prompt: topic, cost_points: POINTS.copy });
+    db.addHistory(req.userId, 'copy', { sub_type: 'generate', content: cleanText, prompt: topic, cost_points: POINTS.copy, client_task_id: clientTaskId });
     res.json({ copy: cleanText, title, remainingPoints: pointsResult.balance, createdAt });
   } catch (err) {
     db.rechargePoints(req.userId, POINTS.copy, '文案生成失败退款');
@@ -1238,6 +1245,7 @@ app.post('/generate-copy', copyLimiter, authMiddleware, async (req, res) => {
 app.post('/rewrite', copyLimiter, authMiddleware, async (req, res) => {
   const originalText = sanitizeInput(req.body.originalText, 5000);
   const style = req.body.style;
+  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
   if (!originalText) return res.status(400).json({ error: '请输入要改写的文案' });
 
   const pointsResult = db.deductPoints(req.userId, POINTS.rewrite, '文案改写');
@@ -1303,7 +1311,7 @@ app.post('/rewrite', copyLimiter, authMiddleware, async (req, res) => {
     const title = titleMatch ? titleMatch[1].trim().substring(0, 30) : '改写文案';
     const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
     
-    db.addHistory(req.userId, 'copy', { sub_type: 'rewrite', content: cleanText, prompt: title, cost_points: POINTS.rewrite });
+    db.addHistory(req.userId, 'copy', { sub_type: 'rewrite', content: cleanText, prompt: title, cost_points: POINTS.rewrite, client_task_id: clientTaskId });
     res.json({ copy: cleanText, title, remainingPoints: pointsResult.balance, createdAt });
   } catch (err) {
     db.rechargePoints(req.userId, POINTS.rewrite, '文案改写失败退款');
@@ -1318,6 +1326,7 @@ app.post('/generate-both', imageLimiter, authMiddleware, async (req, res) => {
   const prompt = sanitizeInput(req.body.prompt, 2000);
   const ratio = req.body.ratio || '1:1';
   const imageCount = parseImageCount(req.body.imageCount);
+  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
   if (!prompt) return res.status(400).json({ error: '请输入描述' });
   if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
 
@@ -1422,14 +1431,16 @@ app.post('/generate-both', imageLimiter, authMiddleware, async (req, res) => {
         content: copyText || '',
         prompt: prompt,
         ratio: ratio,
-        cost_points: actualCost
+        cost_points: actualCost,
+        client_task_id: clientTaskId
       });
     } else if (copyText) {
       db.addHistory(req.userId, 'copy', {
         sub_type: 'both-copy',
         content: copyText,
         prompt: prompt,
-        cost_points: POINTS.copy
+        cost_points: POINTS.copy,
+        client_task_id: clientTaskId
       });
     }
     const remainingPoints = pointsResult.balance + refundedPoints;
@@ -1499,7 +1510,14 @@ app.get('/api/user/points', optionalAuth, (req, res) => {
 
 // 获取积分商品列表
 app.get('/api/packages', (req, res) => {
-  res.json({ packages: POINT_PACKAGES });
+  res.json({ packages: POINT_PACKAGES, paymentAvailable: false });
+});
+
+app.get('/api/public/stats', (req, res) => {
+  const totalUsers = db.db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
+  const totalRecords = db.db.prepare('SELECT COUNT(*) AS count FROM history').get().count;
+  const totalCopies = db.db.prepare("SELECT COUNT(*) AS count FROM history WHERE type IN ('copy', 'both') AND content IS NOT NULL AND TRIM(content) <> ''").get().count;
+  res.json({ totalUsers, totalRecords, totalCopies });
 });
 
 const xiJobs = new Map();
@@ -2880,32 +2898,7 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
 
 // 创建支付订单
 app.post('/api/payment/create', authMiddleware, async (req, res) => {
-  const { points, channel } = req.body;
-  const pkg = POINT_PACKAGES.find(p => p.points === parseInt(points));
-  if (!pkg) return res.status(400).json({ error: '无效的积分套餐' });
-  if (!['alipay', 'wxpay'].includes(channel)) return res.status(400).json({ error: '无效的支付渠道' });
-
-  try {
-    const order = db.createPaymentOrder(req.userId, pkg.price, pkg.points, channel);
-    
-    // 模拟支付 - 实际接入需替换为真实API调用
-    // 返回订单信息和支付二维码/链接
-    const payUrl = channel === 'alipay' 
-      ? `https://qr.alipay.com/${order.order_no}` 
-      : `https://pay.weixin.qq.com/${order.order_no}`;
-    
-    res.json({
-      success: true,
-      orderNo: order.order_no,
-      amount: order.amount,
-      points: order.points,
-      channel: order.channel,
-      payUrl,
-      qrCode: `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%231a1f2e"/><text x="100" y="100" text-anchor="middle" fill="%2300f0ff" font-size="14">支付模拟</text><text x="100" y="130" text-anchor="middle" fill="%2394a3b8" font-size="12">¥${order.amount}</text></svg>`
-    });
-  } catch (err) {
-    res.status(500).json({ error: '创建订单失败' });
-  }
+  res.status(503).json({ error: '在线充值暂未开放，请使用卡密兑换' });
 });
 
 // 模拟支付回调 - 实际应替换为支付平台异步通知和平台验签
@@ -2950,7 +2943,7 @@ app.post('/api/payment/wxpay/notify', async (req, res) => {
 app.get('/api/payment/status/:orderNo', authMiddleware, (req, res) => {
   const order = db.db.prepare('SELECT * FROM payment_orders WHERE order_no = ? AND user_id = ?').get(req.params.orderNo, req.userId);
   if (!order) return res.status(404).json({ error: '订单不存在' });
-  res.json({ order });
+  res.json({ order, balance: db.getUserPoints(req.userId) });
 });
 
 // 获取用户支付订单列表

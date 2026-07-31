@@ -606,7 +606,11 @@
     }
     window.deleteHistoryRecord = deleteHistoryRecord;
 
-    document.getElementById('searchHistory').addEventListener('input', () => loadHistory(1));
+    let historySearchTimer = null;
+    document.getElementById('searchHistory').addEventListener('input', () => {
+      clearTimeout(historySearchTimer);
+      historySearchTimer = setTimeout(() => loadHistory(1), 250);
+    });
     document.getElementById('filterType').addEventListener('change', () => loadHistory(1));
 
     // 图表功能

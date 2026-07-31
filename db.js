@@ -53,6 +53,11 @@ function initDatabase() {
     )
   `);
 
+  const historyColumns = db.prepare('PRAGMA table_info(history)').all();
+  if (!historyColumns.some((column) => column.name === 'client_task_id')) {
+    db.exec('ALTER TABLE history ADD COLUMN client_task_id TEXT');
+  }
+
   // 卡密表
   db.exec(`
     CREATE TABLE IF NOT EXISTS cdkeys (
@@ -89,6 +94,7 @@ function initDatabase() {
   // 索引
   db.exec(`CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_history_client_task ON history(user_id, client_task_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_point_logs_user_id ON point_logs(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_cdkeys_code ON cdkeys(code)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_payment_orders_user ON payment_orders(user_id)`);
@@ -277,8 +283,8 @@ function getUserPoints(userId) {
 // 添加历史记录
 function addHistory(userId, type, data) {
   const stmt = db.prepare(`
-    INSERT INTO history (user_id, type, sub_type, content, image_url, prompt, ratio, cost_points)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO history (user_id, type, sub_type, content, image_url, prompt, ratio, cost_points, client_task_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const result = stmt.run(
@@ -289,7 +295,8 @@ function addHistory(userId, type, data) {
     data.image_url || null,
     data.prompt || null,
     data.ratio || null,
-    data.cost_points ?? null
+    data.cost_points ?? null,
+    data.client_task_id || null
   );
   
   return result.lastInsertRowid;

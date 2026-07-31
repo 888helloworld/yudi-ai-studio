@@ -52,8 +52,6 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
 .xhs-history-column .history-date{font-size:10px;line-height:1.2;white-space:nowrap}
 .xhs-history-column .history-title-text,.xhs-history-column .history-info-text{flex:0 0 100%;margin:0;font-size:11px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xhs-history-column .history-copy-summary{flex:0 0 100%;color:var(--text-secondary);font-size:11px;line-height:1.35;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.xhs-history-column .delete-btn{top:5px;right:5px;width:22px;height:22px;font-size:13px}
-.xhs-history-column .delete-btn{display:none!important}
 .xhs-history-column .task-card{background:var(--bg-input);border-radius:var(--radius-sm);box-shadow:none;transform:none}
 .xhs-history-column .task-card:hover{border-color:var(--border-light);box-shadow:none;transform:none}
 .xhs-history-column .task-header{display:none}
@@ -204,7 +202,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
 @media(max-width:1500px){#toolSection .history-grid,#toolSection .tasks-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:1180px){.xhs-workspace-layout{grid-template-columns:1fr}.xhs-history-column{position:relative;top:auto;max-height:none;overflow:visible;padding-right:0}#toolSection .dual-panel,#toolSection .history-wrapper{grid-template-columns:1fr}}
 @media(max-width:900px){.features-grid,.shop-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:680px){#toolSection{--xhs-header-clearance:96px}#toolSection .history-grid,#toolSection .tasks-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xhs-reverse-grid{grid-template-columns:1fr}.xhs-tool-switcher{grid-template-columns:repeat(2,minmax(0,1fr)}.xhs-tool-tab{font-size:12px}.xhs-work-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:680px){#toolSection{--xhs-header-clearance:96px}#toolSection .history-grid,#toolSection .tasks-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xhs-reverse-grid{grid-template-columns:1fr}.xhs-tool-switcher{grid-template-columns:repeat(2,minmax(0,1fr))}.xhs-tool-tab{font-size:12px}.xhs-work-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:560px){body .container{width:calc(100% - 20px)}.features-grid,.shop-grid,.footer-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:1fr}.hero-actions{flex-direction:column;align-items:center}.hero-btn{width:100%;justify-content:center}.pay-channel-select{grid-template-columns:1fr}}
 </style>
 </head>
@@ -218,7 +216,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
     <div class="user-actions">
         <a href="image-studio.html">画面工坊</a>
       <a href="#" onclick="showRedeemModal()">兑换</a>
-      <a href="#" onclick="showPayModal()">充值</a>
+      <a href="#" class="payment-entry" style="display:none" onclick="showPayModal()">充值</a>
       <a href="profile.html">个人中心</a>
       <a href="admin.html" class="admin-link" id="navAdmin" style="display:none;">管理后台</a>
       <a href="login.html" onclick="logout()">退出</a>
@@ -232,7 +230,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
       <div class="user-actions">
         <a href="image-studio.html">画面工坊</a>
       <a href="login.html">登录</a>
-      <a href="register.html" style="background:linear-gradient(135deg,var(--neon-pink),#059050);color:#fff;border-radius:var(--radius-md);padding:7px 16px;">注册</a>
+      <a href="register.html?next=xhs.html" style="background:linear-gradient(135deg,var(--neon-pink),#059050);color:#fff;border-radius:var(--radius-md);padding:7px 16px;">注册</a>
     </div>
   </div>
 </nav>
@@ -246,7 +244,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
       <a href="#" class="hero-btn hero-btn-primary" id="heroStartBtn" onclick="startCreating()">开始创作</a>
         <a href="image-studio.html" class="hero-btn hero-btn-secondary">画面工坊</a>
       <a href="#" class="hero-btn hero-btn-secondary" onclick="showRedeemModal()">卡密兑换</a>
-      <a href="#" class="hero-btn hero-btn-secondary" onclick="showPayModal()">充值积分</a>
+      <a href="#" class="hero-btn hero-btn-secondary payment-entry" style="display:none" onclick="showPayModal()">充值积分</a>
     </div>
     <div class="hero-stats-row">
       <div class="hero-stat-item"><span class="num" id="statUsers">-</span><span class="label">注册用户</span></div>
@@ -324,7 +322,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
     </div>
   </section>
 
-  <section class="shop-section" id="shopSection">
+  <section class="shop-section" id="shopSection" style="display:none">
     <div class="section-header"><h2>积分商城</h2><p>给连续创作备点弹药，写文、出图、改稿都能继续跑</p></div>
     <div class="shop-grid" id="shopGrid"></div>
     <div style="text-align:center;margin-top:24px;">
@@ -344,8 +342,8 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         <h2>登录后即可使用</h2>
         <p>登录后就能生成图片、写文案、反推 Prompt，并保存自己的素材记录。</p>
         <div class="login-prompt-buttons">
-          <a href="login.html" class="btn-login">去登录</a>
-          <a href="register.html" class="btn-register">免费注册</a>
+          <a href="login.html?next=xhs.html" class="btn-login">去登录</a>
+          <a href="register.html?next=xhs.html" class="btn-register">注册账号</a>
         </div>
       </div>
     </div>
@@ -618,7 +616,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
   <section class="cta-section" id="ctaSection">
     <h2>有想法了？让它先跑起来</h2>
     <p>先从一条主题、一张参考图或一段旧文案开始，御弟哥哥会把过程和结果都替你收好。</p>
-    <a href="register.html" class="hero-btn hero-btn-primary">免费注册</a>
+    <a href="register.html?next=xhs.html" class="hero-btn hero-btn-primary">注册账号</a>
     <a href="#" class="hero-btn hero-btn-secondary" onclick="startCreating()">进入创作工作台</a>
   </section>
 </div>
@@ -676,17 +674,12 @@ function logout() { localStorage.removeItem('token'); }
 
 async function loadStats() {
   try {
-    const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } });
-    if (r.ok) { const s = await r.json(); document.getElementById('statUsers').textContent = s.totalUsers; }
-  } catch {}
-  try {
-    const r = await fetch('/api/admin/daily-stats?days=365', { headers: { 'Authorization': 'Bearer ' + token } });
+    const r = await fetch('/api/public/stats');
     if (r.ok) {
-      const d = await r.json();
-      const t = d.stats.reduce((a,b) => a + b.count, 0);
-      const c = d.stats.filter(s => s.type === 'copy').reduce((a,b) => a + b.count, 0);
-      document.getElementById('statImages').textContent = t;
-      document.getElementById('statCopies').textContent = c;
+      const s = await r.json();
+      document.getElementById('statUsers').textContent = Number(s.totalUsers || 0).toLocaleString('zh-CN');
+      document.getElementById('statImages').textContent = Number(s.totalRecords || 0).toLocaleString('zh-CN');
+      document.getElementById('statCopies').textContent = Number(s.totalCopies || 0).toLocaleString('zh-CN');
     }
   } catch {}
 }
@@ -695,18 +688,24 @@ async function loadShop() {
   try {
     const r = await fetch('/api/packages');
     const d = await r.json();
+    document.querySelectorAll('.payment-entry').forEach((el) => { el.style.display = d.paymentAvailable ? '' : 'none'; });
+    if (!d.paymentAvailable) {
+      document.getElementById('shopSection').style.display = 'none';
+      return;
+    }
+    document.getElementById('shopSection').style.display = '';
     document.getElementById('shopGrid').innerHTML = d.packages.map((p,i) =>
       '<div class="shop-card' + (i===2?' featured':'') + '">' +
       '<span class="points-num">' + escapeHtml(p.points) + '</span>' +
       '<div class="points-label">积分</div>' +
       '<div class="price">&#165;' + escapeHtml(p.price) + ' <small>' + escapeHtml((p.price/p.points*100).toFixed(1)) + '元/百积分</small></div>' +
-      '<button class="shop-btn buy" onclick="startPay(' + Number(p.points) + ',' + Number(p.price) + ')">立即购买</button></div>'
+      '<button class="shop-btn buy" ' + (d.paymentAvailable ? 'onclick="startPay(' + Number(p.points) + ',' + Number(p.price) + ')"' : 'disabled') + '>' + (d.paymentAvailable ? '立即购买' : '在线充值未开放') + '</button></div>'
     ).join('');
   } catch {}
 }
 
 function showRedeemModal() {
-  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html?next=xhs.html'; return; }
   document.getElementById('redeemModal').classList.add('show');
   document.getElementById('cdkeyInput').value = '';
   document.getElementById('redeemError').style.display = 'none';
@@ -740,7 +739,7 @@ async function redeemCdkey() {
 let selectedChannel = 'alipay', selectedPoints = 0, selectedPrice = 0;
 
 function showPayModal() {
-  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html?next=xhs.html'; return; }
   document.getElementById('payModal').classList.add('show');
   document.getElementById('payStatusBar').style.display = 'none';
   document.getElementById('payQrArea').innerHTML = '<p style="color:var(--text-muted);font-size:14px;">请先选择积分套餐</p>';
@@ -783,7 +782,7 @@ async function createPayment() {
             '<div style="color:var(--neon-green);font-size:48px;margin-bottom:12px;">&#x2705;</div>' +
             '<div style="color:var(--text-primary);font-weight:800;font-size:18px;margin-bottom:4px;">支付成功！</div>' +
             '<div style="color:var(--neon-cyan);font-weight:700;">获得 ' + escapeHtml(sd.order.points) + ' 积分</div>';
-          document.getElementById('navPoints').textContent = sd.order.points + ' 积分';
+          document.getElementById('navPoints').textContent = Number(sd.balance || 0) + ' 积分';
           return;
         }
       } catch {}
@@ -808,13 +807,12 @@ function escapeHtml(value) {
 }
 
 function startCreating() {
-  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html?next=xhs.html'; return; }
   // 登录后：隐藏 landing page，显示工具区，并加载 script.js
   document.getElementById('toolSection').style.display = 'block';
   document.querySelectorAll('.hero-section,.features-section,#shopSection,#ctaSection').forEach((section) => {
     section.style.display = 'none';
   });
-  document.getElementById('toolSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
   // 加载 script.js（仅一次）
   if (!window._toolScriptLoaded) {
     window._toolScriptLoaded = true;

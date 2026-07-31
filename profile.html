@@ -210,7 +210,7 @@
               <div class="invite-panel">
                 <div class="invite-actions">
                   <button class="profile-btn" id="generateInviteBtn" type="button">生成邀请码</button>
-                  <span class="invite-note">每个邀请码只能注册 1 个新账号，新用户注册送 1000 积分。</span>
+                  <span class="invite-note">每个邀请码只能注册 1 个新账号，新用户注册后会收到赠送积分。</span>
                 </div>
                 <div class="invite-list" id="inviteList">
                   <div class="log-empty">加载中...</div>
@@ -498,9 +498,6 @@
           <div class="recent-body">
             <div class="recent-meta"><span>${escapeHtml(typeText)}</span><span>${escapeHtml(item.created_at || '-')}</span></div>
             <div class="recent-title">${escapeHtml(title)}</div>
-            <div class="recent-actions">
-              <button class="profile-btn secondary" type="button" onclick="deleteRecentHistory(${Number(item.id)})">删除</button>
-            </div>
           </div>
         </div>`;
       }).join('')}</div>`;
@@ -508,22 +505,6 @@
         setProtectedImageSource(img, img.dataset.protectedSrc);
       });
     }
-
-    async function deleteRecentHistory(id) {
-      if (!confirm('确定删除这条创作记录吗？')) return;
-      try {
-        const res = await fetch(`/api/user/history/${id}`, {
-          method: 'DELETE',
-          headers: authHeaders
-        });
-        if (!res.ok) throw new Error('删除失败');
-        await loadRecentHistory();
-        await loadStats();
-      } catch (err) {
-        alert(err.message || '删除失败');
-      }
-    }
-    window.deleteRecentHistory = deleteRecentHistory;
 
     async function loadInvites() {
       const listEl = document.getElementById('inviteList');

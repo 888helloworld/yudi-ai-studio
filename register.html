@@ -48,7 +48,7 @@
         <p class="eyebrow">Start Creating</p>
         <h1>给每条笔记一个更好的开头。</h1>
       </div>
-      <p>新用户注册后赠送 1000 积分，可用于图片生成、文案生成和爆款改写。</p>
+      <p>注册完成后会收到新用户积分，可用于图片生成、文案生成和改写。</p>
     </section>
 
     <section class="auth-card">
@@ -81,7 +81,7 @@
       </form>
 
       <div class="links">
-        <a href="login.html">已有账号？立即登录</a>
+        <a href="login.html" id="loginLink">已有账号？立即登录</a>
       </div>
       <div class="back-link">
         <a href="index.html">返回首页</a>
@@ -98,7 +98,13 @@
     const inviteGroup = document.getElementById('inviteGroup');
     let inviteRequired = true;
 
-    const inviteFromUrl = new URLSearchParams(window.location.search).get('invite');
+    const searchParams = new URLSearchParams(window.location.search);
+    const inviteFromUrl = searchParams.get('invite');
+    const nextPage = searchParams.get('next');
+    const safeNextPage = /^[a-zA-Z0-9_-]+\.html$/.test(nextPage || '') ? nextPage : '';
+    document.getElementById('loginLink').href = safeNextPage
+      ? `login.html?next=${encodeURIComponent(safeNextPage)}`
+      : 'login.html';
     if (inviteFromUrl) {
       inviteInput.value = inviteFromUrl.trim().toUpperCase();
     }
@@ -152,12 +158,14 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '注册失败');
 
-        successEl.textContent = '注册成功！新用户赠送 1000 积分，即将跳转到登录页...';
+        successEl.textContent = '注册成功，新用户积分已到账，即将跳转到登录页...';
         successEl.style.display = 'block';
         submitBtn.textContent = '注册成功';
 
         setTimeout(() => {
-          window.location.href = 'login.html';
+          window.location.href = safeNextPage
+            ? `login.html?next=${encodeURIComponent(safeNextPage)}`
+            : 'login.html';
         }, 1500);
       } catch (err) {
         errorEl.textContent = err.message;

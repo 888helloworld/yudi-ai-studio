@@ -176,6 +176,7 @@ function normalizeReferenceUploadName(name) {
 // =============================================
 // 鍒濆鍖?// =============================================
 function initToolScript() {
+  enableKeyboardControls();
   checkLoginStatus();
   initStylePresets();
   initRatioSelector();
@@ -191,6 +192,20 @@ function initToolScript() {
   initPagination();
   restorePendingTasks();
   startPendingTaskPolling();
+}
+
+function enableKeyboardControls() {
+  const selector = '.ratio-btn,.preset-tag,.copy-type-btn,.rewrite-style-btn,.quality-btn,.count-btn';
+  document.querySelectorAll(selector).forEach((control) => {
+    if (control.tagName === 'BUTTON') return;
+    control.setAttribute('role', 'button');
+    control.tabIndex = 0;
+    control.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      control.click();
+    });
+  });
 }
 
 function initXhsToolTabs() {
@@ -637,7 +652,7 @@ function createClientTaskId() {
 
 function getPendingTasks() {
   try {
-    const tasks = JSON.parse(sessionStorage.getItem(PENDING_XHS_TASKS_KEY) || '[]');
+    const tasks = JSON.parse(localStorage.getItem(PENDING_XHS_TASKS_KEY) || '[]');
     return Array.isArray(tasks) ? tasks : [];
   } catch {
     return [];
@@ -645,7 +660,7 @@ function getPendingTasks() {
 }
 
 function savePendingTasks(tasks) {
-  sessionStorage.setItem(PENDING_XHS_TASKS_KEY, JSON.stringify(tasks));
+  localStorage.setItem(PENDING_XHS_TASKS_KEY, JSON.stringify(tasks));
 }
 
 function persistPendingTask(card) {
@@ -682,11 +697,7 @@ function restorePendingTasks() {
 }
 
 function matchesPendingTask(task, history) {
-  if (task.type === 'image') return history.type === 'image' && history.prompt === task.historyKey;
-  if (task.type === 'copy') return history.type === 'copy' && history.sub_type === 'generate' && history.prompt === task.historyKey;
-  if (task.type === 'both') return (history.type === 'both' || history.sub_type === 'both-copy') && history.prompt === task.historyKey;
-  if (task.type === 'rewrite') return history.type === 'copy' && history.sub_type === 'rewrite';
-  return false;
+  return Boolean(task.id && history.client_task_id === task.id);
 }
 
 function reconcilePendingTasks() {
@@ -729,6 +740,7 @@ async function generateImage() {
   formData.append('prompt', fullPrompt);
   formData.append('ratio', selectedRatio);
   formData.append('imageCount', imageCount);
+  formData.append('clientTaskId', taskId);
   
   const referenceInput = document.getElementById('referenceImage');
   if (referenceInput.files[0]) {
@@ -799,7 +811,7 @@ async function generateCopy() {
     const res = await fetch('/generate-copy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-      body: JSON.stringify({ topic, type: selectedCopyType })
+      body: JSON.stringify({ topic, type: selectedCopyType, clientTaskId: taskId })
     });
     const data = await res.json();
 
@@ -887,7 +899,7 @@ async function generateBoth() {
     const res = await fetch('/generate-both', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-      body: JSON.stringify({ prompt, ratio, imageCount })
+      body: JSON.stringify({ prompt, ratio, imageCount, clientTaskId: taskId })
     });
     const data = await res.json();
     
@@ -943,7 +955,8 @@ async function rewriteCopy() {
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({ 
         originalText: originalText,
-        style: selectedRewriteStyle 
+        style: selectedRewriteStyle,
+        clientTaskId: taskId
       })
     });
     const data = await res.json();
@@ -984,7 +997,6 @@ function createTaskCard(id, type, message) {
   card.innerHTML = `
     <div class="task-header">
       <span class="task-type ${type}">${typeLabel}</span>
-      <button class="task-close" onclick="removeTask('${id}')">×</button>
     </div>
     <div class="task-body">
       <div class="xhs-task-state"><span class="task-type ${type}">生成中</span></div>
@@ -1007,7 +1019,6 @@ function addTask(card) {
   updateXhsWorkStats();
   
   updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
-  tasksSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function updateTaskCard(taskId, data) {
@@ -1557,65 +1568,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// 鍒犻櫎鍘嗗彶璁板綍
-document.addEventListener('click', (e) => {
-  const deleteBtn = e.target.closest('.delete-btn');
-  if (!deleteBtn) return;
-  e.stopPropagation();
-  
-  const id = Number(deleteBtn.dataset.id);
-  if (!confirm('确定要删除这条记录吗？')) return;
-  
-  fetch(`/api/user/history/${id}`, { 
-    method: 'DELETE',
-    headers: getAuthHeader()
-  })
-    .then(() => {
-      serverHistory = serverHistory.filter(h => getHistoryId(h) !== id);
-      renderHistory();
-      loadUserStats();
-    })
-    .catch(() => alert('删除失败'));
-});
-
-// 鍒犻櫎鍏ㄩ儴鍘嗗彶璁板綍
-async function clearAllHistory(type) {
-  if (!confirm(`确定要清空全部${type}历史记录吗？此操作不可恢复！`)) return;
-  
-  try {
-    // 鑾峰彇璇ョ被鍨嬬殑鎵€鏈夊巻鍙茶褰旾D
-    const targetHistory = type === 'reverse' ? getReverseHistory() : getXhsHistory();
-    const typeHistory = targetHistory.filter(h => {
-      if (type === 'image') return h.type === 'image';
-      if (type === 'copy') return h.type === 'copy';
-      if (type === 'both') return h.type === 'both';
-      if (type === 'reverse') return h.sub_type === 'xhs-reverse';
-      return false;
-    });
-    for (const item of typeHistory) {
-      await fetch(`/api/user/history/${item.id}`, { 
-        method: 'DELETE',
-        headers: getAuthHeader()
-      });
-    }
-    const deletedIds = new Set(typeHistory.map(item => getHistoryId(item)));
-    serverHistory = serverHistory.filter(h => {
-      if (deletedIds.has(getHistoryId(h))) return false;
-      return true;
-    });
-    if (type === 'image') imagePage = 1;
-    else if (type === 'copy') copyPage = 1;
-    else if (type === 'both') bothPage = 1;
-    else if (type === 'reverse') reversePage = 1;
-    renderHistory();
-    loadUserStats();
-  } catch (e) {
-    alert('清空失败');
-  }
-}
-
-window.clearAllHistory = clearAllHistory;
-
 function renderHistory() {
   const historySection = document.getElementById('historySection');
   const imageHistoryGrid = document.getElementById('imageHistoryGrid');
@@ -1790,14 +1742,8 @@ function createHistoryCard(item) {
       infoDiv.appendChild(summaryP);
     }
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.dataset.id = getHistoryId(item);
-    deleteBtn.textContent = '×';
-
     card.appendChild(thumb);
     card.appendChild(infoDiv);
-    card.appendChild(deleteBtn);
   } else if (item.type === 'image' && getHistoryImageUrl(item)) {
     const img = document.createElement('img');
     setProtectedImageSource(img, getHistoryImageUrl(item));
@@ -1825,14 +1771,8 @@ function createHistoryCard(item) {
       infoDiv.appendChild(p);
     }
     
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.dataset.id = getHistoryId(item);
-    deleteBtn.textContent = '×';
-    
     card.appendChild(img);
     card.appendChild(infoDiv);
-    card.appendChild(deleteBtn);
     
   } else if (item.type === 'copy' && getHistoryCopyContent(item)) {
     const isRewrite = isRewriteHistory(item);
@@ -1877,14 +1817,8 @@ function createHistoryCard(item) {
       infoDiv.appendChild(summaryP);
     }
     
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.dataset.id = getHistoryId(item);
-    deleteBtn.textContent = '×';
-    
     card.appendChild(thumbDiv);
     card.appendChild(infoDiv);
-    card.appendChild(deleteBtn);
     
   } else if (item.type === 'both') {
     // 图文一体卡片：小图 + 文案摘要
@@ -1918,14 +1852,8 @@ function createHistoryCard(item) {
       infoDiv.appendChild(p);
     }
     
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.dataset.id = getHistoryId(item);
-    deleteBtn.textContent = '×';
-    
     card.appendChild(img);
     card.appendChild(infoDiv);
-    card.appendChild(deleteBtn);
   }
   
   return card;
