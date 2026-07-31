@@ -115,11 +115,9 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
 .cta-section h2{font-size:clamp(22px,3vw,32px);font-weight:900;margin-bottom:16px}
 .cta-section p{color:var(--text-secondary);font-size:16px;max-width:500px;margin:0 auto 28px}
 .footer-main{padding:40px 0 20px;border-top:1px solid var(--border);margin-top:20px}
-.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
-.footer-brand .brand-name{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--neon-pink),var(--neon-cyan));-webkit-background-clip:border-box;-webkit-text-fill-color:currentColor;background-clip:border-box;margin-bottom:8px}
-.footer-brand p{color:var(--text-muted);font-size:13px;line-height:1.7;max-width:280px}
-.footer-col h4{font-size:13px;font-weight:800;color:var(--text-secondary);margin-bottom:14px;text-transform:uppercase;letter-spacing:0.05em}
-.footer-col a{display:block;color:var(--text-muted);font-size:13px;padding:4px 0;transition:var(--fast)}
+.footer-grid{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:56px;max-width:720px;margin:0 auto 28px}
+.footer-col h4{font-size:13px;font-weight:800;color:var(--text-primary);margin-bottom:12px;letter-spacing:0}
+.footer-col a{display:block;color:var(--text-muted);font-size:13px;padding:5px 0;transition:var(--fast)}
 .footer-col a:hover{color:var(--neon-cyan)}
 .footer-bottom{text-align:center;padding-top:20px;border-top:1px solid var(--border);color:var(--text-dim);font-size:12px}
 @media(max-width:900px){.features-grid,.shop-grid,.workflow-grid,.model-grid,.business-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}}
@@ -504,7 +502,6 @@ body .container,body .user-bar{width:min(1280px,calc(100% - 48px))}
 <footer class="footer-main">
   <div class="container" style="padding-top:0;padding-bottom:0;">
     <div class="footer-grid">
-      <div class="footer-brand"><div class="brand-name">御弟哥哥</div><p>AI 图文创作和画面工坊，帮你把想法更快变成能发布、能复用的素材。</p></div>
       <div class="footer-col"><h4>功能</h4><a href="xhs.html">小红书图片生成</a><a href="image-studio.html">画面工坊</a><a href="xhs.html">小红书文案生成</a><a href="xhs.html">文案改写</a><a href="#" onclick="showRedeemModal()">卡密兑换</a></div>
       <div class="footer-col"><h4>支持</h4><a href="help.html">帮助中心</a><a href="content-policy.html">内容规范</a><a href="profile.html">个人中心</a></div>
       <div class="footer-col"><h4>关于</h4><a href="privacy.html">隐私政策</a><a href="terms.html">服务条款</a><a href="mailto:support@example.com">联系我们</a></div>
