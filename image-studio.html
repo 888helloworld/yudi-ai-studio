@@ -1720,7 +1720,6 @@
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
         Number(task.count) > 1 ? `${task.count} 张` : '',
-        task.billingOutputTokens ? `计费token ${task.billingOutputTokens}` : '',
         task.createdAt
       ].filter(Boolean).join(' · ');
       fragment.appendChild(meta);
