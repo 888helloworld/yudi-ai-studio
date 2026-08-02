@@ -253,26 +253,10 @@
     </div>
   </div>
 
-  <div class="preview-overlay" id="promptPreview" aria-hidden="true">
-    <div class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="promptPreviewTitle">
-      <div class="preview-header">
-        <div class="preview-title" id="promptPreviewTitle">Prompt 结果</div>
-        <div class="preview-actions">
-          <button class="close-preview" id="promptPreviewClose" type="button">关闭</button>
-        </div>
-      </div>
-      <div class="prompt-preview-body" id="promptPreviewBody"></div>
-    </div>
-  </div>
-
   <main class="container">
     <div class="xi-workspace">
       <div class="xi-left-column">
-      <div class="xi-mode-switcher" id="xiModeSwitcher" aria-label="画面工坊工具切换">
-        <button class="xi-mode-tab active" type="button" data-xi-mode="image">AI 图片生成</button>
-        <button class="xi-mode-tab" type="button" data-xi-mode="reverse">看图写 Prompt</button>
-      </div>
-      <section class="panel xi-main-panel" data-xi-mode-panel="image">
+      <section class="panel xi-main-panel">
         <div class="form-group">
           <div class="field-label-row">
             <label for="prompt">图片描述</label>
@@ -346,35 +330,6 @@
         <div id="status" class="xi-status"></div>
       </section>
 
-      <section class="panel" id="reversePrompt" data-xi-mode-panel="reverse" hidden>
-        <div class="form-group">
-          <label>上传图片</label>
-          <div class="drop-zone" id="reverseDropZone">
-            <input type="file" id="reverseImageInput" accept="image/*">
-            <div class="drop-hint" id="reverseDropHint">
-              <div class="upload-icon">+</div>
-              <p>拖拽、粘贴图片到此处或点击上传</p>
-            </div>
-            <div class="reverse-preview" id="reversePreview"></div>
-          </div>
-          <div class="field-hint">支持 PNG/JPG/WebP，单图最大 5MB。可以连续加入多张图，不用等上一张识别完。</div>
-        </div>
-
-        <div class="form-group">
-          <label>反推模板</label>
-          <div class="reverse-template-grid" id="reverseTemplateGrid">
-            <button class="reverse-template-btn active" type="button" data-reverse-mode="general">通用拆解</button>
-            <button class="reverse-template-btn" type="button" data-reverse-mode="amazon">亚马逊主图</button>
-            <button class="reverse-template-btn" type="button" data-reverse-mode="outfit">模特穿搭</button>
-            <button class="reverse-template-btn" type="button" data-reverse-mode="style-only">只取风格</button>
-            <button class="reverse-template-btn" type="button" data-reverse-mode="structured">精准拆图</button>
-          </div>
-          <div class="field-hint" id="reverseTemplateHint">按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。</div>
-        </div>
-
-        <button class="generate-btn" id="reverseBtn" type="button" disabled><span>加入识图</span></button>
-        <div id="reverseStatus" class="reverse-status"></div>
-      </section>
       </div>
 
       <div class="xi-right-column">
@@ -405,24 +360,6 @@
           </div>
         </div>
 
-      </section>
-      <section class="section-block xi-record-panel" data-xi-record-panel="reverse" style="margin-top:0;" hidden>
-        <div class="xi-toolbar">
-          <div class="section-heading">
-            <h2>反推记录</h2>
-          </div>
-        </div>
-        <div id="reverseEmpty" class="xi-empty">还没有反推记录。上传一张图片，结果会显示在这里。</div>
-        <div class="reverse-history" id="reverseHistory"></div>
-        <div class="xi-pager" id="reversePager" style="display:none;">
-          <div class="xi-pager-left">
-            <span class="xi-page-info" id="reversePageInfo">第 1 / 1 页</span>
-          </div>
-          <div class="xi-pager-right">
-            <button class="xi-small-btn" id="reversePrevPage" type="button">上一页</button>
-            <button class="xi-small-btn" id="reverseNextPage" type="button">下一页</button>
-          </div>
-        </div>
       </section>
       </div>
     </div>
@@ -567,9 +504,6 @@
     const taskPrevPageBtn = document.getElementById('taskPrevPage');
     const taskNextPageBtn = document.getElementById('taskNextPage');
     const taskPageInfoEl = document.getElementById('taskPageInfo');
-    const xiModeTabs = Array.from(document.querySelectorAll('[data-xi-mode]'));
-    const xiModePanels = Array.from(document.querySelectorAll('[data-xi-mode-panel]'));
-    const xiRecordPanels = Array.from(document.querySelectorAll('[data-xi-record-panel]'));
     const generateBtn = document.getElementById('generateBtn');
     const clearPromptBtn = document.getElementById('clearPromptBtn');
     const clearSourcesBtn = document.getElementById('clearSourcesBtn');
@@ -582,24 +516,6 @@
     const previewOpen = document.getElementById('previewOpen');
     const previewClose = document.getElementById('previewClose');
     const previewEditBtn = document.getElementById('previewEditBtn');
-    const promptPreviewOverlay = document.getElementById('promptPreview');
-    const promptPreviewTitle = document.getElementById('promptPreviewTitle');
-    const promptPreviewBody = document.getElementById('promptPreviewBody');
-    const promptPreviewClose = document.getElementById('promptPreviewClose');
-    const reverseImageInput = document.getElementById('reverseImageInput');
-    const reverseDropZone = document.getElementById('reverseDropZone');
-    const reverseDropHint = document.getElementById('reverseDropHint');
-    const reversePreview = document.getElementById('reversePreview');
-    const reverseBtn = document.getElementById('reverseBtn');
-    const reverseStatusEl = document.getElementById('reverseStatus');
-    const reverseHistoryEl = document.getElementById('reverseHistory');
-    const reverseEmptyEl = document.getElementById('reverseEmpty');
-    const reversePagerEl = document.getElementById('reversePager');
-    const reversePageInfoEl = document.getElementById('reversePageInfo');
-    const reversePrevPageBtn = document.getElementById('reversePrevPage');
-    const reverseNextPageBtn = document.getElementById('reverseNextPage');
-    const reverseTemplateGrid = document.getElementById('reverseTemplateGrid');
-    const reverseTemplateHint = document.getElementById('reverseTemplateHint');
     const detailProductNameEl = document.getElementById('detailProductName');
     const detailPlatformEl = document.getElementById('detailPlatform');
     const detailSellingPointsEl = document.getElementById('detailSellingPoints');
@@ -693,24 +609,6 @@
       detailSetSeq: 0
     };
 
-    function setXiMode(mode) {
-      const selectedMode = mode === 'reverse' ? 'reverse' : 'image';
-      xiModeTabs.forEach((tab) => {
-        tab.classList.toggle('active', tab.dataset.xiMode === selectedMode);
-      });
-      xiModePanels.forEach((panel) => {
-        panel.hidden = panel.dataset.xiModePanel !== selectedMode;
-      });
-      xiRecordPanels.forEach((panel) => {
-        panel.hidden = panel.dataset.xiRecordPanel !== selectedMode;
-      });
-    }
-
-    xiModeTabs.forEach((tab) => {
-      tab.addEventListener('click', () => setXiMode(tab.dataset.xiMode));
-    });
-    setXiMode('image');
-
     function refreshPromptPlaceholder() {
       const index = Math.floor(Math.random() * PROMPT_PLACEHOLDERS.length);
       promptEl.placeholder = PROMPT_PLACEHOLDERS[index] || '写下你想要的画面，越具体越好。';
@@ -722,7 +620,6 @@
       document.getElementById('loginPrompt').classList.add('show');
       document.body.classList.add('login-locked');
       generateBtn.disabled = true;
-      reverseBtn.disabled = true;
       if (detailSuiteBtn) detailSuiteBtn.disabled = true;
     } else {
       initUser();
@@ -734,7 +631,6 @@
       document.getElementById('loginPrompt').classList.add('show');
       document.body.classList.add('login-locked');
       generateBtn.disabled = true;
-      reverseBtn.disabled = true;
       if (detailSuiteBtn) detailSuiteBtn.disabled = true;
       setStatus(message || '登录已过期，请重新登录。', 'error');
     }
@@ -819,53 +715,7 @@
     sourceGrid.addEventListener('pointerenter', () => {
       pasteTargetMode = 'source';
     });
-    reverseDropZone.tabIndex = 0;
-    reverseDropZone.addEventListener('pointerenter', () => {
-      pasteTargetMode = 'reverse';
-    });
-    reverseDropZone.addEventListener('click', () => {
-      pasteTargetMode = 'reverse';
-      reverseDropZone.focus();
-      reverseDropZone.classList.add('paste-ready');
-      setTimeout(() => reverseDropZone.classList.remove('paste-ready'), 1800);
-    });
     document.addEventListener('paste', handleSourcePaste);
-    document.addEventListener('paste', handleReversePaste);
-
-    reverseImageInput.addEventListener('change', () => {
-      const file = reverseImageInput.files?.[0];
-      if (file) setReverseImage(file);
-    });
-
-    reverseTemplateGrid.addEventListener('click', (event) => {
-      const btn = event.target.closest('[data-reverse-mode]');
-      if (!btn) return;
-      state.reverseMode = btn.dataset.reverseMode || 'general';
-      reverseTemplateGrid.querySelectorAll('[data-reverse-mode]').forEach((item) => {
-        item.classList.toggle('active', item === btn);
-      });
-      reverseTemplateHint.textContent = REVERSE_TEMPLATE_HINTS[state.reverseMode] || REVERSE_TEMPLATE_HINTS.general;
-      setReverseStatus(`已选择「${btn.textContent.trim()}」模板。`, 'ok');
-    });
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
-      reverseDropZone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        reverseDropZone.classList.add('drag-over');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach((eventName) => {
-      reverseDropZone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        reverseDropZone.classList.remove('drag-over');
-      });
-    });
-
-    reverseDropZone.addEventListener('drop', (event) => {
-      const file = event.dataTransfer?.files?.[0];
-      if (file) setReverseImage(file);
-    });
 
     generateBtn.addEventListener('click', enqueueTasks);
     clearPromptBtn.addEventListener('click', () => {
@@ -875,7 +725,6 @@
       setStatus('已清空图片描述。', 'ok');
     });
     clearSourcesBtn.addEventListener('click', clearAllSourceImages);
-    reverseBtn.addEventListener('click', runReversePrompt);
     detailSuiteBtn?.addEventListener('click', enqueueDetailSuite);
     [
       detailProductNameEl,
@@ -895,14 +744,6 @@
     });
     reloadHistoryBtn?.addEventListener('click', () => loadSavedTasks({ force: true }));
     clearQueuedBtn?.addEventListener('click', clearQueuedTasks);
-    reversePrevPageBtn.addEventListener('click', () => {
-      state.reversePage = Math.max(1, state.reversePage - 1);
-      renderReverseHistoryPage();
-    });
-    reverseNextPageBtn.addEventListener('click', () => {
-      state.reversePage = Math.min(getReverseTotalPages(), state.reversePage + 1);
-      renderReverseHistoryPage();
-    });
     taskPageSizeEl.addEventListener('change', () => {
       state.taskPageSize = clamp(Number(taskPageSizeEl.value || 12), 12, 100);
       state.taskPage = 1;
@@ -933,14 +774,9 @@
     previewOverlay.addEventListener('click', (event) => {
       if (event.target === previewOverlay) closeImagePreview();
     });
-    promptPreviewClose.addEventListener('click', closePromptPreview);
-    promptPreviewOverlay.addEventListener('click', (event) => {
-      if (event.target === promptPreviewOverlay) closePromptPreview();
-    });
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       if (previewOverlay.classList.contains('show')) closeImagePreview();
-      if (promptPreviewOverlay.classList.contains('show')) closePromptPreview();
     });
 
     async function initUser() {
@@ -959,7 +795,6 @@
         updateNavPoints(user.points);
         await loadServerJobs();
         await loadSavedTasks();
-        await loadReverseHistory();
       } catch (err) {
         setStatus(err.message || '用户信息读取失败，请刷新后再试。', 'error');
       }
@@ -2898,7 +2733,6 @@
       if (reverseHistoryPollId) return;
       reverseHistoryPollId = setTimeout(async () => {
         reverseHistoryPollId = null;
-        await loadReverseHistory();
       }, 3000);
     }
 
