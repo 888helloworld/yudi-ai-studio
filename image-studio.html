@@ -21,6 +21,10 @@
     body .user-actions a{padding:4px 8px;font-size:12px;line-height:1.2;border-radius:6px}
     .xi-workspace{display:grid;grid-template-columns:minmax(380px,460px) minmax(960px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
+    .xi-mode-switcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px;margin-bottom:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md)}
+    .xi-mode-tab{min-height:36px;padding:6px 8px;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:12px;font-weight:900;line-height:1.2;cursor:pointer;transition:var(--base)}
+    .xi-mode-tab:hover{border-color:rgba(7,193,96,.25);color:var(--neon-cyan);background:rgba(7,193,96,.05)}
+    .xi-mode-tab.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(7,193,96,.2),rgba(7,193,96,.14));box-shadow:0 0 0 1px rgba(7,193,96,.12)}
     .xi-main-panel{padding:14px}
     .xi-count-control{width:min(100%,240px)}
     .xi-count-control + .generate-btn{margin-top:16px}
@@ -250,9 +254,13 @@
   </div>
 
   <main class="container">
+    <div class="xi-mode-switcher" id="xiModeSwitcher" aria-label="画面工坊工具切换">
+      <button class="xi-mode-tab active" type="button" data-xi-mode="image">AI 图片生成</button>
+      <button class="xi-mode-tab" type="button" data-xi-mode="reverse">看图写 Prompt</button>
+    </div>
     <div class="xi-workspace">
       <div class="xi-left-column">
-      <section class="panel xi-main-panel">
+      <section class="panel xi-main-panel" data-xi-mode-panel="image">
         <div class="form-group">
           <div class="field-label-row">
             <label for="prompt">图片描述</label>
@@ -334,7 +342,7 @@
         <div id="status" class="xi-status"></div>
       </section>
 
-      <section class="panel" id="reversePrompt">
+      <section class="panel" id="reversePrompt" data-xi-mode-panel="reverse" hidden>
         <div class="panel-header">
           <div class="header-icon">⌕</div>
           <div>
@@ -480,6 +488,8 @@
     const taskPrevPageBtn = document.getElementById('taskPrevPage');
     const taskNextPageBtn = document.getElementById('taskNextPage');
     const taskPageInfoEl = document.getElementById('taskPageInfo');
+    const xiModeTabs = Array.from(document.querySelectorAll('[data-xi-mode]'));
+    const xiModePanels = Array.from(document.querySelectorAll('[data-xi-mode-panel]'));
     const generateBtn = document.getElementById('generateBtn');
     const clearPromptBtn = document.getElementById('clearPromptBtn');
     const clearSourcesBtn = document.getElementById('clearSourcesBtn');
@@ -598,6 +608,21 @@
       reversePageSize: 10,
       detailSetSeq: 0
     };
+
+    function setXiMode(mode) {
+      const selectedMode = mode === 'reverse' ? 'reverse' : 'image';
+      xiModeTabs.forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.xiMode === selectedMode);
+      });
+      xiModePanels.forEach((panel) => {
+        panel.hidden = panel.dataset.xiModePanel !== selectedMode;
+      });
+    }
+
+    xiModeTabs.forEach((tab) => {
+      tab.addEventListener('click', () => setXiMode(tab.dataset.xiMode));
+    });
+    setXiMode('image');
 
     function refreshPromptPlaceholder() {
       const index = Math.floor(Math.random() * PROMPT_PLACEHOLDERS.length);
