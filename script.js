@@ -59,30 +59,56 @@ async function fetchImageBlob(url) {
   return res.blob();
 }
 
-function setProtectedImageSource(img, url) {
+function setProtectedImageSource(img, url, altText = '') {
   if (!img || !url) return;
-  if (!isProtectedUploadUrl(url)) {
-    img.src = url;
-    return;
-  }
-  fetchImageBlob(url)
-    .then((blob) => {
-      const objectUrl = URL.createObjectURL(blob);
-      img.onload = () => setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      img.src = objectUrl;
+  const sourceKey = new URL(url, window.location.origin).href;
+  img.dataset.sourceUrl = sourceKey;
+  img.dataset.loadedAlt = altText || img.alt || '';
+  img.alt = '';
+  img.classList.remove('protected-image-ready', 'protected-image-failed');
+  img.classList.add('protected-image-loading');
+  img.setAttribute('aria-busy', 'true');
+
+  const markFailed = () => {
+    if (img.dataset.sourceUrl !== sourceKey) return;
+    img.classList.remove('protected-image-loading', 'protected-image-ready');
+    img.classList.add('protected-image-failed');
+    img.removeAttribute('aria-busy');
+    img.alt = '';
+    img.removeAttribute('src');
+  };
+  const markReady = () => {
+    if (img.dataset.sourceUrl !== sourceKey) return;
+    img.classList.remove('protected-image-loading', 'protected-image-failed');
+    img.classList.add('protected-image-ready');
+    img.removeAttribute('aria-busy');
+    img.alt = img.dataset.loadedAlt || '';
+  };
+  const loadUrl = isProtectedUploadUrl(url)
+    ? fetchImageBlob(url).then((blob) => URL.createObjectURL(blob))
+    : Promise.resolve(sourceKey);
+
+  loadUrl
+    .then((displayUrl) => {
+      if (img.dataset.sourceUrl !== sourceKey) return;
+      img.onload = () => {
+        markReady();
+        if (displayUrl.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(displayUrl), 1000);
+      };
+      img.onerror = markFailed;
+      img.src = displayUrl;
     })
-    .catch(() => {
-      img.alt = '图片需要登录后查看';
-    });
+    .catch(markFailed);
 }
 
 function protectedImageHtml(url, alt, className = '', style = '') {
-  return `<img src="" data-protected-src="${escapeForAttr(url)}" alt="${escapeForAttr(alt)}"${className ? ` class="${escapeForAttr(className)}"` : ''}${style ? ` style="${escapeForAttr(style)}"` : ''}>`;
+  const classes = ['protected-image-loading', className].filter(Boolean).join(' ');
+  return `<img data-protected-src="${escapeForAttr(url)}" data-loaded-alt="${escapeForAttr(alt)}" alt="" class="${escapeForAttr(classes)}"${style ? ` style="${escapeForAttr(style)}"` : ''}>`;
 }
 
 function hydrateProtectedImages(root = document) {
   root.querySelectorAll('img[data-protected-src]').forEach((img) => {
-    setProtectedImageSource(img, img.dataset.protectedSrc);
+    setProtectedImageSource(img, img.dataset.protectedSrc, img.dataset.loadedAlt || '');
   });
 }
 

@@ -19,9 +19,10 @@
     body .user-name,body .user-points{font-size:12px;line-height:1.2}
     body .user-actions{gap:4px}
     body .user-actions a{padding:4px 8px;font-size:12px;line-height:1.2;border-radius:6px}
-    .xi-workspace{display:grid;grid-template-columns:minmax(380px,460px) minmax(960px,1fr);gap:4px;align-items:start}
+    .xi-workspace{display:grid;grid-template-columns:minmax(320px,390px) minmax(960px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
-    .xi-mode-switcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px;margin-bottom:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md)}
+    .xi-left-column{position:sticky;top:4px;max-height:calc(100vh - 8px);overflow-y:auto;overscroll-behavior:contain}
+    .xi-mode-switcher{width:min(100%,320px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md)}
     .xi-mode-tab{min-height:36px;padding:6px 8px;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:12px;font-weight:900;line-height:1.2;cursor:pointer;transition:var(--base)}
     .xi-mode-tab:hover{border-color:rgba(7,193,96,.25);color:var(--neon-cyan);background:rgba(7,193,96,.05)}
     .xi-mode-tab.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(7,193,96,.2),rgba(7,193,96,.14));box-shadow:0 0 0 1px rgba(7,193,96,.12)}
@@ -78,7 +79,7 @@
     .xi-source-slot.dragging{opacity:.6}
     .xi-source-preview .remove-ref{top:-6px;right:-6px;width:20px;height:20px;font-size:13px;z-index:5}
     .xi-source-name{display:none}
-    .xi-source-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .xi-source-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .xi-source-slot{min-height:40px;padding:8px}
     .xi-source-slot input[type="file"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:0;cursor:pointer;z-index:2}
     .xi-source-slot.has-source input[type="file"]{pointer-events:none}
@@ -195,8 +196,8 @@
     .login-overlay.show{display:flex}
     body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:8px auto 0;z-index:10}
     @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(310px,360px) minmax(700px,1fr)}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-left-column{position:static;max-height:none;overflow:visible}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
   </style>
 </head>
@@ -302,14 +303,6 @@
               </div>
               <div class="xi-source-preview"></div>
             </div>
-            <div class="drop-zone xi-source-slot" data-source-slot="3">
-              <input type="file" class="source-image-input" accept="image/*">
-              <div class="drop-hint">
-                <div class="upload-icon">+</div>
-                <p>图4</p>
-              </div>
-              <div class="xi-source-preview"></div>
-            </div>
           </div>
         </div>
 
@@ -319,8 +312,8 @@
             <div class="ratio-btn" data-size="1024x1024"><span class="ratio-main">1:1 方图</span><span class="ratio-size">1254×1254</span></div>
             <div class="ratio-btn active" data-size="1024x1536"><span class="ratio-main">2:3 竖图</span><span class="ratio-size">1024×1536</span></div>
             <div class="ratio-btn" data-size="1536x1024"><span class="ratio-main">3:2 横图</span><span class="ratio-size">1536×1024</span></div>
-            <div class="ratio-btn" data-size="2048x1152"><span class="ratio-main">高清横图</span><span class="ratio-size">1672×941</span></div>
-            <div class="ratio-btn" data-size="1152x2048"><span class="ratio-main">高清竖图</span><span class="ratio-size">941×1672</span></div>
+            <div class="ratio-btn" data-size="2048x1152"><span class="ratio-main">横图</span><span class="ratio-size">1672×941</span></div>
+            <div class="ratio-btn" data-size="1152x2048"><span class="ratio-main">竖图</span><span class="ratio-size">941×1672</span></div>
           </div>
         </div>
 
@@ -381,22 +374,11 @@
 
         <button class="generate-btn" id="reverseBtn" type="button" disabled><span>加入识图</span></button>
         <div id="reverseStatus" class="reverse-status"></div>
-        <div class="reverse-history" id="reverseHistory"></div>
-        <div class="xi-pager" id="reversePager" style="display:none;">
-          <div class="xi-pager-left">
-            <label>反推记录</label>
-            <span class="xi-page-info" id="reversePageInfo">第 1 / 1 页</span>
-          </div>
-          <div class="xi-pager-right">
-            <button class="xi-small-btn" id="reversePrevPage" type="button">上一页</button>
-            <button class="xi-small-btn" id="reverseNextPage" type="button">下一页</button>
-          </div>
-        </div>
       </section>
       </div>
 
       <div class="xi-right-column">
-      <section class="section-block xi-record-panel" style="margin-top:0;">
+      <section class="section-block xi-record-panel" data-xi-record-panel="image" style="margin-top:0;">
         <div class="xi-toolbar">
           <div class="section-heading">
         <h2>生成记录</h2>
@@ -423,6 +405,24 @@
           </div>
         </div>
 
+      </section>
+      <section class="section-block xi-record-panel" data-xi-record-panel="reverse" style="margin-top:0;" hidden>
+        <div class="xi-toolbar">
+          <div class="section-heading">
+            <h2>反推记录</h2>
+          </div>
+        </div>
+        <div id="reverseEmpty" class="xi-empty">还没有反推记录。上传一张图片，结果会显示在这里。</div>
+        <div class="reverse-history" id="reverseHistory"></div>
+        <div class="xi-pager" id="reversePager" style="display:none;">
+          <div class="xi-pager-left">
+            <span class="xi-page-info" id="reversePageInfo">第 1 / 1 页</span>
+          </div>
+          <div class="xi-pager-right">
+            <button class="xi-small-btn" id="reversePrevPage" type="button">上一页</button>
+            <button class="xi-small-btn" id="reverseNextPage" type="button">下一页</button>
+          </div>
+        </div>
       </section>
       </div>
     </div>
@@ -523,6 +523,7 @@
     const taskPageInfoEl = document.getElementById('taskPageInfo');
     const xiModeTabs = Array.from(document.querySelectorAll('[data-xi-mode]'));
     const xiModePanels = Array.from(document.querySelectorAll('[data-xi-mode-panel]'));
+    const xiRecordPanels = Array.from(document.querySelectorAll('[data-xi-record-panel]'));
     const generateBtn = document.getElementById('generateBtn');
     const clearPromptBtn = document.getElementById('clearPromptBtn');
     const clearSourcesBtn = document.getElementById('clearSourcesBtn');
@@ -546,6 +547,7 @@
     const reverseBtn = document.getElementById('reverseBtn');
     const reverseStatusEl = document.getElementById('reverseStatus');
     const reverseHistoryEl = document.getElementById('reverseHistory');
+    const reverseEmptyEl = document.getElementById('reverseEmpty');
     const reversePagerEl = document.getElementById('reversePager');
     const reversePageInfoEl = document.getElementById('reversePageInfo');
     const reversePrevPageBtn = document.getElementById('reversePrevPage');
@@ -631,8 +633,8 @@
       selectedSize: DEFAULT_SIZE,
       quality: DEFAULT_QUALITY,
       reverseMode: 'general',
-      sourceFiles: [null, null, null, null],
-      sourcePreviewUrls: ['', '', '', ''],
+      sourceFiles: [null, null, null],
+      sourcePreviewUrls: ['', '', ''],
       taskPage: 1,
       taskPageSize: 50,
       reverseHistory: [],
@@ -649,6 +651,9 @@
       });
       xiModePanels.forEach((panel) => {
         panel.hidden = panel.dataset.xiModePanel !== selectedMode;
+      });
+      xiRecordPanels.forEach((panel) => {
+        panel.hidden = panel.dataset.xiRecordPanel !== selectedMode;
       });
     }
 
@@ -1862,8 +1867,8 @@
       source.className = 'xi-source-thumb';
       const urls = (task.sourcePreviewUrls || [])
         .filter((url) => isRenderableSourceUrl(url, task))
-        .slice(0, 4);
-      const names = (task.sourceFileNames || []).filter(Boolean).slice(0, 4);
+        .slice(0, 3);
+      const names = (task.sourceFileNames || []).filter(Boolean).slice(0, 3);
       const total = Math.max(urls.length, names.length);
 
       const header = document.createElement('div');
@@ -1924,7 +1929,7 @@
     async function refillComposerFromTask(task, button) {
       const urls = (task.sourcePreviewUrls || [])
         .filter((url) => isRenderableSourceUrl(url, task))
-        .slice(0, 4);
+        .slice(0, 3);
       if (!task.prompt && urls.length === 0) {
         setStatus('这条记录没有可回填的提示词或参考图。', 'error');
         return;
@@ -2806,6 +2811,7 @@
     function renderReverseHistoryPage() {
       reverseHistoryEl.innerHTML = '';
       const total = state.reverseHistory.length;
+      reverseEmptyEl.style.display = total === 0 ? 'flex' : 'none';
       reversePagerEl.style.display = total > state.reversePageSize ? 'flex' : 'none';
       if (total === 0) return;
 

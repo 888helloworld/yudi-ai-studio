@@ -123,6 +123,9 @@ textarea:focus,input:focus,select:focus{border-color:var(--neon-pink);box-shadow
 .task-error{color:var(--neon-red);background:rgba(250,81,81,0.08);border-radius:var(--radius-sm);padding:12px;font-size:13px}
 .task-image-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .task-image{width:100%;border-radius:var(--radius-sm);display:block}
+.task-image,.history-card img,.copy-thumb,.xhs-reverse-preview img{transition:opacity .18s ease}
+img.protected-image-loading,img.protected-image-failed{opacity:0!important;color:transparent!important;text-indent:-9999px}
+img.protected-image-ready{opacity:1}
 .task-copy,.modal-copy{color:var(--text-primary);line-height:1.8;white-space:pre-wrap;font-size:14px}
 .task-copy{max-height:240px;overflow:auto}
 .task-meta,.history-date,.history-info-text{color:var(--text-muted);font-size:12px}
