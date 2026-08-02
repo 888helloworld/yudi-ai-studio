@@ -49,6 +49,8 @@
     .admin-btn-danger { color: var(--neon-red); border-color: rgba(250,81,81,0.3); }
     .admin-btn-danger:hover { background: rgba(250,81,81,0.08); border-color: var(--neon-red); }
     .admin-btn-sm { padding: 6px 9px; font-size: 12px; margin-right: 6px; }
+    .admin-row-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .admin-row-actions .admin-btn-sm { margin-right: 0; }
     .admin-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; color: var(--text-muted); font-size: 12px; font-weight: 700; }
     .admin-pager-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .admin-pager select { width: auto; min-width: 86px; padding: 7px 28px 7px 10px; border-radius: var(--radius-sm); font-size: 13px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); }
@@ -108,10 +110,59 @@
       .admin-stats { grid-template-columns: repeat(2,1fr); }
       .admin-header-inner, .admin-container { width: calc(100% - 24px); }
       .payment-config { grid-template-columns: 1fr; }
+      .admin-tabs { display: flex; width: 100%; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+      .admin-tabs::-webkit-scrollbar { display: none; }
+      .admin-tab { flex: 0 0 auto; }
+      .cdkey-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .cdkey-form .admin-btn { width: 100%; }
+      #chartSummary { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
     }
-    @media (max-width: 520px) {
-      .admin-stats { grid-template-columns: 1fr; }
-      .admin-header-inner { align-items: flex-start; flex-direction: column; padding: 14px 0; }
+    @media (max-width: 640px) {
+      .admin-body { overflow-x: hidden; }
+      .admin-header-inner, .admin-container { width: calc(100% - 12px); }
+      .admin-header-inner { min-height: 52px; padding: 7px 0; gap: 6px; align-items: center; flex-direction: row; }
+      .admin-header h1 { font-size: 16px; flex: 0 0 auto; }
+      .admin-user-info { justify-content: flex-end; gap: 2px; min-width: 0; }
+      .admin-user-info a { padding: 6px; font-size: 12px; }
+      #adminName { max-width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+      .admin-container { padding: 10px 0 24px; }
+      .admin-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; margin-bottom: 10px; }
+      .admin-stat-card { padding: 11px; border-radius: var(--radius-sm); }
+      .admin-stat-card:hover { transform: none; box-shadow: none; }
+      .admin-stat-label { margin-bottom: 4px; font-size: 10px; letter-spacing: 0; }
+      .admin-stat-value { font-size: 22px; }
+      .admin-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); overflow: visible; margin-bottom: 8px; padding: 3px; gap: 2px; border-radius: var(--radius-sm); }
+      .admin-tab { min-width: 0; min-height: 34px; padding: 7px 4px; font-size: 12px; }
+      .admin-panel { padding: 10px; border-radius: var(--radius-sm); }
+      .admin-panel-title { margin-bottom: 9px; }
+      .admin-panel-title h2 { font-size: 14px; }
+      .admin-panel-title p { line-height: 1.45; }
+      .admin-toolbar { display: grid; grid-template-columns: 1fr; gap: 7px; margin-bottom: 10px; }
+      .admin-toolbar input[type="text"], .admin-toolbar select { width: 100%; min-width: 0; }
+      .cdkey-form { grid-template-columns: 1fr; gap: 7px; }
+      .cdkey-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+      .cdkey-stat { padding: 10px 6px; }
+      .payment-stats { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+      .payment-config-card { padding: 10px; }
+      .payment-config-row { align-items: flex-start; flex-direction: column; gap: 3px; }
+      #chartsPanel > div:first-child { align-items: flex-start !important; flex-direction: column; gap: 10px; }
+      #chartContainer { min-height: 240px !important; padding: 10px !important; overflow-x: auto; }
+      .admin-table-wrap { overflow: visible; }
+      .admin-table-wrap table, .admin-table-wrap tbody, .admin-table-wrap tr, .admin-table-wrap td { display: block; width: 100%; min-width: 0; }
+      .admin-table-wrap thead { display: none; }
+      .admin-table-wrap tbody { display: grid; gap: 8px; }
+      .admin-table-wrap tr { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); }
+      .admin-table-wrap td { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 8px; align-items: start; padding: 7px 0; border-bottom: 1px solid var(--border); text-align: right; font-size: 12px; overflow-wrap: anywhere; }
+      .admin-table-wrap td:last-child { border-bottom: 0; }
+      .admin-table-wrap td::before { content: attr(data-label); color: var(--text-muted); font-size: 11px; font-weight: 700; text-align: left; }
+      .admin-table-wrap td.admin-table-empty { display: block; padding: 24px 8px !important; text-align: center !important; border: 0; }
+      .admin-table-wrap td.admin-table-empty::before { display: none; }
+      .admin-row-actions { justify-content: flex-end; }
+      .admin-btn-sm { min-height: 30px; padding: 6px 8px; }
+      .admin-pager { align-items: stretch; flex-direction: column; gap: 8px; }
+      .admin-pager-actions { justify-content: space-between; width: 100%; }
+      .admin-modal { padding: 10px; }
+      .admin-modal-content { padding: 16px; border-radius: var(--radius-md); }
     }
   </style>
 </head>
@@ -410,15 +461,17 @@
       const tbody = document.getElementById('usersList');
       tbody.innerHTML = list.map(u => `
         <tr>
-          <td>${escapeHtml(u.id)}</td>
-          <td>${escapeHtml(u.username)}</td>
-          <td>${escapeHtml(u.points)}</td>
-          <td>${u.role === 'admin' ? '管理员' : '用户'}</td>
-          <td>${escapeHtml(u.created_at)}</td>
-          <td>
-            <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openRechargeModal(${Number(u.id)}, decodeURIComponent('${escapeJsString(encodeURIComponent(u.username || ''))}'))">充值</button>
-            <button class="admin-btn admin-btn-sm" onclick="openResetPasswordModal(${Number(u.id)}, decodeURIComponent('${escapeJsString(encodeURIComponent(u.username || ''))}'))">改密码</button>
-            ${u.role !== 'admin' ? `<button class="admin-btn admin-btn-danger admin-btn-sm" onclick="deleteUser(${Number(u.id)})">删除</button>` : ''}
+          <td data-label="ID">${escapeHtml(u.id)}</td>
+          <td data-label="用户名">${escapeHtml(u.username)}</td>
+          <td data-label="积分">${escapeHtml(u.points)}</td>
+          <td data-label="角色">${u.role === 'admin' ? '管理员' : '用户'}</td>
+          <td data-label="注册时间">${escapeHtml(u.created_at)}</td>
+          <td data-label="操作">
+            <div class="admin-row-actions">
+              <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openRechargeModal(${Number(u.id)}, decodeURIComponent('${escapeJsString(encodeURIComponent(u.username || ''))}'))">充值</button>
+              <button class="admin-btn admin-btn-sm" onclick="openResetPasswordModal(${Number(u.id)}, decodeURIComponent('${escapeJsString(encodeURIComponent(u.username || ''))}'))">改密码</button>
+              ${u.role !== 'admin' ? `<button class="admin-btn admin-btn-danger admin-btn-sm" onclick="deleteUser(${Number(u.id)})">删除</button>` : ''}
+            </div>
           </td>
         </tr>
       `).join('');
@@ -721,7 +774,7 @@
         const data = await res.json();
         const tbody = document.getElementById('pointLogsList');
         if (!data.logs || data.logs.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
+          tbody.innerHTML = '<tr><td class="admin-table-empty" colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
           document.getElementById('pointLogsPager').innerHTML = '';
           return;
         }
@@ -731,12 +784,12 @@
           const amountClass = log.type === 'recharge' ? 'positive' : 'negative';
           const amount = log.type === 'recharge' ? `+${log.amount}` : `${log.amount}`;
           return `<tr>
-            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(log.created_at)}</td>
-            <td>${escapeHtml(log.username || '未知')}</td>
-            <td><span class="log-type ${typeClass}">${typeLabel}</span></td>
-            <td class="log-amount ${amountClass}">${escapeHtml(amount)}</td>
-            <td>${escapeHtml(log.balance)}</td>
-            <td style="color:var(--text-secondary);">${escapeHtml(log.description || '-')}</td>
+            <td data-label="时间" style="color:var(--text-muted);font-size:12px;">${escapeHtml(log.created_at)}</td>
+            <td data-label="用户">${escapeHtml(log.username || '未知')}</td>
+            <td data-label="类型"><span class="log-type ${typeClass}">${typeLabel}</span></td>
+            <td data-label="金额" class="log-amount ${amountClass}">${escapeHtml(amount)}</td>
+            <td data-label="余额">${escapeHtml(log.balance)}</td>
+            <td data-label="说明" style="color:var(--text-secondary);">${escapeHtml(log.description || '-')}</td>
           </tr>`;
         }).join('');
         renderPager('pointLogsPager', {
@@ -798,7 +851,7 @@
         const tbody = document.getElementById('cdkeysList');
         const list = data.list || [];
         if (list.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无卡密</td></tr>';
+          tbody.innerHTML = '<tr><td class="admin-table-empty" colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无卡密</td></tr>';
           document.getElementById('cdkeysPager').innerHTML = '';
           return;
         }
@@ -806,12 +859,12 @@
           const statusClass = c.used ? 'used' : 'unused';
           const statusLabel = c.used ? '已使用' : '未使用';
           return `<tr>
-            <td><span class="cdkey-code">${escapeHtml(c.code)}</span><span class="cdkey-copy-btn" onclick="copyCdkey('${escapeJsString(c.code)}')">复制</span></td>
-            <td>${escapeHtml(c.points)}</td>
-            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-            <td>${escapeHtml(c.used_by_name || '-')}</td>
-            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.used_at || '-')}</td>
-            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.created_at)}</td>
+            <td data-label="卡密"><span class="cdkey-code">${escapeHtml(c.code)}</span><span class="cdkey-copy-btn" onclick="copyCdkey('${escapeJsString(c.code)}')">复制</span></td>
+            <td data-label="积分">${escapeHtml(c.points)}</td>
+            <td data-label="状态"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+            <td data-label="使用者">${escapeHtml(c.used_by_name || '-')}</td>
+            <td data-label="使用时间" style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.used_at || '-')}</td>
+            <td data-label="创建时间" style="color:var(--text-muted);font-size:12px;">${escapeHtml(c.created_at)}</td>
           </tr>`;
         }).join('');
         renderPager('cdkeysPager', {
@@ -898,7 +951,7 @@
         const data = await res.json();
         const tbody = document.getElementById('paymentOrdersList');
         if (!data.orders || data.orders.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
+          tbody.innerHTML = '<tr><td class="admin-table-empty" colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
           document.getElementById('paymentOrdersPager').innerHTML = '';
           return;
         }
@@ -908,19 +961,21 @@
           const statusLabel = o.status === 'paid' ? '已支付' : (o.status === 'pending' ? '待支付' : '已关闭');
           const statusClass = o.status === 'paid' ? 'success' : (o.status === 'pending' ? 'pending' : 'failed');
           return `<tr>
-            <td style="font-size:12px;font-family:monospace;">${escapeHtml(o.order_no)}</td>
-            <td>${escapeHtml(o.username || '未知')}</td>
-            <td style="font-weight:700;">${escapeHtml(formatMoney(o.amount))} 元</td>
-            <td>${escapeHtml(o.points)}</td>
-            <td><span class="pay-channel-tag ${channelClass}">${channelLabel}</span></td>
-            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.paid_at || '-')}</td>
-            <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.created_at)}</td>
-            <td>
-              ${o.status === 'pending' ? `
-                <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="markPaymentPaid('${escapeJsString(o.order_no)}')">确认到账</button>
-                <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="closePaymentOrder('${escapeJsString(o.order_no)}')">关闭</button>
-              ` : '<span style="color:var(--text-muted);font-size:12px;">-</span>'}
+            <td data-label="订单号" style="font-size:12px;font-family:monospace;">${escapeHtml(o.order_no)}</td>
+            <td data-label="用户">${escapeHtml(o.username || '未知')}</td>
+            <td data-label="金额" style="font-weight:700;">${escapeHtml(formatMoney(o.amount))} 元</td>
+            <td data-label="积分">${escapeHtml(o.points)}</td>
+            <td data-label="渠道"><span class="pay-channel-tag ${channelClass}">${channelLabel}</span></td>
+            <td data-label="状态"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+            <td data-label="支付时间" style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.paid_at || '-')}</td>
+            <td data-label="创建时间" style="color:var(--text-muted);font-size:12px;">${escapeHtml(o.created_at)}</td>
+            <td data-label="操作">
+              <div class="admin-row-actions">
+                ${o.status === 'pending' ? `
+                  <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="markPaymentPaid('${escapeJsString(o.order_no)}')">确认到账</button>
+                  <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="closePaymentOrder('${escapeJsString(o.order_no)}')">关闭</button>
+                ` : '<span style="color:var(--text-muted);font-size:12px;">-</span>'}
+              </div>
             </td>
           </tr>`;
         }).join('');
