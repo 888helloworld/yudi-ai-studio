@@ -125,6 +125,7 @@
     .preview-modal{width:min(1040px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden}
     .preview-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary)}
     .preview-title{font-size:14px;font-weight:800;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .preview-title:empty{display:none}
     .preview-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .preview-actions a,.preview-actions button{padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);font-size:13px;font-weight:800;transition:var(--base)}
     .preview-actions a:hover,.preview-actions button:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
@@ -2120,9 +2121,9 @@
 
     function openImagePreview(url, task, index) {
       const filename = buildImageDownloadName(task, index);
-      currentPreviewImage = { url, filename, title: `任务 #${task.index} · 图片 ${index + 1}` };
-      setProtectedImageSource(previewImage, url, `任务 ${task.index} 图片 ${index + 1}`);
-      previewTitle.textContent = `任务 #${task.index} · 图片 ${index + 1} · ${task.mode === 'edit' ? '改图' : '生图'}`;
+      currentPreviewImage = { url, filename, title: '' };
+      setProtectedImageSource(previewImage, url, '图片预览');
+      previewTitle.textContent = '';
       previewDownload.href = url;
       previewDownload.download = filename;
       previewOpen.href = '#';
