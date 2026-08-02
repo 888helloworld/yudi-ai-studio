@@ -433,7 +433,7 @@
     }
     function buildAssetFetchOptions(url) {
       const headers = isProtectedUploadUrl(url) && token ? { 'Authorization': 'Bearer ' + token } : {};
-      return { headers, credentials: 'same-origin', cache: 'no-store' };
+      return { headers, credentials: 'same-origin', cache: 'default' };
     }
 
     async function fetchAssetBlob(url) {

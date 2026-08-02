@@ -53,7 +53,7 @@ async function fetchImageBlob(url) {
   const res = await fetch(new URL(url, window.location.origin).href, {
     headers,
     credentials: 'same-origin',
-    cache: 'no-store'
+    cache: 'default'
   });
   if (!res.ok) throw new Error('图片读取失败');
   return res.blob();

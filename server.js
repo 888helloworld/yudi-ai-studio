@@ -664,10 +664,11 @@ app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
     return res.status(404).json({ error: '图片不存在' });
   }
 
-  res.setHeader('Cache-Control', 'private, no-store');
+  // 图片文件名包含时间戳和随机串，内容不会原地覆盖；允许同一浏览器缓存一天，减少重复读盘。
+  res.setHeader('Cache-Control', 'private, max-age=86400');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
-  return res.sendFile(filepath, next);
+  return res.sendFile(filepath, { cacheControl: false }, next);
 });
 
 // SSRF 防护：拒绝下载内网/环回/链路本地地址，防止被诱导访问内网或云元数据接口
