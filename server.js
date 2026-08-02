@@ -1829,8 +1829,6 @@ function recoverStaleXiJobHistories() {
   }
 }
 
-recoverStaleXiJobHistories();
-
 async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt) {
   const apiKey = getXiImageApiKey();
   if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
@@ -1978,6 +1976,35 @@ function assertXiImageSizeSupported(size) {
     throw err;
   }
 }
+
+function repairXiRecoveryInitializationFailures() {
+  const brokenMessage = "服务重启后任务恢复失败，积分已自动退回：Cannot access 'XI_IMAGE_SIZE_ALIASES' before initialization";
+  try {
+    const rows = db.db.prepare(`
+      SELECT id, content
+      FROM history
+      WHERE type = 'image'
+        AND sub_type IN ('xi-edit', 'xi-generate')
+        AND image_url IS NULL
+    `).all();
+    let repaired = 0;
+    for (const row of rows) {
+      let meta = {};
+      try { meta = JSON.parse(row.content || '{}'); } catch { continue; }
+      if (meta.status !== 'failed' || meta.error !== brokenMessage) continue;
+      meta.status = 'queued';
+      meta.error = '';
+      db.db.prepare('UPDATE history SET content = ? WHERE id = ?').run(JSON.stringify(meta), row.id);
+      repaired += 1;
+    }
+    if (repaired > 0) console.log(`已修复 ${repaired} 条初始化顺序导致的任务，准备重新生成`);
+  } catch (err) {
+    console.error('修复初始化顺序导致的任务失败:', err);
+  }
+}
+
+repairXiRecoveryInitializationFailures();
+recoverStaleXiJobHistories();
 
 async function callArkGenerateForXiJob({ prompt, size, count }) {
   if (!ARK_FALLBACK_ENABLED) throw new Error('图片服务暂时不可用，请稍后重试。本次没有生成图片，积分已退回。');
