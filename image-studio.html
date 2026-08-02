@@ -1450,6 +1450,27 @@
       task.error = '服务刚刚重启，正在从历史记录找回结果...';
       updateTaskCard(task);
       try {
+        const jobsRes = await fetch('/api/xi-image/jobs', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const jobsData = await jobsRes.json().catch(() => ({}));
+        const recoveredJob = (jobsData.jobs || []).find((job) => {
+          if (task.historyId && job.historyId && String(job.historyId) === String(task.historyId)) return true;
+          return job.prompt === task.prompt
+            && job.size === task.size
+            && job.mode === task.mode;
+        });
+        if (recoveredJob) {
+          task.jobId = recoveredJob.id;
+          task.historyId = recoveredJob.historyId || task.historyId || '';
+          task.status = recoveredJob.status || 'running';
+          task.error = '';
+          task.startedAtMs = recoveredJob.startedAtMs || task.startedAtMs;
+          task.durationMs = recoveredJob.durationMs || task.durationMs || 0;
+          updateTaskCard(task);
+          pollServerJob(task, resolve, reject);
+          return;
+        }
         await loadSavedTasks({ force: true });
         const candidates = state.tasks.filter((item) => {
           if (item.id === task.id || item.jobId === task.jobId) return false;
