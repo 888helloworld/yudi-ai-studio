@@ -111,6 +111,7 @@ const XI_XU_EDIT_RETRIES = Number.isFinite(configuredXiEditRetries)
   : 1;
 const XI_XU_EDIT_CIRCUIT_BREAKER_MS = Number(process.env.XI_XU_EDIT_CIRCUIT_BREAKER_MS || 0);
 const XI_XU_EDIT_FORCE_FALLBACK = /^true$/i.test(process.env.XI_XU_EDIT_FORCE_FALLBACK || '');
+const XI_XU_FIXED_QUALITY = 'medium';
 const ARK_FALLBACK_ENABLED = /^true$/i.test(process.env.ARK_FALLBACK_ENABLED || '');
 const XI_XU_NORMALIZE_OUTPUT_SIZE = /^true$/i.test(process.env.XI_XU_NORMALIZE_OUTPUT_SIZE || '');
 const configuredXiMaxActiveJobsRaw = String(process.env.XI_XU_MAX_ACTIVE_JOBS || '1').trim();
@@ -2400,7 +2401,7 @@ app.post('/api/xi-image/jobs/generate', xiImageLimiter, authMiddleware, (req, re
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
+  const quality = XI_XU_FIXED_QUALITY;
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
   try {
     assertXiImageSizeSupported(size);
@@ -2421,7 +2422,7 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
+  const quality = XI_XU_FIXED_QUALITY;
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
   sourceFiles.forEach((file, index) => {
     file.originalname = normalizeSourceImageFilename(file.originalname, index);
@@ -2471,7 +2472,7 @@ app.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, r
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
+  const quality = XI_XU_FIXED_QUALITY;
 
   if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
   try {
@@ -2676,7 +2677,7 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
   const prompt = sanitizeInput(req.body.prompt, 3000);
   const size = parseXiImageSize(req.body.size);
   const count = parseXiXuImageCount(req.body.count);
-  const quality = ['low', 'medium', 'high'].includes(req.body.quality) ? req.body.quality : 'high';
+  const quality = XI_XU_FIXED_QUALITY;
   const sourceFiles = Array.isArray(req.files) ? req.files : [];
   sourceFiles.forEach((file, index) => {
     file.originalname = normalizeSourceImageFilename(file.originalname, index);

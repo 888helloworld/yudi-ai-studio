@@ -22,12 +22,10 @@
     .xi-workspace{display:grid;grid-template-columns:minmax(380px,460px) minmax(960px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
     .xi-main-panel{padding:14px}
-    .xi-control-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;align-items:start}
-    .xi-control-grid + .generate-btn{margin-top:16px}
-    .xi-control-grid .form-group{margin-bottom:0}
-    .xi-control-grid input{padding:9px 10px;font-size:13px}
-    .xi-control-grid label{font-size:12px;margin-bottom:6px}
-    .xi-control-grid .field-hint{font-size:11px;line-height:1.45;margin-top:5px}
+    .xi-count-control{width:min(100%,240px)}
+    .xi-count-control + .generate-btn{margin-top:16px}
+    .xi-count-control .form-group{margin-bottom:0}
+    .xi-count-control label{font-size:12px;margin-bottom:6px}
     .xi-action-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .xi-action-row .generate-btn{min-height:48px}
     .xi-action-row .generate-btn.secondary{background:var(--bg-surface);border:1px solid var(--border-light);box-shadow:none;color:var(--text-primary)}
@@ -129,12 +127,6 @@
     .preview-edit-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(7,193,96,.32)}
     .prompt-preview-body{display:grid;gap:14px;padding:18px;overflow:auto;background:var(--bg-input)}
     .xi-empty{min-height:260px;border:1px dashed var(--border-light);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);background:rgba(255,255,255,0.02);padding:28px;line-height:1.7}
-    .quality-selector{display:flex;flex-wrap:nowrap;gap:6px}
-    .quality-btn{flex:1;min-width:0;text-align:center;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;padding:8px 8px;cursor:pointer;transition:var(--base)}
-    .quality-btn:hover{border-color:rgba(7,193,96,0.35);color:var(--neon-cyan);background:rgba(7,193,96,0.05)}
-    .quality-btn.active{border-color:var(--neon-cyan);color:var(--neon-cyan);background:rgba(7,193,96,0.1);font-weight:800}
-    .quality-price{display:block;margin-top:3px;color:var(--text-muted);font-size:10px;font-weight:700;line-height:1}
-    .quality-btn.active .quality-price{color:var(--neon-cyan)}
     .count-picker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
     .count-btn{min-height:30px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);font-size:12px;font-weight:800;transition:var(--base)}
     .count-btn:hover{border-color:rgba(7,193,96,0.35);color:var(--neon-cyan);background:rgba(7,193,96,0.05)}
@@ -196,9 +188,9 @@
     .login-overlay.show{display:flex}
     body .user-bar{position:relative;top:auto;left:auto;transform:none;margin:8px auto 0;z-index:10}
     @media(max-width:1500px){.xi-task-list{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:1280px){.xi-workspace{grid-template-columns:minmax(360px,440px) minmax(700px,1fr)}.xi-task-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:980px){.xi-workspace{grid-template-columns:1fr}.xi-stats{grid-template-columns:repeat(3,1fr)}.reverse-meta{grid-template-columns:repeat(2,1fr)}.xi-task-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:560px){.xi-control-grid,.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
+    @media(max-width:560px){.xi-action-row,.reverse-template-grid,.detail-suite-grid,.detail-suite-preview{grid-template-columns:1fr}.xi-source-grid,.reverse-history{grid-template-columns:repeat(2,minmax(0,1fr))}.xi-toolbar{align-items:flex-start;flex-direction:column}.xi-task-list{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -321,7 +313,7 @@
           </div>
         </div>
 
-        <div class="xi-control-grid">
+        <div class="xi-count-control">
           <input type="hidden" id="count" value="1">
 
           <div class="form-group">
@@ -336,15 +328,6 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label>质量</label>
-            <div class="quality-selector" id="qualitySelector">
-              <div class="quality-btn" data-quality="low">快速<span class="quality-price" data-price-quality="low">$0.00474</span></div>
-              <div class="quality-btn" data-quality="medium">标准<span class="quality-price" data-price-quality="medium">$0.04116</span></div>
-              <div class="quality-btn active" data-quality="high">精细<span class="quality-price" data-price-quality="high">$0.16464</span></div>
-            </div>
-            <div class="field-hint">站内扣费为每张 10 积分；美元金额仅表示上游接口成本。</div>
-          </div>
         </div>
 
         <button id="generateBtn" class="generate-btn" type="button"><span>开始出图</span></button>
@@ -497,7 +480,6 @@
     const taskPrevPageBtn = document.getElementById('taskPrevPage');
     const taskNextPageBtn = document.getElementById('taskNextPage');
     const taskPageInfoEl = document.getElementById('taskPageInfo');
-    const qualityPriceEls = Array.from(document.querySelectorAll('[data-price-quality]'));
     const generateBtn = document.getElementById('generateBtn');
     const clearPromptBtn = document.getElementById('clearPromptBtn');
     const clearSourcesBtn = document.getElementById('clearSourcesBtn');
@@ -551,7 +533,7 @@
       '1152x2048': '941x1672'
     };
     const DEFAULT_SIZE = '1024x1536';
-    const DEFAULT_QUALITY = 'high';
+    const DEFAULT_QUALITY = 'medium';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
     const PROMPT_PLACEHOLDERS = [
@@ -586,34 +568,6 @@
       '例如：粉色甜品店橱窗，一块草莓蛋糕被摆在中间，奶油纹路清楚，画面甜但不要齁。',
       '例如：户外露营用品场景，折叠椅、营灯和热水壶在草地上，傍晚光线，舒服、松弛、能闻到风。'
     ];
-    const GPT_IMAGE_2_QUALITY_BASE = { low: 16, medium: 48, high: 96 };
-    const getGptImage2OutputTokens = (quality, size) => {
-      const base = GPT_IMAGE_2_QUALITY_BASE[quality];
-      const match = /^(\d+)x(\d+)$/i.exec(String(size || '').trim());
-      if (!base || !match) return 0;
-      const width = Number(match[1]);
-      const height = Number(match[2]);
-      const pixels = width * height;
-      const longSide = Math.max(width, height);
-      const shortSide = Math.min(width, height);
-      if (
-        pixels < 655360 ||
-        pixels > 8294400 ||
-        longSide > 3840 ||
-        longSide / shortSide > 3
-      ) return 0;
-      const scaledShort = Math.round(base * shortSide / longSide);
-      const grid = base * scaledShort;
-      return Math.ceil(grid * (2000000 + pixels) / 4000000);
-    };
-    const getGptImage2Price = (quality, size) => {
-      const tokens = getGptImage2OutputTokens(quality, size);
-      return tokens > 0 ? tokens * 30 / 1000000 : NaN;
-    };
-    const formatGptImage2Price = (price) => {
-      if (!Number.isFinite(price)) return '';
-      return `$${price.toFixed(5)}`;
-    };
     const REVERSE_TEMPLATE_HINTS = {
       general: '按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。',
       amazon: '适合家居、清洁、服饰配件等产品主图，重点输出专业棚拍和亚马逊白底主图提示词。',
@@ -673,7 +627,7 @@
       setStatus(message || '登录已过期，请重新登录。', 'error');
     }
 
-    document.querySelectorAll('.ratio-btn,.quality-btn').forEach((control) => {
+    document.querySelectorAll('.ratio-btn').forEach((control) => {
       control.setAttribute('role', 'button');
       control.tabIndex = 0;
       control.addEventListener('keydown', (event) => {
@@ -688,16 +642,6 @@
         document.querySelectorAll('#sizeSelector .ratio-btn').forEach((item) => item.classList.remove('active'));
         btn.classList.add('active');
         state.selectedSize = btn.dataset.size;
-        updateQualityPrices();
-        updateEstimate();
-      });
-    });
-
-    document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#qualitySelector .quality-btn').forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        state.quality = btn.dataset.quality;
         updateEstimate();
       });
     });
@@ -1367,11 +1311,7 @@
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === DEFAULT_SIZE);
       });
-      document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.quality === DEFAULT_QUALITY);
-      });
       updateGenerateButton();
-      updateQualityPrices();
       updateEstimate();
     }
 
@@ -1780,7 +1720,6 @@
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
         Number(task.count) > 1 ? `${task.count} 张` : '',
-        getTaskQualityText(task),
         task.billingOutputTokens ? `计费token ${task.billingOutputTokens}` : '',
         task.createdAt
       ].filter(Boolean).join(' · ');
@@ -1805,18 +1744,14 @@
       }
       promptEl.value = task.prompt || '';
       state.selectedSize = SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : state.selectedSize;
-      state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : state.quality;
+      state.quality = DEFAULT_QUALITY;
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
       updateBatchCountButtons();
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
       });
-      document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.quality === state.quality);
-      });
       updateGenerateButton();
-      updateQualityPrices();
       updateEstimate();
       promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       promptEl.focus();
@@ -1947,15 +1882,12 @@
       try {
         promptEl.value = task.prompt || '';
         state.selectedSize = SUPPORTED_IMAGE_SIZES.includes(task.size) ? task.size : DEFAULT_SIZE;
-        state.quality = ['low', 'medium', 'high'].includes(task.quality) ? task.quality : DEFAULT_QUALITY;
+        state.quality = DEFAULT_QUALITY;
         countEl.value = 1;
         batchCountEl.value = DEFAULT_BATCH_COUNT;
         updateBatchCountButtons();
         document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
           btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
-        });
-        document.querySelectorAll('#qualitySelector .quality-btn').forEach((btn) => {
-          btn.classList.toggle('active', btn.dataset.quality === state.quality);
         });
         sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
 
@@ -1970,7 +1902,6 @@
         }
 
         updateGenerateButton();
-        updateQualityPrices();
         updateEstimate();
         promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         promptEl.focus();
@@ -1995,20 +1926,6 @@
       chip.className = 'xi-source-name-chip';
       chip.textContent = name || '参考图';
       return chip;
-    }
-
-    function getQualityLabel(quality) {
-      const map = { low: '快速', medium: '标准', high: '精细' };
-      return map[quality] || '标准';
-    }
-
-    function getTaskQualityText(task) {
-      const requested = task.requestedQuality || task.quality;
-      const actual = task.actualQuality || '';
-      if (actual && requested && actual !== requested) {
-        return `${getQualityLabel(requested)}→实际${getQualityLabel(actual)}`;
-      }
-      return getQualityLabel(requested || task.quality);
     }
 
     function getFirstDimensionSize(dimensions) {
@@ -2113,7 +2030,6 @@
     function buildImageDownloadName(task, imageIndex = 0) {
       const displaySize = getDisplayImageSize(task.size, task.outputDimensions);
       const sizeLabel = getLabeledImageSize(displaySize).replace(/\s+/g, '-');
-      const qualityLabel = getQualityLabel(task.quality);
       const dateLabel = formatDownloadDate(task.createdAt || task.doneAt || '');
       const imageLabel = `第${imageIndex + 1}张`;
       const parts = task.detailSuite
@@ -2123,7 +2039,6 @@
           task.detailSuite.productName,
           `${String(task.detailSuite.moduleIndex).padStart(2, '0')}-${task.detailSuite.moduleTitle}`,
           sizeLabel,
-          qualityLabel,
           imageLabel,
           dateLabel
         ]
@@ -2133,7 +2048,6 @@
           task.index ? `#${task.index}` : '',
           task.mode === 'edit' ? '参考改图' : '文生图',
           sizeLabel,
-          qualityLabel,
           imageLabel,
           dateLabel
         ];
@@ -2350,17 +2264,7 @@
       const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
-      const unitPrice = getGptImage2Price(state.quality, state.selectedSize);
-      const priceText = Number.isFinite(unitPrice) ? ` · 按请求尺寸预估 ${formatGptImage2Price(unitPrice * totalImages)}` : '';
-      if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 同时生成 ${parallelism} 张${priceText}`;
-    }
-
-    function updateQualityPrices() {
-      qualityPriceEls.forEach((el) => {
-        const quality = el.dataset.priceQuality;
-        const price = getGptImage2Price(quality, state.selectedSize);
-        el.textContent = price ? `成本约 ${formatGptImage2Price(price)}` : '按实际结算';
-      });
+      if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 同时生成 ${parallelism} 张`;
     }
 
     function updateBatchCountButtons() {
@@ -3013,7 +2917,6 @@
     }
 
     updateEstimate();
-    updateQualityPrices();
     if (detailSuitePreviewEl) renderDetailSuitePreview();
     renderTaskPage();
     updateStats();
