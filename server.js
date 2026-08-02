@@ -907,15 +907,12 @@ function assertSavedImageDimensions(localUrls, expectedSize) {
 }
 
 async function saveXiXuImages(imageUrls, prefix, expectedSize = '') {
-  const saved = [];
-  for (let index = 0; index < imageUrls.length; index += 1) {
-    const url = imageUrls[index];
+  const saved = await Promise.all(imageUrls.map(async (url, index) => {
     if (String(url).startsWith('data:image/')) {
-      saved.push(saveDataUrlImage(url, `${prefix}_${index + 1}`) || url);
-    } else {
-      saved.push(await downloadAndSaveImage(url, `${prefix}_${index + 1}`));
+      return saveDataUrlImage(url, `${prefix}_${index + 1}`) || url;
     }
-  }
+    return downloadAndSaveImage(url, `${prefix}_${index + 1}`);
+  }));
   if (XI_XU_NORMALIZE_OUTPUT_SIZE) normalizeSavedImageDimensions(saved, expectedSize);
   assertSavedImageDimensions(saved, expectedSize);
   return saved;
