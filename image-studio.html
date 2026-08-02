@@ -112,9 +112,12 @@
     .prompt-toggle:hover{color:var(--neon-pink)}
     .xi-image-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px}
     .xi-image-card{position:relative;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
-    .xi-image-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:zoom-in;transition:var(--base)}
+    .xi-image-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:zoom-in;opacity:0;transition:opacity .18s ease,transform var(--base),filter var(--base)}
+    img.protected-image-ready{opacity:1}
+    img.protected-image-loading,img.protected-image-failed{opacity:0!important;color:transparent!important;text-indent:-9999px}
     .xi-image-card:hover img{transform:scale(1.03);filter:brightness(1.08)}
-    .xi-image-card a{position:absolute;right:6px;bottom:6px;padding:3px 6px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.12);color:var(--text-primary);font-size:10px;font-weight:700}
+    .xi-image-card a{position:absolute;right:6px;bottom:6px;padding:3px 6px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.12);color:var(--text-primary);font-size:10px;font-weight:700;transition:opacity .18s ease}
+    .xi-image-card img:not(.protected-image-ready) + a{opacity:0;pointer-events:none}
     .preview-overlay{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.86);backdrop-filter:blur(14px)}
     .preview-overlay.show{display:flex}
     .preview-modal{width:min(1040px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden}
@@ -460,17 +463,47 @@
       return objectUrl;
     }
 
-    function setProtectedImageSource(img, url) {
+    function setProtectedImageSource(img, url, altText = '') {
       if (!img || !url) return;
       const sourceKey = resolveAssetUrl(url);
       img.dataset.sourceUrl = sourceKey;
+      img.dataset.loadedAlt = altText || img.alt || '';
+      img.alt = '';
+      img.classList.remove('protected-image-ready', 'protected-image-failed');
+      img.classList.add('protected-image-loading');
+      img.setAttribute('aria-busy', 'true');
+
+      const markFailed = () => {
+        if (img.dataset.sourceUrl !== sourceKey) return;
+        img.classList.remove('protected-image-loading', 'protected-image-ready');
+        img.classList.add('protected-image-failed');
+        img.removeAttribute('aria-busy');
+        img.alt = '';
+        img.removeAttribute('src');
+      };
+
+      const markReady = () => {
+        if (img.dataset.sourceUrl !== sourceKey) return;
+        img.classList.remove('protected-image-loading', 'protected-image-failed');
+        img.classList.add('protected-image-ready');
+        img.removeAttribute('aria-busy');
+        img.alt = img.dataset.loadedAlt || '';
+      };
+
       getDisplayImageUrl(url)
         .then((displayUrl) => {
           if (img.dataset.sourceUrl !== sourceKey) return;
-          if (img.src !== displayUrl) img.src = displayUrl;
+          img.onload = markReady;
+          img.onerror = markFailed;
+          if (img.src === displayUrl && img.complete && img.naturalWidth > 0) {
+            markReady();
+          } else {
+            img.src = displayUrl;
+          }
         })
         .catch(() => {
-          img.alt = '图片需要登录后查看';
+          markFailed();
+          img.dispatchEvent(new Event('error'));
         });
     }
     const promptEl = document.getElementById('prompt');
@@ -1864,8 +1897,7 @@
       if (urls.length > 0) {
         urls.forEach((url, index) => {
           const img = document.createElement('img');
-          setProtectedImageSource(img, url);
-          img.alt = `参考图 ${index + 1}`;
+          setProtectedImageSource(img, url, `参考图 ${index + 1}`);
           img.title = names[index] || `参考图 ${index + 1}`;
           img.addEventListener('click', () => {
             openStandaloneImagePreview(url, names[index] || `任务 #${task.index} · 参考图 ${index + 1}`, `xi_source_${task.index}_${index + 1}.png`);
@@ -1990,8 +2022,7 @@
         const item = document.createElement('div');
         item.className = 'xi-image-card';
         const img = document.createElement('img');
-        setProtectedImageSource(img, url);
-        img.alt = `任务 ${task.index} 图片 ${index + 1}`;
+        setProtectedImageSource(img, url, `任务 ${task.index} 图片 ${index + 1}`);
         img.addEventListener('click', () => openImagePreview(url, task, index));
         const link = document.createElement('a');
         link.href = url;
@@ -2040,8 +2071,7 @@
     function openImagePreview(url, task, index) {
       const filename = buildImageDownloadName(task, index);
       currentPreviewImage = { url, filename, title: `任务 #${task.index} · 图片 ${index + 1}` };
-      setProtectedImageSource(previewImage, url);
-      previewImage.alt = `任务 ${task.index} 图片 ${index + 1}`;
+      setProtectedImageSource(previewImage, url, `任务 ${task.index} 图片 ${index + 1}`);
       previewTitle.textContent = `任务 #${task.index} · 图片 ${index + 1} · ${task.mode === 'edit' ? '改图' : '生图'}`;
       previewDownload.href = url;
       previewDownload.download = filename;
@@ -2095,8 +2125,7 @@
 
     function openStandaloneImagePreview(url, title = '图片预览', filename = 'preview.png') {
       currentPreviewImage = { url, filename, title };
-      setProtectedImageSource(previewImage, url);
-      previewImage.alt = title;
+      setProtectedImageSource(previewImage, url, title);
       previewTitle.textContent = title;
       previewDownload.href = url;
       previewDownload.download = filename;
@@ -2817,7 +2846,7 @@
       }
       const thumbEl = card.querySelector('img.reverse-history-thumb');
       if (thumbEl) {
-        setProtectedImageSource(thumbEl, thumb);
+        setProtectedImageSource(thumbEl, thumb, '识图缩略图');
         thumbEl.addEventListener('click', () => {
           openStandaloneImagePreview(thumb, item.title || '看图写 Prompt 原图', `reverse_prompt_${item.historyId || Date.now()}.png`);
         });
