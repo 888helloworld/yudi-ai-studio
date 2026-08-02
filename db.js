@@ -302,6 +302,28 @@ function addHistory(userId, type, data) {
   return result.lastInsertRowid;
 }
 
+function updateHistory(userId, historyId, data) {
+  const current = db.prepare('SELECT * FROM history WHERE id = ? AND user_id = ?').get(historyId, userId);
+  if (!current) return false;
+  const next = { ...current, ...data };
+  const result = db.prepare(`
+    UPDATE history
+    SET sub_type = ?, content = ?, image_url = ?, prompt = ?, ratio = ?, cost_points = ?, client_task_id = ?
+    WHERE id = ? AND user_id = ?
+  `).run(
+    next.sub_type ?? null,
+    next.content ?? null,
+    next.image_url ?? null,
+    next.prompt ?? null,
+    next.ratio ?? null,
+    next.cost_points ?? null,
+    next.client_task_id ?? null,
+    historyId,
+    userId
+  );
+  return result.changes > 0;
+}
+
 // 获取用户历史
 function getUserHistory(userId, options = {}) {
   const { type, startDate, endDate, keyword, limit = 50, offset = 0 } = options;
@@ -787,6 +809,7 @@ module.exports = {
   getPointLogsCount,
   getUserPoints,
   addHistory,
+  updateHistory,
   getUserHistory,
   getUserHistoryCount,
   deleteHistory,

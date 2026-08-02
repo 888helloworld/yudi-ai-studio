@@ -2809,10 +2809,31 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
   const timeout = setTimeout(() => controller.abort(), 90000);
   const reverseMode = getReversePromptMode(sanitizeInput(req.body.reverseMode, 40));
   const historySource = sanitizeInput(req.body.historySource, 20) === 'xhs' ? 'xhs' : 'xi';
+  const clientTaskId = sanitizeInput(req.body.clientTaskId, 120);
+  let historyId = null;
+  let previewUrl = '';
 
   const reversePromptInstruction = buildReversePromptInstruction(reverseMode);
 
   try {
+    if (historySource === 'xi') {
+      previewUrl = saveUploadedSourceImages([req.file], 'xixu_reverse')[0] || '';
+      historyId = db.addHistory(req.userId, 'reverse', {
+        sub_type: 'xi-reverse',
+        content: JSON.stringify({
+          status: 'running',
+          model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+          file: req.file.originalname || 'image.png',
+          reverse_mode: reverseMode,
+          preview_url: previewUrl,
+          duration_ms: 0
+        }),
+        prompt: req.file.originalname || '图片反推提示词',
+        cost_points: totalCost,
+        client_task_id: clientTaskId || null
+      });
+    }
+
     const response = await fetch(buildXiXuUrl('/v1/chat/completions'), {
       method: 'POST',
       signal: controller.signal,
@@ -2848,6 +2869,18 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
       const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
       refundPoints(req.userId, totalCost, '看图写 Prompt 失败退款');
       charged = false;
+      db.updateHistory(req.userId, historyId, {
+        content: JSON.stringify({
+          status: 'failed',
+          model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+          file: req.file.originalname || 'image.png',
+          reverse_mode: reverseMode,
+          preview_url: previewUrl,
+          duration_ms: Date.now() - startedAtMs,
+          error: formatUpstreamError(upstreamError, '识图服务暂时不可用，请稍后再试')
+        }),
+        cost_points: 0
+      });
       return res.status(502).json({ error: formatUpstreamError(upstreamError, '识图服务暂时不可用，请稍后再试') });
     }
 
@@ -2855,16 +2888,29 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
     if (!content) {
       refundPoints(req.userId, totalCost, '看图写 Prompt 失败退款');
       charged = false;
+      db.updateHistory(req.userId, historyId, {
+        content: JSON.stringify({
+          status: 'failed',
+          model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+          file: req.file.originalname || 'image.png',
+          reverse_mode: reverseMode,
+          preview_url: previewUrl,
+          duration_ms: Date.now() - startedAtMs,
+          error: '上游未返回反推结果'
+        }),
+        cost_points: 0
+      });
       return res.status(502).json({ error: '上游未返回反推结果' });
     }
 
     const parsed = normalizeReversePromptResult(parseJsonLike(content));
     const durationMs = Date.now() - startedAtMs;
     const createdAt = formatBeijingDateTime();
-    const previewUrl = saveUploadedSourceImages([req.file], 'xixu_reverse')[0] || '';
-    const historyId = db.addHistory(req.userId, 'reverse', {
+    if (!previewUrl) previewUrl = saveUploadedSourceImages([req.file], 'xixu_reverse')[0] || '';
+    const completedHistory = {
       sub_type: historySource === 'xhs' ? 'xhs-reverse' : 'xi-reverse',
       content: JSON.stringify({
+        status: 'done',
         model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
         result: parsed || null,
         raw: parsed ? '' : content,
@@ -2874,8 +2920,14 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
         duration_ms: durationMs
       }),
       prompt: parsed?.title || req.file.originalname || '图片反推提示词',
-      cost_points: totalCost
-    });
+      cost_points: totalCost,
+      client_task_id: clientTaskId || null
+    };
+    if (historyId) {
+      db.updateHistory(req.userId, historyId, completedHistory);
+    } else {
+      historyId = db.addHistory(req.userId, 'reverse', completedHistory);
+    }
     res.json({
       success: true,
       model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
@@ -2891,6 +2943,20 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
   } catch (err) {
     if (charged) refundPoints(req.userId, totalCost, '看图写 Prompt 失败退款');
     const message = err.name === 'AbortError' ? '识图请求超时' : '识图请求失败';
+    if (historyId) {
+      db.updateHistory(req.userId, historyId, {
+        content: JSON.stringify({
+          status: 'failed',
+          model: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
+          file: req.file.originalname || 'image.png',
+          reverse_mode: reverseMode,
+          preview_url: previewUrl,
+          duration_ms: Date.now() - startedAtMs,
+          error: message
+        }),
+        cost_points: 0
+      });
+    }
     res.status(502).json({ error: message });
   } finally {
     clearTimeout(timeout);

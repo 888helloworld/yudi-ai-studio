@@ -338,14 +338,6 @@
       </section>
 
       <section class="panel" id="reversePrompt" data-xi-mode-panel="reverse" hidden>
-        <div class="panel-header">
-          <div class="header-icon">⌕</div>
-          <div>
-            <h2>看图写 Prompt</h2>
-            <p>上传喜欢的图，提炼成可复用的提示词。</p>
-          </div>
-        </div>
-
         <div class="form-group">
           <label>上传图片</label>
           <div class="drop-zone" id="reverseDropZone">
@@ -621,6 +613,8 @@
     };
     let reverseSelectedFile = null;
     let reversePreviewUrl = '';
+    let activeReverseRequests = 0;
+    let reverseHistoryPollId = null;
     let currentPreviewImage = null;
     let pasteTargetMode = 'source';
 
@@ -2711,6 +2705,7 @@
         data: null,
         error: ''
       };
+      activeReverseRequests += 1;
       state.reverseHistory.unshift(item);
       state.reversePage = 1;
       renderReverseHistoryPage();
@@ -2722,6 +2717,7 @@
         const form = new FormData();
         form.append('image', file, file.name || 'image.png');
         form.append('reverseMode', state.reverseMode || 'general');
+        form.append('clientTaskId', localId);
         const res = await fetch('/api/xi-image/reverse-prompt', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token },
@@ -2744,15 +2740,17 @@
         item.previewUrl = data.previewUrl || item.previewUrl;
         item.data = data;
         updateNavPoints(data.remainingPoints);
-        openPromptPreview(data);
         renderReverseHistoryPage();
-        setReverseStatus('Prompt 已生成，可以继续上传下一张。', 'ok');
+        if (!reverseSelectedFile) setReverseStatus('Prompt 已生成，可在右侧记录中查看。', 'ok');
       } catch (err) {
         item.status = 'failed';
         item.error = err.message || '反推失败';
         item.durationMs = item.durationMs || 0;
         renderReverseHistoryPage();
-        setReverseStatus(item.error, 'error');
+        if (!reverseSelectedFile) setReverseStatus(item.error, 'error');
+      } finally {
+        activeReverseRequests = Math.max(0, activeReverseRequests - 1);
+        syncReverseHistoryPolling();
       }
     }
 
@@ -2771,21 +2769,24 @@
           .filter((item) => item.sub_type === 'xi-reverse')
           .map((item) => {
             const meta = parseJson(item.content) || {};
+            const status = ['running', 'failed', 'done'].includes(meta.status) ? meta.status : 'done';
             return {
               historyId: item.id,
-              title: meta.result?.title || item.prompt || '图片反推提示词',
+              localId: item.client_task_id || '',
+              title: meta.result?.title || meta.file || item.prompt || '图片反推提示词',
               previewUrl: meta.preview_url || '',
               createdAt: formatHistoryTime(item.created_at),
               durationMs: meta.duration_ms || 0,
-              status: 'done',
-              data: {
+              status,
+              error: meta.error || '',
+              data: status === 'done' ? {
                 model: meta.model || 'gpt-5.5',
                 result: meta.result || null,
                 raw: meta.raw || '',
                 previewUrl: meta.preview_url || '',
                 createdAt: formatHistoryTime(item.created_at),
                 durationMs: meta.duration_ms || 0
-              }
+              } : null
             };
           });
         state.reversePage = 1;
@@ -2824,6 +2825,21 @@
       reversePageInfoEl.textContent = `第 ${state.reversePage} / ${totalPages} 页 · 共 ${total} 条`;
       reversePrevPageBtn.disabled = state.reversePage <= 1;
       reverseNextPageBtn.disabled = state.reversePage >= totalPages;
+      syncReverseHistoryPolling();
+    }
+
+    function syncReverseHistoryPolling() {
+      const shouldPoll = activeReverseRequests === 0 && state.reverseHistory.some((item) => item.status === 'running');
+      if (!shouldPoll) {
+        if (reverseHistoryPollId) clearTimeout(reverseHistoryPollId);
+        reverseHistoryPollId = null;
+        return;
+      }
+      if (reverseHistoryPollId) return;
+      reverseHistoryPollId = setTimeout(async () => {
+        reverseHistoryPollId = null;
+        await loadReverseHistory();
+      }, 3000);
     }
 
     function getReverseTotalPages() {
