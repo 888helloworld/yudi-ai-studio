@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="style.css">
   <style>
     body .container{width:min(1920px,calc(100% - 12px));padding-top:4px}
-    body .user-bar{width:min(1920px,calc(100% - 12px));min-height:0;margin:4px auto 6px;padding:5px 10px;border-radius:8px;gap:10px}
+    body .user-bar{width:min(1920px,calc(100% - 12px));min-height:0;margin:4px auto 6px;padding:5px 10px;border-radius:8px;gap:10px;justify-content:flex-end}
     body .brand-mini{font-size:13px;line-height:1.2}
     body .user-info{gap:8px}
     body .user-name,body .user-points{font-size:12px;line-height:1.2}
@@ -22,8 +22,8 @@
     .xi-workspace{display:grid;grid-template-columns:minmax(320px,390px) minmax(960px,1fr);gap:4px;align-items:start}
     .xi-left-column,.xi-right-column{display:grid;gap:4px;align-items:start}
     .xi-left-column{position:sticky;top:4px;max-height:calc(100vh - 8px);overflow-y:auto;overscroll-behavior:contain}
-    .xi-mode-switcher{width:min(100%,320px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md)}
-    .xi-mode-tab{min-height:36px;padding:6px 8px;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:12px;font-weight:900;line-height:1.2;cursor:pointer;transition:var(--base)}
+    .xi-mode-switcher{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;padding:3px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md)}
+    .xi-mode-tab{min-height:30px;padding:4px 7px;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:12px;font-weight:900;line-height:1.2;cursor:pointer;transition:var(--base)}
     .xi-mode-tab:hover{border-color:rgba(7,193,96,.25);color:var(--neon-cyan);background:rgba(7,193,96,.05)}
     .xi-mode-tab.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(7,193,96,.2),rgba(7,193,96,.14));box-shadow:0 0 0 1px rgba(7,193,96,.12)}
     .xi-main-panel{padding:14px}
@@ -203,7 +203,6 @@
 </head>
 <body>
   <nav class="user-bar" id="userBar">
-    <div class="brand-mini">御弟哥哥 · gpt-image-2 生图</div>
     <div class="user-info">
       <span class="user-name" id="navUsername"></span>
       <span class="user-points" id="navPoints">0 积分</span>
@@ -258,12 +257,12 @@
   </div>
 
   <main class="container">
-    <div class="xi-mode-switcher" id="xiModeSwitcher" aria-label="画面工坊工具切换">
-      <button class="xi-mode-tab active" type="button" data-xi-mode="image">AI 图片生成</button>
-      <button class="xi-mode-tab" type="button" data-xi-mode="reverse">看图写 Prompt</button>
-    </div>
     <div class="xi-workspace">
       <div class="xi-left-column">
+      <div class="xi-mode-switcher" id="xiModeSwitcher" aria-label="画面工坊工具切换">
+        <button class="xi-mode-tab active" type="button" data-xi-mode="image">AI 图片生成</button>
+        <button class="xi-mode-tab" type="button" data-xi-mode="reverse">看图写 Prompt</button>
+      </div>
       <section class="panel xi-main-panel" data-xi-mode-panel="image">
         <div class="form-group">
           <div class="field-label-row">
