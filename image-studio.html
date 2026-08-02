@@ -115,7 +115,9 @@
     .xi-image-card{position:relative;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
     .xi-image-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:zoom-in;opacity:0;transition:opacity .18s ease,transform var(--base),filter var(--base)}
     img.protected-image-ready{opacity:1}
-    img.protected-image-loading,img.protected-image-failed{opacity:0!important;color:transparent!important;text-indent:-9999px}
+    img.protected-image-loading{opacity:1!important;color:transparent!important;text-indent:-9999px;background:linear-gradient(110deg,var(--bg-input) 25%,rgba(255,255,255,0.11) 38%,var(--bg-input) 50%,var(--bg-input) 100%);background-size:220% 100%;animation:xi-image-shimmer 1.25s linear infinite}
+    img.protected-image-failed{opacity:0!important;color:transparent!important;text-indent:-9999px}
+    @keyframes xi-image-shimmer{0%{background-position:200% 0}100%{background-position:-20% 0}}
     .xi-image-card:hover img{transform:scale(1.03);filter:brightness(1.08)}
     .xi-image-card a{position:absolute;right:6px;bottom:6px;padding:3px 6px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.12);color:var(--text-primary);font-size:10px;font-weight:700;transition:opacity .18s ease}
     .xi-image-card img:not(.protected-image-ready) + a{opacity:0;pointer-events:none}
@@ -454,15 +456,20 @@
       return objectUrl;
     }
 
-    function setProtectedImageSource(img, url, altText = '') {
-      if (!img || !url) return;
-      const sourceKey = resolveAssetUrl(url);
-      img.dataset.sourceUrl = sourceKey;
-      img.dataset.loadedAlt = altText || img.alt || '';
-      img.alt = '';
-      img.classList.remove('protected-image-ready', 'protected-image-failed');
-      img.classList.add('protected-image-loading');
-      img.setAttribute('aria-busy', 'true');
+    const protectedImageObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            protectedImageObserver.unobserve(entry.target);
+            loadProtectedImage(entry.target);
+          });
+        }, { rootMargin: '200px 0px' })
+      : null;
+
+    function loadProtectedImage(img) {
+      const url = img?.dataset.lazyUrl || '';
+      const sourceKey = img?.dataset.sourceUrl || '';
+      if (!img || !url || !sourceKey || img.dataset.sourceUrl !== sourceKey) return;
 
       const markFailed = () => {
         if (img.dataset.sourceUrl !== sourceKey) return;
@@ -496,6 +503,47 @@
           markFailed();
           img.dispatchEvent(new Event('error'));
         });
+    }
+
+    function setProtectedImageSource(img, url, altText = '') {
+      if (!img || !url) return;
+      const sourceKey = resolveAssetUrl(url);
+      img.dataset.sourceUrl = sourceKey;
+      img.dataset.lazyUrl = url;
+      img.dataset.loadedAlt = altText || img.alt || '';
+      img.alt = '';
+      img.classList.remove('protected-image-ready', 'protected-image-failed');
+      img.classList.add('protected-image-loading');
+      img.setAttribute('aria-busy', 'true');
+      img.loading = 'lazy';
+
+      if (!isProtectedUploadUrl(url)) {
+        img.onload = () => {
+          img.classList.remove('protected-image-loading', 'protected-image-failed');
+          img.classList.add('protected-image-ready');
+          img.removeAttribute('aria-busy');
+          img.alt = img.dataset.loadedAlt || '';
+        };
+        img.onerror = () => {
+          img.classList.remove('protected-image-loading', 'protected-image-ready');
+          img.classList.add('protected-image-failed');
+          img.removeAttribute('aria-busy');
+          img.alt = '';
+        };
+        img.src = url;
+        return;
+      }
+
+      if (protectedImageObserver && img.isConnected) {
+        protectedImageObserver.observe(img);
+      } else if (protectedImageObserver) {
+        requestAnimationFrame(() => {
+          if (img.isConnected) protectedImageObserver.observe(img);
+          else loadProtectedImage(img);
+        });
+      } else {
+        loadProtectedImage(img);
+      }
     }
     const promptEl = document.getElementById('prompt');
     const sourceGrid = document.getElementById('sourceGrid');
