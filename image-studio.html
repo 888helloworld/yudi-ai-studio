@@ -115,9 +115,8 @@
     .xi-image-card{position:relative;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
     .xi-image-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;cursor:zoom-in;opacity:0;transition:opacity .18s ease,transform var(--base),filter var(--base)}
     img.protected-image-ready{opacity:1}
-    img.protected-image-loading{opacity:1!important;color:transparent!important;text-indent:-9999px;background:linear-gradient(110deg,var(--bg-input) 25%,rgba(255,255,255,0.11) 38%,var(--bg-input) 50%,var(--bg-input) 100%);background-size:220% 100%;animation:xi-image-shimmer 1.25s linear infinite}
+    img.protected-image-loading{opacity:1!important;color:transparent!important;text-indent:-9999px;background:var(--bg-input)}
     img.protected-image-failed{opacity:0!important;color:transparent!important;text-indent:-9999px}
-    @keyframes xi-image-shimmer{0%{background-position:200% 0}100%{background-position:-20% 0}}
     .xi-image-card:hover img{transform:scale(1.03);filter:brightness(1.08)}
     .xi-image-card a{position:absolute;right:6px;bottom:6px;padding:3px 6px;border-radius:var(--radius-sm);background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.12);color:var(--text-primary);font-size:10px;font-weight:700;transition:opacity .18s ease}
     .xi-image-card img:not(.protected-image-ready) + a{opacity:0;pointer-events:none}
@@ -378,7 +377,7 @@
           </div>
         </div>
 
-        <div id="empty" class="xi-empty">还没有作品。写一句描述，点“开始出图”，结果会显示在这里。</div>
+        <div id="empty" class="xi-empty" style="display:none;">还没有作品。写一句描述，点“开始出图”，结果会显示在这里。</div>
         <div id="taskList" class="xi-task-list"></div>
 
         <div class="xi-pager" id="taskPager" style="display:none;">
@@ -665,6 +664,7 @@
     let reverseHistoryPollId = null;
     let currentPreviewImage = null;
     let pasteTargetMode = 'source';
+    let taskHistoryLoaded = false;
 
     const state = {
       tasks: [],
@@ -963,6 +963,7 @@
     }
 
     async function loadSavedTasks(options = {}) {
+      taskHistoryLoaded = false;
       try {
         if (options.force) {
           setStatus('正在找回之前的作品...', '');
@@ -1048,6 +1049,7 @@
           state.taskSeq = Math.max(state.taskSeq, Number(item.id) || state.taskSeq);
           state.tasks.unshift(task);
         });
+        taskHistoryLoaded = true;
         orderTasksForDisplay();
         renderTaskPage();
         updateStats();
@@ -1056,6 +1058,8 @@
           setStatus('这个账号还没有生成记录。先写个画面试试。', 'error');
         }
       } catch (err) {
+        taskHistoryLoaded = false;
+        renderTaskPage();
         setStatus('历史记录加载失败：' + (err.message || '网络异常'), 'error');
       }
     }
@@ -1683,7 +1687,7 @@
       const totalPages = getTaskTotalPages();
       state.taskPage = Math.min(Math.max(state.taskPage, 1), totalPages);
 
-      emptyEl.style.display = total === 0 ? 'flex' : 'none';
+      emptyEl.style.display = taskHistoryLoaded && total === 0 ? 'flex' : 'none';
       taskPagerEl.style.display = total > 0 ? 'flex' : 'none';
       if (total === 0) {
         taskPageInfoEl.textContent = '第 0 / 0 页';
