@@ -1727,11 +1727,41 @@ function saveXiJobFailureHistory(job) {
   return job.historyId;
 }
 
+function buildXiRecoveredSourceFiles(meta, mode) {
+  if (mode !== 'edit') return [];
+  const sourceUrls = Array.isArray(meta.source_urls) ? meta.source_urls : [];
+  if (sourceUrls.length === 0) throw new Error('任务参考图记录不存在');
+  const sourceNames = Array.isArray(meta.sources) ? meta.sources : [];
+  return sourceUrls.map((url, index) => {
+    const filepath = getLocalUploadPath(url);
+    if (!filepath || !fs.existsSync(filepath)) throw new Error(`参考图${index + 1}文件不存在`);
+    const buffer = fs.readFileSync(filepath);
+    const mimetype = sniffImageMime(buffer);
+    if (!mimetype) throw new Error(`参考图${index + 1}文件已损坏`);
+    return {
+      buffer,
+      mimetype,
+      originalname: sourceNames[index] || getSourceImageFilename(index)
+    };
+  });
+}
+
+function markXiHistoryRecoveryFailed(row, meta, reason) {
+  const refundAmount = Math.max(Number(row.cost_points) || 0, 0);
+  if (refundAmount > 0) refundPoints(row.user_id, refundAmount, 'gpt-image-2 未完成任务自动退款');
+  meta.status = 'failed';
+  meta.error = `服务重启后任务恢复失败，积分已自动退回：${reason}`;
+  meta.refunded_points = (Number(meta.refunded_points) || 0) + refundAmount;
+  db.db.prepare('UPDATE history SET content = ?, image_url = NULL, cost_points = 0 WHERE id = ?')
+    .run(JSON.stringify(meta), row.id);
+}
+
 function recoverStaleXiJobHistories() {
   let recovered = 0;
+  let failed = 0;
   try {
     const rows = db.db.prepare(`
-      SELECT id, user_id, content, cost_points
+      SELECT id, user_id, sub_type, content, prompt, ratio, cost_points, created_at
       FROM history
       WHERE type = 'image'
         AND sub_type IN ('xi-edit', 'xi-generate')
@@ -1743,18 +1773,57 @@ function recoverStaleXiJobHistories() {
       let meta = {};
       try { meta = JSON.parse(row.content || '{}'); } catch {}
       if (!['queued', 'running'].includes(meta.status)) continue;
-      const refundAmount = Math.max(Number(row.cost_points) || 0, 0);
-      if (refundAmount > 0) {
-        refundPoints(row.user_id, refundAmount, 'gpt-image-2 未完成任务自动退款');
+      try {
+        const mode = row.sub_type === 'xi-edit' ? 'edit' : 'generate';
+        const prompt = String(row.prompt || '').trim();
+        const size = parseXiImageSize(row.ratio || meta.requested_size || meta.actual_size);
+        const count = parseXiXuImageCount(meta.count);
+        const quality = meta.quality || XI_XU_FIXED_QUALITY;
+        if (!prompt) throw new Error('任务提示词为空');
+        assertXiImageSizeSupported(size);
+        const sourceFiles = buildXiRecoveredSourceFiles(meta, mode);
+        const job = {
+          id: `xijob_recovered_${row.id}_${crypto.randomBytes(4).toString('hex')}`,
+          userId: row.user_id,
+          status: 'queued',
+          createdAtMs: Date.parse(row.created_at) || Date.now(),
+          startedAtMs: 0,
+          finishedAtMs: 0,
+          imageUrls: [],
+          error: '',
+          historyId: row.id,
+          mode,
+          prompt,
+          size,
+          count,
+          quality,
+          costPoints: Math.max(Number(row.cost_points) || 0, 0),
+          sourceFiles,
+          sourceFileNames: Array.isArray(meta.sources) ? meta.sources : [],
+          sourcePreviewUrls: Array.isArray(meta.source_urls) ? meta.source_urls : [],
+          sourceDimensions: Array.isArray(meta.source_dimensions) ? meta.source_dimensions : [],
+          outputDimensions: [],
+          upstreamMeta: {},
+          provider: '',
+          fallbackReason: '',
+          refundedPoints: 0,
+          refundedOnFail: false
+        };
+        meta.status = 'queued';
+        meta.error = '';
+        db.db.prepare('UPDATE history SET content = ?, image_url = NULL WHERE id = ?')
+          .run(JSON.stringify(meta), row.id);
+        xiJobs.set(job.id, job);
+        enqueueXiJob(job);
+        recovered += 1;
+      } catch (err) {
+        markXiHistoryRecoveryFailed(row, meta, err.message || '任务参数无效');
+        failed += 1;
       }
-      meta.status = 'failed';
-      meta.error = '服务重启后任务未完成，积分已自动退回。';
-      meta.refunded_points = (Number(meta.refunded_points) || 0) + refundAmount;
-      db.db.prepare('UPDATE history SET content = ?, image_url = NULL, cost_points = 0 WHERE id = ?')
-        .run(JSON.stringify(meta), row.id);
-      recovered += 1;
     }
-    if (recovered > 0) console.log(`已处理 ${recovered} 条重启遗留的 gpt-image-2 任务`);
+    if (recovered > 0 || failed > 0) {
+      console.log(`已处理重启遗留的 gpt-image-2 任务：恢复 ${recovered} 条，退款 ${failed} 条`);
+    }
   } catch (err) {
     console.error('处理重启遗留 gpt-image-2 任务失败:', err);
   }
