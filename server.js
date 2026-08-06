@@ -1775,7 +1775,7 @@ function recoverStaleXiJobHistories() {
         const prompt = String(row.prompt || '').trim();
         const size = parseXiImageSize(row.ratio || meta.requested_size || meta.actual_size);
         const count = parseXiXuImageCount(meta.count);
-        const quality = meta.quality || XI_XU_FIXED_QUALITY;
+        const quality = XI_XU_FIXED_QUALITY;
         if (!prompt) throw new Error('任务提示词为空');
         assertXiImageSizeSupported(size);
         const sourceFiles = buildXiRecoveredSourceFiles(meta, mode);
