@@ -140,10 +140,10 @@ const XI_XU_MAX_ACTIVE_JOBS = /^(0|unlimited|infinite|none)$/i.test(configuredXi
   : (Number.isFinite(configuredXiMaxActiveJobs) ? Math.max(1, Math.floor(configuredXiMaxActiveJobs)) : 1);
 const ARK_IMAGE_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 const xiXuEditCircuit = { failures: 0, openUntilMs: 0 };
-const configuredUploadImageMb = Number(process.env.MAX_UPLOAD_IMAGE_MB || 10);
+const configuredUploadImageMb = Number(process.env.MAX_UPLOAD_IMAGE_MB || 20);
 const MAX_UPLOAD_IMAGE_MB = Number.isFinite(configuredUploadImageMb)
   ? Math.max(configuredUploadImageMb, 1)
-  : 10;
+  : 20;
 
 // 上传配置
 const upload = multer({ 

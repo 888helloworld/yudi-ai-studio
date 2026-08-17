@@ -311,7 +311,7 @@ XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 XI_XU_NORMALIZE_OUTPUT_SIZE=false
 
 ARK_FALLBACK_ENABLED=true
-MAX_UPLOAD_IMAGE_MB=10
+MAX_UPLOAD_IMAGE_MB=20
 
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN=7d
@@ -449,7 +449,7 @@ data.db
 
 ## 上传和图片保存
 
-- 上传文件默认限制最大 `10MB`（`MAX_UPLOAD_IMAGE_MB=10`）。
+- 上传文件默认限制最大 `20MB`（`MAX_UPLOAD_IMAGE_MB=20`）。画面工坊超过 20MB 的参考图会在浏览器端尽量保留细节压缩后再上传。
 - 改图时上传的参考图会在服务端先处理并限制大小。
 - 支持常见图片 MIME 并校验文件头，防止伪装文件。
 - 生成的图片会先下载到本地的 `uploads/` 目录，然后以本地 URL 返回。

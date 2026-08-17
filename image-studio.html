@@ -538,6 +538,9 @@
     const DEFAULT_QUALITY = 'medium';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
+    const MAX_SOURCE_IMAGE_BYTES = 20 * 1024 * 1024;
+    const MAX_SOURCE_INPUT_BYTES = 50 * 1024 * 1024;
+    const TARGET_PREPARED_SOURCE_BYTES = 19 * 1024 * 1024;
     const PROMPT_PLACEHOLDERS = [
       '例如：雨后的窗边，一束柔光落在旧木桌上，咖啡还有热气，画面安静、真实、带一点温柔的颗粒感。',
       '例如：白底产品主图，一双米白色分趾袜平整摆放，纹理清楚，光线干净，像专业电商摄影棚拍出来的。',
@@ -2264,28 +2267,33 @@
         setStatus('只能上传图片文件。', 'error');
         return;
       }
-      if (file.size > 20 * 1024 * 1024) {
-        setStatus('单张参考图不能超过 20MB。', 'error');
+      if (file.size > MAX_SOURCE_INPUT_BYTES) {
+        setStatus('原图不能超过 50MB，请先缩小后再上传。', 'error');
         return;
       }
 
       const slot = sourceSlots[index];
       const hint = slot.querySelector('.drop-hint');
       const preview = slot.querySelector('.xi-source-preview');
-      setStatus(`正在准备参考图 ${index + 1}...`, '');
+      setStatus(
+        file.size > MAX_SOURCE_IMAGE_BYTES
+          ? `原图超过 20MB，正在温和压缩参考图 ${index + 1}...`
+          : `正在准备参考图 ${index + 1}...`,
+        ''
+      );
       generateBtn.disabled = true;
-      let pngFile;
+      let preparedFile;
       try {
-        pngFile = await convertImageToPng(file);
+        preparedFile = await prepareSourceImage(file);
       } catch (err) {
         generateBtn.disabled = false;
-        setStatus('图片格式处理失败，请换一张 PNG/JPG/WebP 图片。', 'error');
+        setStatus(err.message || '图片格式处理失败，请换一张 PNG/JPG/WebP 图片。', 'error');
         return;
       }
 
       if (state.sourcePreviewUrls[index]) URL.revokeObjectURL(state.sourcePreviewUrls[index]);
-      state.sourceFiles[index] = pngFile;
-      state.sourcePreviewUrls[index] = URL.createObjectURL(pngFile);
+      state.sourceFiles[index] = preparedFile;
+      state.sourcePreviewUrls[index] = URL.createObjectURL(preparedFile);
       renderSourceSlot(index);
       generateBtn.disabled = false;
       updateGenerateButton();
@@ -2484,30 +2492,44 @@
       return `图${index + 1}.png`;
     }
 
-    async function convertImageToPng(file) {
-      if (file.type === 'image/png' && file.size <= 5 * 1024 * 1024) {
-        return new File([file], normalizePngName(file.name), { type: 'image/png' });
+    async function prepareSourceImage(file) {
+      const keepOriginal = file.size <= MAX_SOURCE_IMAGE_BYTES
+        && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type);
+      if (keepOriginal) return file;
+
+      if (file.size > MAX_SOURCE_INPUT_BYTES) {
+        throw new Error('原图不能超过 50MB，请先缩小后再上传。');
       }
 
       const dataUrl = await readFileAsDataUrl(file);
       const image = await loadImage(dataUrl);
-      // 提高起始分辨率上限：API 支持最大 2048px 的参考图，
-      // 尽量保留原图细节，减少被压缩到低分辨率导致输出图糊的问题。
-      const maxSides = [2048, 1792, 1536, 1280, 1024, 768];
-      let lastBlob = null;
+      const maxSides = [4096, 3072, 2560, 2048];
+      const preferredType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
 
       for (const maxSide of maxSides) {
         const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
         const width = Math.max(1, Math.round(image.naturalWidth * scale));
         const height = Math.max(1, Math.round(image.naturalHeight * scale));
-        const blob = await drawImageToPngBlob(image, width, height);
-        lastBlob = blob;
-        if (blob.size <= 5 * 1024 * 1024) {
-          return new File([blob], normalizePngName(file.name), { type: 'image/png' });
+        const blob = await drawImageToBlob(image, width, height, preferredType, preferredType === 'image/jpeg' ? 0.94 : undefined);
+        if (blob && blob.size <= TARGET_PREPARED_SOURCE_BYTES) {
+          const extension = preferredType === 'image/png' ? 'png' : 'jpg';
+          return new File([blob], normalizePreparedImageName(file.name, extension), { type: preferredType });
         }
       }
 
-      throw new Error('PNG 文件过大');
+      for (const maxSide of maxSides) {
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        for (const quality of [0.92, 0.88, 0.82]) {
+          const blob = await drawImageToBlob(image, width, height, 'image/jpeg', quality);
+          if (blob && blob.size <= TARGET_PREPARED_SOURCE_BYTES) {
+            return new File([blob], normalizePreparedImageName(file.name, 'jpg'), { type: 'image/jpeg' });
+          }
+        }
+      }
+
+      throw new Error('图片压缩后仍超过 20MB，请先缩小原图。');
     }
 
     function readFileAsDataUrl(file) {
@@ -2528,7 +2550,7 @@
       });
     }
 
-    function drawImageToPngBlob(image, width, height) {
+    function drawImageToBlob(image, width, height, type, quality) {
       return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -2537,14 +2559,14 @@
         ctx.drawImage(image, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (blob) resolve(blob);
-          else reject(new Error('PNG 转换失败'));
-        }, 'image/png');
+          else reject(new Error('图片压缩失败'));
+        }, type, quality);
       });
     }
 
-    function normalizePngName(name) {
+    function normalizePreparedImageName(name, extension) {
       const base = String(name || 'source').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_') || 'source';
-      return `${base}.png`;
+      return `${base}.${extension}`;
     }
 
     function startTaskTimer(task) {
