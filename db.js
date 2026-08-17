@@ -326,7 +326,7 @@ function updateHistory(userId, historyId, data) {
 
 // 获取用户历史
 function getUserHistory(userId, options = {}) {
-  const { type, startDate, endDate, keyword, limit = 50, offset = 0 } = options;
+  const { type, startDate, endDate, keyword, excludeSubTypes = [], limit = 50, offset = 0 } = options;
   
   let sql = 'SELECT * FROM history WHERE user_id = ?';
   const params = [userId];
@@ -334,6 +334,12 @@ function getUserHistory(userId, options = {}) {
   if (type) {
     sql += ' AND type = ?';
     params.push(type);
+  }
+
+  if (Array.isArray(excludeSubTypes) && excludeSubTypes.length > 0) {
+    const placeholders = excludeSubTypes.map(() => '?').join(', ');
+    sql += ` AND (sub_type IS NULL OR sub_type NOT IN (${placeholders}))`;
+    params.push(...excludeSubTypes);
   }
   
   if (startDate) {
@@ -359,7 +365,7 @@ function getUserHistory(userId, options = {}) {
 
 // 获取历史总数（用于分页）
 function getUserHistoryCount(userId, options = {}) {
-  const { type, startDate, endDate, keyword } = options;
+  const { type, startDate, endDate, keyword, excludeSubTypes = [] } = options;
   
   let sql = 'SELECT COUNT(*) as total FROM history WHERE user_id = ?';
   const params = [userId];
@@ -367,6 +373,12 @@ function getUserHistoryCount(userId, options = {}) {
   if (type) {
     sql += ' AND type = ?';
     params.push(type);
+  }
+
+  if (Array.isArray(excludeSubTypes) && excludeSubTypes.length > 0) {
+    const placeholders = excludeSubTypes.map(() => '?').join(', ');
+    sql += ` AND (sub_type IS NULL OR sub_type NOT IN (${placeholders}))`;
+    params.push(...excludeSubTypes);
   }
   
   if (startDate) {

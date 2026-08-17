@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <title>gpt-image-2 生图 - 御弟哥哥</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260818">
   <style>
     body .container{width:min(1920px,calc(100% - 12px));padding-top:4px}
     body .user-bar{width:min(1920px,calc(100% - 12px));min-height:0;margin:4px auto 6px;padding:5px 10px;border-radius:8px;gap:10px;justify-content:flex-end}
@@ -604,7 +601,11 @@
       reverseSeq: 0,
       reversePage: 1,
       reversePageSize: 10,
-      detailSetSeq: 0
+      detailSetSeq: 0,
+      historyPage: 0,
+      historyTotalPages: 1,
+      historyPageSize: 50,
+      historyLoading: false
     };
 
     function refreshPromptPlaceholder() {
@@ -742,9 +743,10 @@
     });
     reloadHistoryBtn?.addEventListener('click', () => loadSavedTasks({ force: true }));
     clearQueuedBtn?.addEventListener('click', clearQueuedTasks);
-    taskPageSizeEl.addEventListener('change', () => {
+    taskPageSizeEl.addEventListener('change', async () => {
       state.taskPageSize = clamp(Number(taskPageSizeEl.value || 12), 12, 100);
       state.taskPage = 1;
+      await ensureTaskPageLoaded(1);
       renderTaskPage();
       updateStats();
     });
@@ -753,9 +755,11 @@
       renderTaskPage();
       updateStats();
     });
-    taskNextPageBtn.addEventListener('click', () => {
+    taskNextPageBtn.addEventListener('click', async () => {
       const totalPages = getTaskTotalPages();
-      state.taskPage = Math.min(totalPages, state.taskPage + 1);
+      const nextPage = Math.min(totalPages, state.taskPage + 1);
+      await ensureTaskPageLoaded(nextPage);
+      state.taskPage = Math.min(getTaskTotalPages(), nextPage);
       renderTaskPage();
       updateStats();
     });
@@ -803,56 +807,17 @@
       document.getElementById('navPoints').textContent = points + ' 积分';
     }
 
-    async function loadSavedTasks(options = {}) {
-      taskHistoryLoaded = false;
-      try {
-        if (options.force) {
-          setStatus('正在找回之前的作品...', '');
-          removeLoadedHistoryTasks();
-        }
-
-        const historyPageSize = 1000;
-        const loadHistoryPage = async (page) => {
-          const params = new URLSearchParams({
-            type: 'image',
-            limit: String(historyPageSize),
-            page: String(page)
-          });
-          const res = await fetch('/api/user/history?' + params.toString(), {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            if (res.status === 401) {
-              handleAuthExpired(data.error || '登录已过期，请重新登录。');
-              return null;
-            }
-            throw new Error(data.error || '历史记录读取失败，请重新登录后再试。');
-          }
-          return data;
-        };
-
-        const firstPage = await loadHistoryPage(1);
-        if (!firstPage) return;
-
-        const history = [...(firstPage.history || [])];
-        const totalPages = Math.max(1, Number(firstPage.totalPages) || 1);
-        for (let page = 2; page <= totalPages; page += 1) {
-          const data = await loadHistoryPage(page);
-          if (!data) return;
-          history.push(...(data.history || []));
-        }
-
-        const saved = history
-          .filter((item) => {
-            if (item.sub_type !== 'xi-generate' && item.sub_type !== 'xi-edit') return false;
-            const meta = parseJson(item.content) || {};
-            return parseSavedImageUrls(item.image_url).length > 0 || meta.status === 'failed';
-          })
-          .slice()
-          .reverse();
-
-        saved.forEach((item) => {
+    function appendSavedHistoryItems(history) {
+      history
+        .filter((item) => {
+          if (item.sub_type !== 'xi-generate' && item.sub_type !== 'xi-edit') return false;
+          const meta = parseJson(item.content) || {};
+          return parseSavedImageUrls(item.image_url).length > 0 || meta.status === 'failed';
+        })
+        .slice()
+        .reverse()
+        .forEach((item) => {
+          if (state.tasks.some((task) => task.saved && Number(task.historyId) === Number(item.id))) return;
           const imageUrls = parseSavedImageUrls(item.image_url);
           const meta = parseJson(item.content) || {};
           if (imageUrls.length === 0 && meta.status !== 'failed') return;
@@ -890,18 +855,70 @@
           state.taskSeq = Math.max(state.taskSeq, Number(item.id) || state.taskSeq);
           state.tasks.unshift(task);
         });
+    }
+
+    async function loadSavedTasks(options = {}) {
+      const force = Boolean(options.force);
+      if (state.historyLoading) return;
+      if (force) {
+        setStatus('正在找回之前的作品...', '');
+        removeLoadedHistoryTasks();
+        state.historyPage = 0;
+        state.historyTotalPages = 1;
+      }
+
+      const targetPage = Math.max(1, Number(options.page) || 1);
+      state.historyLoading = true;
+      taskHistoryLoaded = false;
+      try {
+        const loadHistoryPage = async (page) => {
+          const params = new URLSearchParams({
+            type: 'image',
+            limit: String(state.historyPageSize),
+            page: String(page)
+          });
+          const res = await fetch('/api/user/history?' + params.toString(), {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (res.status === 401) {
+              handleAuthExpired(data.error || '登录已过期，请重新登录。');
+              return null;
+            }
+            throw new Error(data.error || '历史记录读取失败，请重新登录后再试。');
+          }
+          return data;
+        };
+
+        while (state.historyPage < targetPage && state.historyPage < state.historyTotalPages) {
+          const data = await loadHistoryPage(state.historyPage + 1);
+          if (!data) return;
+          state.historyTotalPages = Math.max(1, Number(data.totalPages) || 1);
+          appendSavedHistoryItems(data.history || []);
+          state.historyPage = Math.max(state.historyPage + 1, Number(data.page) || state.historyPage + 1);
+        }
+
         taskHistoryLoaded = true;
         orderTasksForDisplay();
         renderTaskPage();
         updateStats();
-        const loadedCount = saved.length;
-        if (loadedCount === 0 && options.force) {
+        if (force && state.tasks.filter((task) => task.saved).length === 0) {
           setStatus('这个账号还没有生成记录。先写个画面试试。', 'error');
         }
       } catch (err) {
         taskHistoryLoaded = false;
         renderTaskPage();
         setStatus('历史记录加载失败：' + (err.message || '网络异常'), 'error');
+      } finally {
+        state.historyLoading = false;
+      }
+    }
+
+    async function ensureTaskPageLoaded(page) {
+      const requiredTaskCount = page * state.taskPageSize;
+      while (state.tasks.length < requiredTaskCount && state.historyPage < state.historyTotalPages) {
+        await loadSavedTasks({ page: state.historyPage + 1 });
       }
     }
 
@@ -1577,7 +1594,9 @@
     }
 
     function getTaskTotalPages() {
-      return Math.max(1, Math.ceil(state.tasks.length / state.taskPageSize));
+      const loadedPages = Math.ceil(state.tasks.length / state.taskPageSize);
+      const hasMoreHistory = state.historyPage < state.historyTotalPages;
+      return Math.max(1, loadedPages + (hasMoreHistory ? 1 : 0));
     }
 
     function updateTaskCard(task) {

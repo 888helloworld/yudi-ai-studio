@@ -76,14 +76,33 @@ const PUBLIC_FILES = new Set([
   'script.js'
 ]);
 
+const PUBLIC_STATIC_FILES = new Set([
+  'style.css',
+  'script.js',
+  'favicon.svg',
+  'favicon.ico'
+]);
+
+const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
+const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
+function sendPublicFile(res, filename, next) {
+  const filepath = path.join(__dirname, filename);
+  res.setHeader(
+    'Cache-Control',
+    PUBLIC_STATIC_FILES.has(filename) ? PUBLIC_STATIC_CACHE_CONTROL : PUBLIC_HTML_CACHE_CONTROL
+  );
+  return res.sendFile(filepath, { cacheControl: false }, next);
+}
+
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  sendPublicFile(res, 'index.html');
 });
 
 app.get('/:filename', (req, res, next) => {
   const filename = path.basename(req.params.filename);
   if (filename !== req.params.filename || !PUBLIC_FILES.has(filename)) return next();
-  res.sendFile(path.join(__dirname, filename));
+  sendPublicFile(res, filename, next);
 });
 
 // 速率限制（放宽阈值，避免正常操作被误限）

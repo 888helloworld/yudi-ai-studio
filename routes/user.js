@@ -48,6 +48,11 @@ router.get('/points/logs', authMiddleware, (req, res) => {
 // 获取历史记录
 router.get('/history', authMiddleware, (req, res) => {
   const { type, keyword } = req.query;
+  const excludeSubTypes = String(req.query.excludeSubTypes || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 20);
   const page = parsePositiveInt(req.query.page, 1, 100000);
   const limit = parsePositiveInt(req.query.limit, 20, 1000);
   
@@ -55,11 +60,12 @@ router.get('/history', authMiddleware, (req, res) => {
   const history = getUserHistory(req.userId, {
     type,
     keyword,
+    excludeSubTypes,
     limit,
     offset
   });
   
-  const total = getUserHistoryCount(req.userId, { type, keyword });
+  const total = getUserHistoryCount(req.userId, { type, keyword, excludeSubTypes });
   
   res.json({
     history,

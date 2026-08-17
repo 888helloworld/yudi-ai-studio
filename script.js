@@ -7,7 +7,11 @@ let selectedCopyType = '种草';
 let activePresets = new Set();
 
 
-let pageSize = 100;
+const HISTORY_FETCH_PAGE_SIZE = 50;
+let historyFetchPage = 0;
+let historyFetchTotalPages = 1;
+let historyFetchLoading = false;
+let pageSize = 50;
 let imagePage = 1;
 let copyPage = 1;
 let bothPage = 1;
@@ -1308,21 +1312,56 @@ async function loadUserStats() {
   }
 }
 
-async function loadServerHistory() {
+async function loadServerHistory(options = {}) {
   if (!localStorage.getItem('token')) return;
-  
+  if (historyFetchLoading) return;
+
+  if (options.force) {
+    serverHistory = [];
+    historyFetchPage = 0;
+    historyFetchTotalPages = 1;
+  }
+
+  const targetPage = Math.max(1, Number(options.page) || 1);
+  historyFetchLoading = true;
   try {
-    const res = await fetch('/api/user/history?limit=1000', {
-      headers: getAuthHeader()
-    });
-    const data = await res.json();
-    serverHistory = data.history || [];
-    reconcilePendingTasks();
-    renderHistory();
-    updateHeroStatsFromHistory();
+    while (historyFetchPage < targetPage && historyFetchPage < historyFetchTotalPages) {
+      const params = new URLSearchParams({
+        limit: String(HISTORY_FETCH_PAGE_SIZE),
+        page: String(historyFetchPage + 1),
+        excludeSubTypes: 'xi-generate,xi-edit,xi-reverse'
+      });
+      const res = await fetch('/api/user/history?' + params.toString(), {
+        headers: getAuthHeader()
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '历史记录读取失败');
+      historyFetchTotalPages = Math.max(1, Number(data.totalPages) || 1);
+      serverHistory = serverHistory.concat(data.history || []);
+      historyFetchPage = Math.max(historyFetchPage + 1, Number(data.page) || historyFetchPage + 1);
+    }
+
+    if (options.render !== false) {
+      reconcilePendingTasks();
+      renderHistory();
+      updateHeroStatsFromHistory();
+    }
   } catch (e) {
     console.error('加载历史记录失败', e);
+  } finally {
+    historyFetchLoading = false;
   }
+}
+
+async function ensureHistoryPageLoaded(page) {
+  const targetPage = Math.max(1, Math.ceil((page * pageSize) / HISTORY_FETCH_PAGE_SIZE));
+  await loadServerHistory({ page: targetPage, render: false });
+}
+
+async function changeHistoryPage(page, setter) {
+  await ensureHistoryPageLoaded(page);
+  setter(page);
+  renderHistory();
 }
 
 // 鐐瑰嚮鍘嗗彶璁板綍
@@ -1622,11 +1661,16 @@ function renderHistory() {
   const bothHistory = xhsHistory.filter(item => item.type === 'both' || item.sub_type === 'both-copy');
   
   // 璁＄畻鍒嗛〉
-  const imageTotalPages = Math.ceil(imageHistory.length / pageSize);
-  const copyTotalPages = Math.ceil(copyHistory.length / pageSize);
-  const rewriteTotalPages = Math.ceil(rewriteHistory.length / pageSize);
-  const bothTotalPages = Math.ceil(bothHistory.length / pageSize);
-  const reverseTotalPages = Math.ceil(reverseHistory.length / pageSize);
+  const getLoadedTotalPages = (items) => {
+    const loadedPages = Math.ceil(items.length / pageSize);
+    const hasMoreLoadedHistory = historyFetchPage < historyFetchTotalPages && items.length >= pageSize;
+    return Math.max(loadedPages, hasMoreLoadedHistory ? loadedPages + 1 : loadedPages);
+  };
+  const imageTotalPages = getLoadedTotalPages(imageHistory);
+  const copyTotalPages = getLoadedTotalPages(copyHistory);
+  const rewriteTotalPages = getLoadedTotalPages(rewriteHistory);
+  const bothTotalPages = getLoadedTotalPages(bothHistory);
+  const reverseTotalPages = getLoadedTotalPages(reverseHistory);
   
   // 纭繚椤电爜鍦ㄦ湁鏁堣寖鍥村唴
   if (imagePage > imageTotalPages && imageTotalPages > 0) imagePage = imageTotalPages;
@@ -1682,36 +1726,31 @@ function renderHistory() {
   
   // 娓叉煋鍒嗛〉鎺т欢
   renderPagination('imagePagination', imagePage, imageTotalPages, imageHistory.length, (page) => {
-    imagePage = page;
-    renderHistory();
+    changeHistoryPage(page, (nextPage) => { imagePage = nextPage; });
   });
   
   renderPagination('copyPagination', copyPage, copyTotalPages, copyHistory.length, (page) => {
-    copyPage = page;
-    renderHistory();
+    changeHistoryPage(page, (nextPage) => { copyPage = nextPage; });
   });
 
   const rewritePagination = document.getElementById('rewritePagination');
   if (rewritePagination) {
     renderPagination('rewritePagination', rewritePage, rewriteTotalPages, rewriteHistory.length, (page) => {
-      rewritePage = page;
-      renderHistory();
+      changeHistoryPage(page, (nextPage) => { rewritePage = nextPage; });
     });
   }
   
   const bothPagination = document.getElementById('bothPagination');
   if (bothPagination) {
     renderPagination('bothPagination', bothPage, bothTotalPages, bothHistory.length, (page) => {
-      bothPage = page;
-      renderHistory();
+      changeHistoryPage(page, (nextPage) => { bothPage = nextPage; });
     });
   }
 
   const reversePagination = document.getElementById('reversePagination');
   if (reversePagination) {
     renderPagination('reversePagination', reversePage, reverseTotalPages, reverseHistory.length, (page) => {
-      reversePage = page;
-      renderHistory();
+      changeHistoryPage(page, (nextPage) => { reversePage = nextPage; });
     });
   }
   updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
@@ -1940,12 +1979,13 @@ function renderPagination(containerId, currentPage, totalPages, totalItems, onPa
 
 function initPagination() {
   const select = document.getElementById('pageSizeSelect');
-  select.addEventListener('change', () => {
+  select.addEventListener('change', async () => {
     pageSize = parseInt(select.value);
     imagePage = 1;
     copyPage = 1;
     bothPage = 1;
     reversePage = 1;
+    await ensureHistoryPageLoaded(1);
     renderHistory();
   });
 }

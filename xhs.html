@@ -3,11 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>先写一篇工作台 - 御弟哥哥</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20260818">
 <style>
 body .container{width:min(1920px,calc(100% - 12px));padding-top:4px}
 body .user-bar{position:relative;top:auto;left:auto;transform:none;width:min(1920px,calc(100% - 12px));min-height:0;margin:4px auto 6px;padding:5px 10px;border-radius:8px;gap:10px}
@@ -603,8 +600,8 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           <option value="6">6 条</option>
           <option value="10">10 条</option>
           <option value="20">20 条</option>
-          <option value="50">50 条</option>
-          <option value="100" selected>100 条</option>
+          <option value="50" selected>50 条</option>
+          <option value="100">100 条</option>
         </select>
       </div>
         </div>
@@ -817,7 +814,7 @@ function startCreating() {
   if (!window._toolScriptLoaded) {
     window._toolScriptLoaded = true;
     const s = document.createElement('script');
-    s.src = 'script.js';
+    s.src = 'script.js?v=20260818';
     document.body.appendChild(s);
   }
 }
