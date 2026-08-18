@@ -667,6 +667,8 @@ const SIZE_MAP = {
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_SAVED_IMAGE_BYTES = 80 * 1024 * 1024;
+const MAX_THUMBNAIL_SOURCE_BYTES = 25 * 1024 * 1024;
+const IMAGE_THUMBNAIL_MAX_SIDE = 480;
 app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
   const filename = path.basename(req.params.filename || '');
   if (!filename || filename !== req.params.filename) {
@@ -689,7 +691,11 @@ app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
   res.setHeader('Cache-Control', 'private, max-age=86400');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
-  return res.sendFile(filepath, { cacheControl: false }, next);
+  const variant = String(req.query.variant || '').toLowerCase();
+  const responseFilepath = variant === 'thumb'
+    ? (ensureImageThumbnail(filepath) || filepath)
+    : filepath;
+  return res.sendFile(responseFilepath, { cacheControl: false }, next);
 });
 
 // SSRF 防护：拒绝下载内网/环回/链路本地地址，防止被诱导访问内网或云元数据接口
@@ -774,6 +780,69 @@ function getLocalUploadPath(url) {
   if (!match) return null;
   const filename = path.basename(match[1]);
   return path.join(UPLOAD_DIR, filename);
+}
+
+function resizePngToMaxSide(source, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
+  const targetWidth = Math.max(1, Math.round(source.width * scale));
+  const targetHeight = Math.max(1, Math.round(source.height * scale));
+  if (targetWidth === source.width && targetHeight === source.height) return source;
+
+  const target = new PNG({ width: targetWidth, height: targetHeight });
+  for (let y = 0; y < targetHeight; y += 1) {
+    const srcY = (y + 0.5) / scale - 0.5;
+    const y0 = Math.max(0, Math.floor(srcY));
+    const y1 = Math.min(source.height - 1, y0 + 1);
+    const wy = srcY - y0;
+
+    for (let x = 0; x < targetWidth; x += 1) {
+      const srcX = (x + 0.5) / scale - 0.5;
+      const x0 = Math.max(0, Math.floor(srcX));
+      const x1 = Math.min(source.width - 1, x0 + 1);
+      const wx = srcX - x0;
+      const targetIndex = (y * targetWidth + x) * 4;
+      const color = [0, 0, 0, 0];
+
+      for (const [sampleX, sampleY, weight] of [
+        [x0, y0, (1 - wx) * (1 - wy)],
+        [x1, y0, wx * (1 - wy)],
+        [x0, y1, (1 - wx) * wy],
+        [x1, y1, wx * wy]
+      ]) {
+        const sourceIndex = (sampleY * source.width + sampleX) * 4;
+        color[0] += source.data[sourceIndex] * weight;
+        color[1] += source.data[sourceIndex + 1] * weight;
+        color[2] += source.data[sourceIndex + 2] * weight;
+        color[3] += source.data[sourceIndex + 3] * weight;
+      }
+
+      target.data[targetIndex] = Math.round(color[0]);
+      target.data[targetIndex + 1] = Math.round(color[1]);
+      target.data[targetIndex + 2] = Math.round(color[2]);
+      target.data[targetIndex + 3] = Math.round(color[3]);
+    }
+  }
+  return target;
+}
+
+function ensureImageThumbnail(filepath) {
+  const thumbnailPath = `${filepath}.thumb.png`;
+  if (fs.existsSync(thumbnailPath)) return thumbnailPath;
+
+  try {
+    const stats = fs.statSync(filepath);
+    if (stats.size > MAX_THUMBNAIL_SOURCE_BYTES) return null;
+    const source = PNG.sync.read(fs.readFileSync(filepath));
+    if (source.width <= IMAGE_THUMBNAIL_MAX_SIDE && source.height <= IMAGE_THUMBNAIL_MAX_SIDE) {
+      return filepath;
+    }
+    const thumbnail = resizePngToMaxSide(source, IMAGE_THUMBNAIL_MAX_SIDE);
+    fs.writeFileSync(thumbnailPath, PNG.sync.write(thumbnail, { colorType: 6 }));
+    return thumbnailPath;
+  } catch {
+    // JPEG/WebP 和损坏图片暂时回退原图，不能影响历史记录正常打开。
+    return null;
+  }
 }
 
 function getJpegDimensionsFromBuffer(buffer) {

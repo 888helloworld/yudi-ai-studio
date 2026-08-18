@@ -372,6 +372,12 @@
         return false;
       }
     }
+    function getThumbnailImageUrl(url) {
+      if (!isProtectedUploadUrl(url)) return url;
+      const parsed = new URL(String(url || ''), window.location.origin);
+      parsed.searchParams.set('variant', 'thumb');
+      return parsed.href;
+    }
     function buildAssetFetchOptions(url) {
       const headers = isProtectedUploadUrl(url) && token ? { 'Authorization': 'Bearer ' + token } : {};
       return { headers, credentials: 'same-origin', cache: 'default' };
@@ -1956,7 +1962,7 @@
         const item = document.createElement('div');
         item.className = 'xi-image-card';
         const img = document.createElement('img');
-        setProtectedImageSource(img, url, `任务 ${task.index} 图片 ${index + 1}`);
+        setProtectedImageSource(img, getThumbnailImageUrl(url), `任务 ${task.index} 图片 ${index + 1}`);
         img.addEventListener('click', () => openImagePreview(url, task, index));
         const link = document.createElement('a');
         link.href = url;
