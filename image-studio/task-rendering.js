@@ -186,6 +186,7 @@
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
       updateBatchCountButtons();
+      sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
       });

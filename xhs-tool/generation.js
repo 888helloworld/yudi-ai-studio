@@ -131,7 +131,7 @@ async function generateImage() {
         prompt: prompt,
         ratio: selectedRatio
       });
-      loadServerHistory();
+      await loadServerHistory({ force: true });
     } else {
       updateTaskCard(taskId, { error: data.error || '生成失败' });
     }
@@ -185,7 +185,7 @@ async function generateCopy() {
         copyType: selectedCopyType,
         isRewrite: false
       });
-      loadServerHistory();
+      await loadServerHistory({ force: true });
     } else {
       updateTaskCard(taskId, { error: data.error || '生成失败' });
     }
@@ -280,7 +280,7 @@ async function generateBoth() {
     });
     
     // 刷新历史记录
-    await loadServerHistory();
+    await loadServerHistory({ force: true });
     
     document.getElementById('bothPrompt').value = '';
   } catch (err) {
@@ -332,7 +332,7 @@ async function rewriteCopy() {
         isRewrite: true
       });
       document.getElementById('rewriteInput').value = '';
-      loadServerHistory();
+      await loadServerHistory({ force: true });
     } else {
       updateTaskCard(taskId, { error: data.error || '改写失败' });
     }

@@ -11,6 +11,14 @@ const { buildXiXuHeaders, buildXiXuUrl, formatUpstreamError } = require('../serv
 const { saveUploadedSourceImages } = require('../utils/image-storage');
 const { formatBeijingDateTime, getRequiredEnv, sanitizeInput } = require('../utils/request-utils');
 
+function getVisionTimeoutMs() {
+  const raw = String(process.env.XI_XU_VISION_TIMEOUT_MS || '').trim();
+  if (!raw) return 180000;
+  const configured = Number(raw);
+  if (!Number.isFinite(configured)) return 180000;
+  return Math.min(600000, Math.max(30000, Math.round(configured)));
+}
+
 function failedHistoryContent({ file, reverseMode, previewUrl, startedAtMs, error }) {
   return JSON.stringify({
     status: 'failed',
@@ -46,7 +54,7 @@ function createReversePromptRouter({ authMiddleware, copyLimiter, upload, valida
     const file = req.file.originalname || 'image.png';
     const dataUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000);
+    const timeout = setTimeout(() => controller.abort(), getVisionTimeoutMs());
     const reverseMode = getReversePromptMode(sanitizeInput(req.body.reverseMode, 40));
     const historySource = sanitizeInput(req.body.historySource, 20) === 'xhs' ? 'xhs' : 'xi';
     const clientTaskId = sanitizeInput(req.body.clientTaskId, 120);
@@ -169,4 +177,4 @@ function createReversePromptRouter({ authMiddleware, copyLimiter, upload, valida
   return router;
 }
 
-module.exports = { createReversePromptRouter };
+module.exports = { createReversePromptRouter, getVisionTimeoutMs };

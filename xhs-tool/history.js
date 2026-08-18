@@ -82,7 +82,12 @@ async function loadUserStats() {
 
 async function loadServerHistory(options = {}) {
   if (!localStorage.getItem('token')) return;
-  if (historyFetchLoading) return;
+  if (historyFetchLoading) {
+    if (!options.force) return;
+    while (historyFetchLoading) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+  }
 
   if (options.force) {
     serverHistory = [];

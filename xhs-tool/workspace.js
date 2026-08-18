@@ -123,10 +123,14 @@ function showUserBar(user) {
 }
 
 function updatePoints(points) {
+  const normalizedPoints = Number(points) || 0;
   if (currentUser) {
-    currentUser.points = points;
-    document.getElementById('userPoints').textContent = `积分: ${points}`;
+    currentUser.points = normalizedPoints;
+    const userPoints = document.getElementById('userPoints');
+    if (userPoints) userPoints.textContent = `积分: ${normalizedPoints}`;
   }
+  const navPoints = document.getElementById('navPoints');
+  if (navPoints) navPoints.textContent = `${normalizedPoints} 积分`;
 }
 
 // =============================================
@@ -408,7 +412,7 @@ async function runXhsReversePrompt() {
     if (data.remainingPoints !== undefined) updatePoints(data.remainingPoints);
     clearXhsReverseFile();
     openReversePromptModal(data);
-    await loadServerHistory();
+    await loadServerHistory({ force: true });
     setXhsReverseStatus('Prompt 已生成，已保存到反推记录。', 'ok');
   } catch (err) {
     setXhsReverseStatus(err.message || '反推失败', 'error');

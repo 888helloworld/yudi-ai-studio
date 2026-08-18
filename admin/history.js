@@ -25,6 +25,45 @@
       }
     }
 
+    function getHistoryTypeLabel(type) {
+      const labels = { image: '图片', copy: '文案', both: '图文', reverse: '反推' };
+      return labels[type] || type || '未知';
+    }
+
+    function formatDuration(durationMs) {
+      const seconds = Math.max(0, Math.round(Number(durationMs || 0) / 1000));
+      if (seconds < 60) return `${seconds} 秒`;
+      return `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
+    }
+
+    function summarizeStructuredHistory(content) {
+      if (!content || typeof content !== 'object' || Array.isArray(content)) return '';
+      const statusLabels = { running: '进行中', done: '成功', failed: '失败' };
+      const parts = [];
+      if (content.status) parts.push(`状态：${statusLabels[content.status] || content.status}`);
+      if (content.model) parts.push(`模型：${content.model}`);
+      if (content.provider) parts.push(`供应商：${content.provider}`);
+      if (content.size) parts.push(`尺寸：${content.size}`);
+      const imageCount = content.image_count ?? content.imageCount ?? content.count;
+      if (imageCount !== undefined) parts.push(`数量：${imageCount}`);
+      if (content.duration_ms !== undefined) parts.push(`耗时：${formatDuration(content.duration_ms)}`);
+      if (content.error) parts.push(`错误：${content.error}`);
+      if (content.result?.title) parts.push(`结果：${content.result.title}`);
+      return parts.join(' · ');
+    }
+
+    function formatHistoryContent(history) {
+      const raw = String(history.content || '').trim();
+      if (raw && (raw.startsWith('{') || raw.startsWith('['))) {
+        try {
+          const summary = summarizeStructuredHistory(JSON.parse(raw));
+          if (summary) return summary;
+        } catch {}
+      }
+      const fallback = raw || history.prompt || history.image_url || '';
+      return fallback.length > 500 ? `${fallback.slice(0, 500)}…` : fallback;
+    }
+
     function renderHistory(list) {
       const container = document.getElementById('historyList');
       if (list.length === 0) {
@@ -35,11 +74,11 @@
         <div class="admin-history-item">
           <div class="meta">
             <span>用户：${escapeHtml(h.username || '未知')}</span>
-            <span>类型：${h.type === 'image' ? '图片' : (h.type === 'copy' ? '文案' : '图文')}</span>
+            <span>类型：${escapeHtml(getHistoryTypeLabel(h.type))}</span>
             <span>消耗：${escapeHtml(h.cost_points || 0)} 积分</span>
             <span>时间：${escapeHtml(h.created_at)}</span>
           </div>
-          <div class="content">${escapeHtml(h.content || h.prompt || h.image_url || '')}</div>
+          <div class="content">${escapeHtml(formatHistoryContent(h))}</div>
           <div style="margin-top:10px;">
             <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="AdminApp.deleteHistoryRecord(${Number(h.id)})">删除</button>
           </div>
