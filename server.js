@@ -790,36 +790,16 @@ function resizePngToMaxSide(source, maxSide) {
 
   const target = new PNG({ width: targetWidth, height: targetHeight });
   for (let y = 0; y < targetHeight; y += 1) {
-    const srcY = (y + 0.5) / scale - 0.5;
-    const y0 = Math.max(0, Math.floor(srcY));
-    const y1 = Math.min(source.height - 1, y0 + 1);
-    const wy = srcY - y0;
+    const sourceY = Math.min(source.height - 1, Math.floor(y / scale));
 
     for (let x = 0; x < targetWidth; x += 1) {
-      const srcX = (x + 0.5) / scale - 0.5;
-      const x0 = Math.max(0, Math.floor(srcX));
-      const x1 = Math.min(source.width - 1, x0 + 1);
-      const wx = srcX - x0;
+      const sourceX = Math.min(source.width - 1, Math.floor(x / scale));
+      const sourceIndex = (sourceY * source.width + sourceX) * 4;
       const targetIndex = (y * targetWidth + x) * 4;
-      const color = [0, 0, 0, 0];
-
-      for (const [sampleX, sampleY, weight] of [
-        [x0, y0, (1 - wx) * (1 - wy)],
-        [x1, y0, wx * (1 - wy)],
-        [x0, y1, (1 - wx) * wy],
-        [x1, y1, wx * wy]
-      ]) {
-        const sourceIndex = (sampleY * source.width + sampleX) * 4;
-        color[0] += source.data[sourceIndex] * weight;
-        color[1] += source.data[sourceIndex + 1] * weight;
-        color[2] += source.data[sourceIndex + 2] * weight;
-        color[3] += source.data[sourceIndex + 3] * weight;
-      }
-
-      target.data[targetIndex] = Math.round(color[0]);
-      target.data[targetIndex + 1] = Math.round(color[1]);
-      target.data[targetIndex + 2] = Math.round(color[2]);
-      target.data[targetIndex + 3] = Math.round(color[3]);
+      target.data[targetIndex] = source.data[sourceIndex];
+      target.data[targetIndex + 1] = source.data[sourceIndex + 1];
+      target.data[targetIndex + 2] = source.data[sourceIndex + 2];
+      target.data[targetIndex + 3] = source.data[sourceIndex + 3];
     }
   }
   return target;
@@ -1014,6 +994,7 @@ function saveUploadedSourceImages(files, prefix = 'xixu_source') {
     const filename = `${prefix}_${Date.now()}_${index + 1}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
     const filepath = path.join(UPLOAD_DIR, filename);
     fs.writeFileSync(filepath, file.buffer);
+    setImmediate(() => ensureImageThumbnail(filepath));
     return `/uploads/${filename}`;
   });
 }

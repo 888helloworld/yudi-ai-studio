@@ -363,6 +363,7 @@
   <script>
     const token = localStorage.getItem('token');
     const protectedImageUrlCache = new Map();
+    const protectedImagePromiseCache = new Map();
 
     function isProtectedUploadUrl(url) {
       try {
@@ -395,10 +396,20 @@
       if (protectedImageUrlCache.has(cacheKey)) {
         return protectedImageUrlCache.get(cacheKey);
       }
-      const blob = await fetchAssetBlob(url);
-      const objectUrl = URL.createObjectURL(blob);
-      protectedImageUrlCache.set(cacheKey, objectUrl);
-      return objectUrl;
+      if (protectedImagePromiseCache.has(cacheKey)) {
+        return protectedImagePromiseCache.get(cacheKey);
+      }
+      const pending = fetchAssetBlob(url)
+        .then((blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          protectedImageUrlCache.set(cacheKey, objectUrl);
+          return objectUrl;
+        })
+        .finally(() => {
+          protectedImagePromiseCache.delete(cacheKey);
+        });
+      protectedImagePromiseCache.set(cacheKey, pending);
+      return pending;
     }
 
     const protectedImageObserver = typeof IntersectionObserver === 'function'
@@ -1837,7 +1848,7 @@
       if (urls.length > 0) {
         urls.forEach((url, index) => {
           const img = document.createElement('img');
-          setProtectedImageSource(img, url, `参考图 ${index + 1}`);
+          setProtectedImageSource(img, getThumbnailImageUrl(url), `参考图 ${index + 1}`);
           img.title = names[index] || `参考图 ${index + 1}`;
           img.addEventListener('click', () => {
             openStandaloneImagePreview(url, names[index] || `任务 #${task.index} · 参考图 ${index + 1}`, `xi_source_${task.index}_${index + 1}.png`);
