@@ -78,13 +78,14 @@ const PUBLIC_STATIC_FILES = new Set([
 ]);
 const XHS_TOOL_FILES = new Set([
   'state.js', 'image-utils.js', 'workspace.js', 'generation.js', 'task-ui.js',
-  'history.js', 'modals.js', 'bootstrap.js'
+  'history-reverse.js', 'history-card.js', 'history.js', 'modals.js', 'bootstrap.js'
 ]);
 const IMAGE_STUDIO_FILES = new Set([
   'state.js', 'auth-history.js', 'detail-suite.js', 'task-queue.js', 'task-rendering.js',
-  'source-images.js', 'reverse-prompt.js', 'utilities.js', 'bootstrap.js'
+  'image-actions.js', 'source-images.js', 'reverse-prompt.js', 'utilities.js', 'bootstrap.js'
 ]);
 const FRONTEND_FILES = new Set(['shared-utils.js']);
+const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'bootstrap.js']);
 const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
 const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 
@@ -116,6 +117,12 @@ app.get('/frontend/:filename', (req, res, next) => {
   if (filename !== req.params.filename || !FRONTEND_FILES.has(filename)) return next();
   res.setHeader('Cache-Control', PUBLIC_STATIC_CACHE_CONTROL);
   return res.sendFile(path.join(__dirname, 'frontend', filename), { cacheControl: false }, next);
+});
+app.get('/admin/:filename', (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  if (filename !== req.params.filename || !ADMIN_FILES.has(filename)) return next();
+  res.setHeader('Cache-Control', PUBLIC_STATIC_CACHE_CONTROL);
+  return res.sendFile(path.join(__dirname, 'admin', filename), { cacheControl: false }, next);
 });
 
 const limiterMessage = { error: '请求过于频繁，请稍后再试' };

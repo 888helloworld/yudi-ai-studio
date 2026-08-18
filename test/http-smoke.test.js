@@ -74,9 +74,21 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     assert.equal(toolScript.status, 200);
     assert.match(await toolScript.text(), /initToolScript/);
 
+    const historyCardScript = await fetch(`${baseUrl}/xhs-tool/history-card.js`);
+    assert.equal(historyCardScript.status, 200);
+    assert.match(await historyCardScript.text(), /createHistoryCard/);
+
     const studioScript = await fetch(`${baseUrl}/image-studio/bootstrap.js`);
     assert.equal(studioScript.status, 200);
     assert.match(await studioScript.text(), /refreshPromptPlaceholder/);
+
+    const imageActionsScript = await fetch(`${baseUrl}/image-studio/image-actions.js`);
+    assert.equal(imageActionsScript.status, 200);
+    assert.match(await imageActionsScript.text(), /openImagePreview/);
+
+    const adminBootstrap = await fetch(`${baseUrl}/admin/bootstrap.js`);
+    assert.equal(adminBootstrap.status, 200);
+    assert.match(await adminBootstrap.text(), /checkAdmin/);
 
     const missingToolScript = await fetch(`${baseUrl}/xhs-tool/not-allowed.js`);
     assert.equal(missingToolScript.status, 404);

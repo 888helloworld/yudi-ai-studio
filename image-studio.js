@@ -5,6 +5,7 @@
     'detail-suite.js',
     'task-queue.js',
     'task-rendering.js',
+    'image-actions.js',
     'source-images.js',
     'reverse-prompt.js',
     'utilities.js',

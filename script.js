@@ -5,6 +5,8 @@
     'workspace.js',
     'generation.js',
     'task-ui.js',
+    'history-reverse.js',
+    'history-card.js',
     'history.js',
     'modals.js',
     'bootstrap.js'

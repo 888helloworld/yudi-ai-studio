@@ -241,9 +241,9 @@
           <p style="color:var(--text-muted);font-size:12px;margin-top:2px;">包含图片、文案、图文一体的生成记录和积分消耗</p>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="admin-btn admin-btn-sm" onclick="loadChartData(7)" style="background:var(--neon-pink);color:#fff;border:none;">7天</button>
-          <button class="admin-btn admin-btn-sm" onclick="loadChartData(14)">14天</button>
-          <button class="admin-btn admin-btn-sm" onclick="loadChartData(30)">30天</button>
+                    <button class="admin-btn admin-btn-sm" onclick="AdminApp.loadChartData(7)" style="background:var(--neon-pink);color:#fff;border:none;">7天</button>
+                    <button class="admin-btn admin-btn-sm" onclick="AdminApp.loadChartData(14)">14天</button>
+                    <button class="admin-btn admin-btn-sm" onclick="AdminApp.loadChartData(30)">30天</button>
         </div>
       </div>
       <div id="chartContainer" style="background:var(--bg-surface);border-radius:var(--radius-md);padding:20px;min-height:300px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">
@@ -296,7 +296,7 @@
             <option value="1">已使用</option>
           </select>
         </div>
-        <button class="admin-btn admin-btn-primary" onclick="generateCdkeys()" style="height:42px;">生成卡密</button>
+                    <button class="admin-btn admin-btn-primary" onclick="AdminApp.generateCdkeys()" style="height:42px;">生成卡密</button>
       </div>
 
       <div class="cdkey-stats" id="cdkeyStats">
@@ -374,8 +374,8 @@
       <input type="number" id="rechargeAmount" placeholder="充值积分数量">
       <input type="text" id="rechargeDesc" placeholder="备注（可选）">
       <div class="admin-modal-actions">
-        <button class="admin-btn" onclick="closeRechargeModal()">取消</button>
-        <button class="admin-btn admin-btn-primary" onclick="confirmRecharge()">确认充值</button>
+                <button class="admin-btn" onclick="AdminApp.closeRechargeModal()">取消</button>
+                <button class="admin-btn admin-btn-primary" onclick="AdminApp.confirmRecharge()">确认充值</button>
       </div>
     </div>
   </div>
@@ -389,8 +389,8 @@
       <input type="password" id="newPassword" placeholder="新密码（至少8位，需含大小写字母+数字）" style="margin-bottom:8px;">
       <input type="password" id="confirmPassword" placeholder="确认新密码">
       <div class="admin-modal-actions">
-        <button class="admin-btn" onclick="closeResetPasswordModal()">取消</button>
-        <button class="admin-btn admin-btn-primary" onclick="confirmResetPassword()">确认重置</button>
+                <button class="admin-btn" onclick="AdminApp.closeResetPasswordModal()">取消</button>
+                <button class="admin-btn admin-btn-primary" onclick="AdminApp.confirmResetPassword()">确认重置</button>
       </div>
     </div>
   </div>
