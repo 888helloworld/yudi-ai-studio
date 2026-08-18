@@ -980,6 +980,7 @@
 
     function taskFromServerJob(job) {
       const index = Number(job.historyId) || ++state.taskSeq;
+      const submittedAtMs = parseServerJobSubmittedAtMs(job);
       return {
         id: 'job-' + job.id,
         jobId: job.id,
@@ -1000,8 +1001,8 @@
         sourceDimensions: job.sourceDimensions || [],
         outputDimensions: job.outputDimensions || [],
         createdAt: job.createdAt || '',
-        createdAtMs: job.createdAtMs || 0,
-        submittedAtMs: job.createdAtMs || 0,
+        createdAtMs: submittedAtMs,
+        submittedAtMs,
         startedAtMs: job.startedAtMs || 0,
         finishedAtMs: job.finishedAtMs || 0,
         durationMs: job.durationMs || 0,
@@ -1090,6 +1091,34 @@
         minute: '2-digit',
         hour12: false
       }).format(input).replace(/\//g, '-');
+    }
+
+    function parseServerJobSubmittedAtMs(job) {
+      const createdAtMs = Number(job?.createdAtMs || 0);
+      if (Number.isFinite(createdAtMs) && createdAtMs > 0) return createdAtMs;
+
+      const createdAt = String(job?.createdAt || '').trim();
+      const timeMatch = createdAt.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (!timeMatch) return 0;
+
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date()).reduce((result, part) => {
+        if (part.type !== 'literal') result[part.type] = part.value;
+        return result;
+      }, {});
+      const beijingLocalMs = Date.UTC(
+        Number(parts.year),
+        Number(parts.month) - 1,
+        Number(parts.day),
+        Number(timeMatch[1]),
+        Number(timeMatch[2]),
+        Number(timeMatch[3] || 0)
+      );
+      return beijingLocalMs - (8 * 60 * 60 * 1000);
     }
 
     function setDetailSuiteStatus(text, type) {
@@ -1446,8 +1475,9 @@
         const previousSourceSignature = (task.sourcePreviewUrls || []).join('|');
         const previousError = task.error || '';
         task.status = job.status;
-        task.createdAtMs = job.createdAtMs || task.createdAtMs || 0;
-        task.submittedAtMs = job.createdAtMs || task.submittedAtMs || task.createdAtMs || 0;
+        const submittedAtMs = parseServerJobSubmittedAtMs(job);
+        task.createdAtMs = submittedAtMs || task.createdAtMs || 0;
+        task.submittedAtMs = submittedAtMs || task.submittedAtMs || task.createdAtMs || 0;
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
         task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
         task.durationMs = job.durationMs || task.durationMs || 0;
@@ -1517,8 +1547,9 @@
           task.status = recoveredJob.status || 'running';
           task.error = '';
           task.startedAtMs = recoveredJob.startedAtMs || task.startedAtMs;
-          task.createdAtMs = recoveredJob.createdAtMs || task.createdAtMs || 0;
-          task.submittedAtMs = recoveredJob.createdAtMs || task.submittedAtMs || task.createdAtMs || 0;
+          const submittedAtMs = parseServerJobSubmittedAtMs(recoveredJob);
+          task.createdAtMs = submittedAtMs || task.createdAtMs || 0;
+          task.submittedAtMs = submittedAtMs || task.submittedAtMs || task.createdAtMs || 0;
           task.durationMs = recoveredJob.durationMs || task.durationMs || 0;
           updateTaskCard(task);
           pollServerJob(task, resolve, reject);
