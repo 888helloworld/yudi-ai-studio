@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { PNG } = require('pngjs');
+const { POINTS, POINT_PACKAGES } = require('./config/points');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -115,7 +116,6 @@ const xiImageLimiter = rateLimit({
 const copyLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请求过于频繁，请稍后再试' } });
 const authLimiter = rateLimit({ windowMs: 60000, max: 20, message: { error: '请求过于频繁，请稍后再试' } });
 const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: { error: '请求过于频繁，请稍后再试' } });
-const registerLimiter = rateLimit({ windowMs: 3600000, max: 5, message: { error: '注册过于频繁，请稍后再试' } });
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 const XI_XU_IMAGE_TIMEOUT_MS = Number(process.env.XI_XU_IMAGE_TIMEOUT_MS || TEN_MINUTES_MS);
 const XI_XU_GENERATE_TIMEOUT_MS = Number(process.env.XI_XU_GENERATE_TIMEOUT_MS || TEN_MINUTES_MS);
@@ -622,34 +622,7 @@ const { authMiddleware, optionalAuth } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
-
-// 积分配置
-const POINTS = { image: 10, copy: 5, rewrite: 3, both: 15 };
-
-function chargePoints(userId, amount, description) {
-  const result = db.deductPoints(userId, amount, description);
-  if (!result.success) {
-    const error = new Error('积分不足，请充值');
-    error.statusCode = 400;
-    throw error;
-  }
-  return result.balance;
-}
-
-function refundPoints(userId, amount, description) {
-  if (amount > 0) db.rechargePoints(userId, amount, description);
-  return db.getUserPoints(userId);
-}
-
-// 积分商品配置（支付用）
-const POINT_PACKAGES = [
-  { points: 100, price: 9.9, label: '100积分' },
-  { points: 300, price: 24.9, label: '300积分' },
-  { points: 500, price: 39.9, label: '500积分' },
-  { points: 1000, price: 69.9, label: '1000积分' },
-  { points: 3000, price: 179.9, label: '3000积分' },
-  { points: 5000, price: 269.9, label: '5000积分' },
-];
+const { chargePoints, refundPoints } = require('./services/point-service');
 
 // API路由
 app.use('/api/auth', authLimiter, authRoutes);
@@ -1569,11 +1542,6 @@ app.get('/api/user/info', optionalAuth, (req, res) => {
   else res.json({ loggedIn: false });
 });
 
-app.get('/api/user/points', optionalAuth, (req, res) => {
-  if (req.user) res.json({ points: db.getUserPoints(req.userId) });
-  else res.json({ points: 0 });
-});
-
 // =============================================
 // 支付功能
 // =============================================
@@ -2072,8 +2040,10 @@ function repairXiRecoveryInitializationFailures() {
   }
 }
 
-repairXiRecoveryInitializationFailures();
-recoverStaleXiJobHistories();
+if (require.main === module) {
+  repairXiRecoveryInitializationFailures();
+  recoverStaleXiJobHistories();
+}
 
 async function callArkGenerateForXiJob({ prompt, size, count }) {
   if (!ARK_FALLBACK_ENABLED) throw new Error('图片服务暂时不可用，请稍后重试。本次没有生成图片，积分已退回。');
@@ -3199,10 +3169,14 @@ app.post('/api/cdkey/redeem', authMiddleware, (req, res) => {
 
 app.use(handleRequestError);
 
-const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || '127.0.0.1';
-app.listen(PORT, HOST, () => {
-  console.log(`服务已启动：http://${HOST}:${PORT}`);
-  console.log('Administrator account is ready.');
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3001;
+  const HOST = process.env.HOST || '127.0.0.1';
+  app.listen(PORT, HOST, () => {
+    console.log(`服务已启动：http://${HOST}:${PORT}`);
+    console.log('Administrator account is ready.');
+  });
+}
+
+module.exports = app;
 

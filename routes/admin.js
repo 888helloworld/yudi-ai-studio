@@ -2,23 +2,10 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const { POINT_PACKAGES } = require('../config/points');
 const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats, paySuccess, closePaymentOrder } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
-
-function parsePositiveInt(value, fallback, max) {
-  const parsed = parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
-  return Math.min(parsed, max);
-}
-
-const DEFAULT_POINT_PACKAGES = [
-  { points: 100, price: 9.9, label: '100积分' },
-  { points: 300, price: 24.9, label: '300积分' },
-  { points: 500, price: 39.9, label: '500积分' },
-  { points: 1000, price: 69.9, label: '1000积分' },
-  { points: 3000, price: 179.9, label: '3000积分' },
-  { points: 5000, price: 269.9, label: '5000积分' },
-];
+const { parsePositiveInt } = require('../utils/pagination');
 
 function hasEnv(name) {
   return Boolean(String(process.env[name] || '').trim());
@@ -105,7 +92,7 @@ function getPaymentIntegrationStatus(req) {
     mockPaymentTokenConfigured: hasEnv('MOCK_PAYMENT_TOKEN'),
     publicBaseUrlConfigured: hasEnv('PUBLIC_BASE_URL'),
     publicBaseUrl: publicOrigin,
-    packages: DEFAULT_POINT_PACKAGES,
+    packages: POINT_PACKAGES,
     channels
   };
 }

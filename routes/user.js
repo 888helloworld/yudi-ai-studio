@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
+const { parsePositiveInt } = require('../utils/pagination');
 const {
   getUserPoints,
   getPointLogs,
@@ -16,12 +16,6 @@ const {
   getUserUnusedInviteCount
 } = require('../db');
 const { authMiddleware } = require('../middleware/auth');
-
-function parsePositiveInt(value, fallback, max) {
-  const parsed = parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
-  return Math.min(parsed, max);
-}
 
 // 获取积分余额
 router.get('/points', authMiddleware, (req, res) => {
