@@ -9,6 +9,29 @@ const path = require('path');
 const crypto = require('crypto');
 const { PNG } = require('pngjs');
 const { POINTS, POINT_PACKAGES } = require('./config/points');
+const {
+  UPLOAD_DIR,
+  downloadAndSaveImage,
+  ensureImageThumbnail,
+  getImageDimensionsFromBuffer,
+  getLocalImageDimensions,
+  getLocalUploadPath,
+  getUploadedImageDimensions,
+  saveDataUrlImage,
+  saveUploadedSourceImages
+} = require('./utils/image-storage');
+const {
+  buildAmazonMainImagePrompt,
+  buildAmazonMainImageVariationPrompt,
+  buildImageVariationPrompt,
+  buildReferenceBoardPrompt,
+  buildXiEditPrompt,
+  buildXiGeneratePrompt,
+  buildXhsImagePrompt,
+  getSourceImageFilename,
+  getSourceImageLabel,
+  normalizeSourceImageFilename
+} = require('./services/prompt-service');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -589,22 +612,6 @@ function withTimeout(promise, timeoutMs, message, onTimeout) {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }
 
-function buildXhsImagePrompt(prompt, ratio) {
-  const ratioHint = ratio === '3:4'
-    ? '竖版封面构图，适合小红书信息流首图'
-    : ratio === '4:3'
-      ? '横版场景构图，适合合集或详情配图'
-      : '方形封面构图，主体醒目，适合小红书首图';
-
-  return `小红书爆款图片风格和框架：
-${ratioHint}
-高点击率封面图，真实生活方式场景，主体清晰居中，画面干净高级，明亮自然光，色彩有记忆点但不过度饱和，视觉层级明确，留有适合标题排版的干净区域，商业种草感，高质感摄影，细节精致，适合手机端浏览。
-避免杂乱背景，避免低清晰度，避免水印，避免乱码文字，避免夸张变形。
-
-用户需求：
-${prompt}`.trim();
-}
-
 function handleRequestError(err, req, res, next) {
   if (res.headersSent) return next(err);
   if (err.code === 'LIMIT_FILE_SIZE') {
@@ -636,12 +643,6 @@ const SIZE_MAP = {
   '4:3': { width: 2560, height: 1920 },
 };
 
-// 图片本地存储
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-const MAX_SAVED_IMAGE_BYTES = 80 * 1024 * 1024;
-const MAX_THUMBNAIL_SOURCE_BYTES = 25 * 1024 * 1024;
-const IMAGE_THUMBNAIL_MAX_SIDE = 480;
 app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
   const filename = path.basename(req.params.filename || '');
   if (!filename || filename !== req.params.filename) {
@@ -670,195 +671,6 @@ app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
     : filepath;
   return res.sendFile(responseFilepath, { cacheControl: false }, next);
 });
-
-// SSRF 防护：拒绝下载内网/环回/链路本地地址，防止被诱导访问内网或云元数据接口
-function isInternalHost(hostname) {
-  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
-  if (!host) return true;
-  if (host === 'localhost' || host === '::1' || host === '::' || host === '0.0.0.0') return true;
-  if (host.endsWith('.localhost')) return true;
-  if (host.startsWith('127.')) return true;
-  if (host.startsWith('10.')) return true;
-  if (host.startsWith('192.168.')) return true;
-  if (host.startsWith('169.254.')) return true; // 链路本地 + 云元数据 169.254.169.254
-  const match = host.match(/^172\.(\d+)\./);
-  if (match && Number(match[1]) >= 16 && Number(match[1]) <= 31) return true;
-  // IPv6 私有/唯一本地 fc00::/7、链路本地 fe80::/10
-  if (/^(fc|fd|fe8|fe9|fea|feb)/.test(host)) return true;
-  return false;
-}
-
-function assertSafeExternalUrl(rawUrl) {
-  let parsed;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    throw new Error('图片地址格式无效');
-  }
-  if (!/^https?:$/.test(parsed.protocol)) {
-    throw new Error('仅允许 http/https 图片地址');
-  }
-  if (isInternalHost(parsed.hostname)) {
-    throw new Error('禁止下载内网图片地址');
-  }
-}
-
-async function downloadAndSaveImage(url, prefix) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
-  try {
-    assertSafeExternalUrl(url);
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error(`下载失败: ${response.status}`);
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.startsWith('image/')) throw new Error('下载内容不是图片');
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > MAX_SAVED_IMAGE_BYTES) throw new Error('图片文件过大');
-    const ext = url.includes('.jpg') || url.includes('jpeg') ? '.jpg' : '.png';
-    const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-    fs.writeFileSync(filepath, buffer);
-    return `/uploads/${filename}`;
-  } catch (err) {
-    console.error('图片下载失败:', err.message);
-    return url; // 保底返回原始 URL
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function getImageExtension(mimeType, fallback = '.png') {
-  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') return '.jpg';
-  if (mimeType === 'image/webp') return '.webp';
-  if (mimeType === 'image/png') return '.png';
-  if (mimeType === 'image/gif') return '.gif';
-  return fallback;
-}
-
-function saveDataUrlImage(dataUrl, prefix) {
-  const match = String(dataUrl || '').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/);
-  if (!match) return null;
-  const mimeType = match[1];
-  const buffer = Buffer.from(match[2], 'base64');
-  if (!buffer.length || buffer.length > MAX_SAVED_IMAGE_BYTES) return null;
-  const ext = getImageExtension(mimeType);
-  const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
-  const filepath = path.join(UPLOAD_DIR, filename);
-  fs.writeFileSync(filepath, buffer);
-  return `/uploads/${filename}`;
-}
-
-function getLocalUploadPath(url) {
-  const match = String(url || '').match(/^\/uploads\/([^/?#]+)$/);
-  if (!match) return null;
-  const filename = path.basename(match[1]);
-  return path.join(UPLOAD_DIR, filename);
-}
-
-function resizePngToMaxSide(source, maxSide) {
-  const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
-  const targetWidth = Math.max(1, Math.round(source.width * scale));
-  const targetHeight = Math.max(1, Math.round(source.height * scale));
-  if (targetWidth === source.width && targetHeight === source.height) return source;
-
-  const target = new PNG({ width: targetWidth, height: targetHeight });
-  for (let y = 0; y < targetHeight; y += 1) {
-    const sourceY = Math.min(source.height - 1, Math.floor(y / scale));
-
-    for (let x = 0; x < targetWidth; x += 1) {
-      const sourceX = Math.min(source.width - 1, Math.floor(x / scale));
-      const sourceIndex = (sourceY * source.width + sourceX) * 4;
-      const targetIndex = (y * targetWidth + x) * 4;
-      target.data[targetIndex] = source.data[sourceIndex];
-      target.data[targetIndex + 1] = source.data[sourceIndex + 1];
-      target.data[targetIndex + 2] = source.data[sourceIndex + 2];
-      target.data[targetIndex + 3] = source.data[sourceIndex + 3];
-    }
-  }
-  return target;
-}
-
-function ensureImageThumbnail(filepath) {
-  const thumbnailPath = `${filepath}.thumb.png`;
-  if (fs.existsSync(thumbnailPath)) return thumbnailPath;
-
-  try {
-    const stats = fs.statSync(filepath);
-    if (stats.size > MAX_THUMBNAIL_SOURCE_BYTES) return null;
-    const source = PNG.sync.read(fs.readFileSync(filepath));
-    if (source.width <= IMAGE_THUMBNAIL_MAX_SIDE && source.height <= IMAGE_THUMBNAIL_MAX_SIDE) {
-      return filepath;
-    }
-    const thumbnail = resizePngToMaxSide(source, IMAGE_THUMBNAIL_MAX_SIDE);
-    fs.writeFileSync(thumbnailPath, PNG.sync.write(thumbnail, { colorType: 6 }));
-    return thumbnailPath;
-  } catch {
-    // JPEG/WebP 和损坏图片暂时回退原图，不能影响历史记录正常打开。
-    return null;
-  }
-}
-
-function getJpegDimensionsFromBuffer(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
-  let offset = 2;
-  while (offset + 9 < buffer.length) {
-    if (buffer[offset] !== 0xff) return null;
-    const marker = buffer[offset + 1];
-    const length = buffer.readUInt16BE(offset + 2);
-    if (length < 2) return null;
-    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
-      const height = buffer.readUInt16BE(offset + 5);
-      const width = buffer.readUInt16BE(offset + 7);
-      return { width, height, size: `${width}x${height}` };
-    }
-    offset += 2 + length;
-  }
-  return null;
-}
-
-function getWebpDimensionsFromBuffer(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 30) return null;
-  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return null;
-  const chunk = buffer.toString('ascii', 12, 16);
-  if (chunk === 'VP8X' && buffer.length >= 30) {
-    const width = 1 + buffer.readUIntLE(24, 3);
-    const height = 1 + buffer.readUIntLE(27, 3);
-    return { width, height, size: `${width}x${height}` };
-  }
-  if (chunk === 'VP8 ' && buffer.length >= 30) {
-    const width = buffer.readUInt16LE(26) & 0x3fff;
-    const height = buffer.readUInt16LE(28) & 0x3fff;
-    return { width, height, size: `${width}x${height}` };
-  }
-  if (chunk === 'VP8L' && buffer.length >= 25) {
-    const bits = buffer.readUInt32LE(21);
-    const width = (bits & 0x3fff) + 1;
-    const height = ((bits >> 14) & 0x3fff) + 1;
-    return { width, height, size: `${width}x${height}` };
-  }
-  return null;
-}
-
-function getImageDimensionsFromBuffer(buffer) {
-  try {
-    const png = PNG.sync.read(buffer);
-    return { width: png.width, height: png.height, size: `${png.width}x${png.height}` };
-  } catch {
-    return getJpegDimensionsFromBuffer(buffer) || getWebpDimensionsFromBuffer(buffer);
-  }
-}
-
-function getLocalImageDimensions(localUrls) {
-  return (localUrls || []).map((url) => {
-    const filepath = getLocalUploadPath(url);
-    if (!filepath || !fs.existsSync(filepath)) return null;
-    return getImageDimensionsFromBuffer(fs.readFileSync(filepath));
-  });
-}
-
-function getUploadedImageDimensions(files) {
-  return (files || []).map((file) => getImageDimensionsFromBuffer(file.buffer));
-}
 
 function resizePngContainOnWhite(source, targetWidth, targetHeight) {
   const target = new PNG({ width: targetWidth, height: targetHeight });
@@ -959,74 +771,6 @@ async function saveXiXuImages(imageUrls, prefix, expectedSize = '') {
   if (XI_XU_NORMALIZE_OUTPUT_SIZE) normalizeSavedImageDimensions(saved, expectedSize);
   assertSavedImageDimensions(saved, expectedSize);
   return saved;
-}
-
-function saveUploadedSourceImages(files, prefix = 'xixu_source') {
-  return (files || []).map((file, index) => {
-    const ext = getImageExtension(file.mimetype, '.bin').replace(/^\./, '');
-    const filename = `${prefix}_${Date.now()}_${index + 1}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-    fs.writeFileSync(filepath, file.buffer);
-    setImmediate(() => ensureImageThumbnail(filepath));
-    return `/uploads/${filename}`;
-  });
-}
-
-function buildImageVariationPrompt(prompt, index, total) {
-  if (total <= 1) return prompt;
-  return `${prompt}
-
-这是同一主题的第 ${index + 1}/${total} 张图，请生成不同角度、不同构图或不同细节版本，保持同一小红书爆款风格，但避免和其他图片重复。`;
-}
-
-function getXiCanvasLabel(size = '') {
-  const [width, height] = String(size || '').split('x').map(Number);
-  if (!width || !height) return '目标画布';
-  if (width === height) return '方图画布';
-  if (width > height) return width / height > 1.7 ? '16:9 横图画布' : '横图画布';
-  return height / width > 1.7 ? '竖图画布' : '竖图画布';
-}
-
-function buildXiGeneratePrompt(prompt, size = '') {
-  if (!size) return prompt;
-  return [
-    `最终图片目标画布是 ${size}，这是${getXiCanvasLabel(size)}。`,
-    `请严格按照 ${size} 的画布比例构图，不要输出其他比例，不要把横图生成竖图或把竖图生成方图。`,
-    '主体必须完整出现在画面内，四周保留安全留白；不要加边框，不要加文字，不要加水印。',
-    `用户要求：${prompt}`
-  ].join('\n\n');
-}
-
-function buildAmazonMainImagePrompt(prompt, ratio) {
-  const ratioHint = ratio === '3:4'
-    ? '竖版主图候选，主体占画面 85% 以上，适合电商移动端首屏浏览'
-    : ratio === '4:3'
-      ? '横版主图候选，主体完整、结构清晰，适合商品详情或组合展示'
-      : '方形主图候选，主体居中、识别度高，适合 Amazon 1:1 主图';
-
-  return `你现在在生成亚马逊产品主图候选，要求是专业棚拍产品主图，不是场景海报，也不是营销海报。
-${ratioHint}
-
-硬性要求：
-- 纯白背景，接近 RGB 255,255,255 / #FFFFFF
-- 只突出商品本体，主体占画面 85% 以上
-- 画面干净，无文字、无水印、无角标、无价格、无促销信息、无比较图标
-- 不要添加多余道具、装饰物、手势、人物、复杂场景
-- 保持真实产品比例、颜色、材质、logo 位置和包装结构
-- 光线、阴影、色温统一，像同一套棚拍系统拍出来的主图
-- 如果一次生成多张，请保持同一视觉风格，只允许角度、裁切、产品在画面中的位置轻微变化，不要改变整体风格
-
-用户产品信息：
-${prompt}`.trim();
-}
-
-function buildAmazonMainImageVariationPrompt(prompt, index, total) {
-  if (total <= 1) return prompt;
-  return `${prompt}
-
-这是同一商品的第 ${index + 1}/${total} 张亚马逊主图候选。
-请严格保持同一白底、同一棚拍光线、同一阴影方向、同一色温、同一材质表现和同一产品识别方式，只做轻微的拍摄角度、裁切或主体居中方式变化。
-不要改变产品本体、包装、颜色、logo、配件或任何结构细节。`;
 }
 
 async function generateArkImageUrls(baseUrl, apiKey, requestBody, count, buildVariationPrompt = buildImageVariationPrompt) {
@@ -2093,51 +1837,6 @@ async function callArkEditFallbackForXiJob({ prompt, size, count, sourceFiles, p
   }, count);
   if (remoteUrls.length === 0) throw new Error('备用改图服务未返回图片');
   return saveXiXuImages(remoteUrls, `xixu_ark_edit_fallback_${size.replace('x', '_')}`, size);
-}
-
-function getSourceImageFilename(index) {
-  return `图${index + 1}.png`;
-}
-
-function normalizeSourceImageFilename(name, index) {
-  const match = /图\s*([1-4])/i.exec(String(name || ''));
-  return match ? `图${match[1]}.png` : getSourceImageFilename(index);
-}
-
-function getSourceImageLabel(file, index) {
-  const match = /图\s*([1-4])/i.exec(String(file?.originalname || ''));
-  return match ? `图${match[1]}` : `图${index + 1}`;
-}
-
-function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
-  const sourceList = sourceFiles
-    .map((file, index) => `${getSourceImageLabel(file, index)}：${file?.originalname || getSourceImageFilename(index)}，第 ${index + 1} 个原始参考图`)
-    .join('\n');
-  return [
-    '请严格按参考图编号理解图片，不要只参考第一张图。',
-    sourceFiles.length > 1 ? '本次还会额外提供一张 reference_board.png 编号参考板；参考板里的数字就是图1、图2、图3、图4的编号，请用它确认每张图的对应关系。' : '',
-    sourceList ? `参考图说明：\n${sourceList}` : '',
-    '如果用户提到“图1、图2、图3、图4”，必须对应上面的编号说明和参考板数字，不要按任意顺序重新解释。',
-    '需要把用户指定的各参考图元素组合到同一张最终图片里；不要遗漏用户点名的参考图元素。',
-    size ? `最终图片目标画布是 ${size}，请按这个画布比例重新构图。` : '',
-    '必须让主体完整出现在画面内，四周保留安全留白；不要裁掉脚尖、脚跟、袜口、袜身、产品边缘或用户要求保留的细节。',
-    '如果原参考图主体贴边，请主动缩小构图并补足干净背景，而不是沿用贴边裁切。',
-    '保持最终画面自然真实、构图完整，不要生成拼贴图或多宫格。',
-    `用户要求：${prompt}`
-  ].filter(Boolean).join('\n\n');
-}
-
-function buildReferenceBoardPrompt(prompt, sourceFiles = []) {
-  const sourceList = sourceFiles
-    .map((file, index) => `${getSourceImageLabel(file, index)}：${file?.originalname || getSourceImageFilename(index)}`)
-    .join('\n');
-  return [
-    `上传图片是一张参考板，里面按数字标出了 ${sourceFiles.length} 张原始参考图。`,
-    '请按参考板左上角的数字理解图1、图2、图3、图4，不要把参考板当成拼贴成品。',
-    sourceList ? `编号说明：\n${sourceList}` : '',
-    '需要把用户指定的元素组合成一张自然完整的新图；最终结果不要保留参考板、数字角标或多宫格布局。',
-    `用户要求：${prompt}`
-  ].filter(Boolean).join('\n\n');
 }
 
 function summarizeImageFiles(files = []) {
