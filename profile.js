@@ -30,7 +30,7 @@
         document.getElementById('statCopies').textContent = data.totalCopies ?? 0;
         document.getElementById('statCost').textContent = data.totalCost ?? 0;
         document.getElementById('statRecharge').textContent = data.totalRecharge ?? 0;
-      } catch (e) { 
+      } catch (e) {
         console.error('统计加载失败:', e);
         document.getElementById('statsContainer').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">网络错误</div>';
       }
