@@ -870,6 +870,7 @@
             outputDimensions: meta.output_dimensions || [],
             createdAt: formatHistoryTime(item.created_at),
             createdAtMs,
+            submittedAtMs: createdAtMs,
             startedAtMs: 0,
             finishedAtMs: createdAtMs,
             durationMs: meta.duration_ms || 0,
@@ -999,6 +1000,8 @@
         sourceDimensions: job.sourceDimensions || [],
         outputDimensions: job.outputDimensions || [],
         createdAt: job.createdAt || '',
+        createdAtMs: job.createdAtMs || 0,
+        submittedAtMs: job.createdAtMs || 0,
         startedAtMs: job.startedAtMs || 0,
         finishedAtMs: job.finishedAtMs || 0,
         durationMs: job.durationMs || 0,
@@ -1222,6 +1225,7 @@
           },
           createdAt: formatBeijingTime(),
           createdAtMs,
+          submittedAtMs: createdAtMs,
           startedAtMs: 0,
           finishedAtMs: 0,
           imageUrls: [],
@@ -1275,6 +1279,7 @@
           sourceFileNames: selectedSources.map((source) => getSourceImageName(source.slotIndex ?? 0)),
           createdAt: formatBeijingTime(),
           createdAtMs,
+          submittedAtMs: createdAtMs,
           startedAtMs: 0,
           finishedAtMs: 0,
           imageUrls: [],
@@ -1441,6 +1446,8 @@
         const previousSourceSignature = (task.sourcePreviewUrls || []).join('|');
         const previousError = task.error || '';
         task.status = job.status;
+        task.createdAtMs = job.createdAtMs || task.createdAtMs || 0;
+        task.submittedAtMs = job.createdAtMs || task.submittedAtMs || task.createdAtMs || 0;
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
         task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
         task.durationMs = job.durationMs || task.durationMs || 0;
@@ -1510,6 +1517,8 @@
           task.status = recoveredJob.status || 'running';
           task.error = '';
           task.startedAtMs = recoveredJob.startedAtMs || task.startedAtMs;
+          task.createdAtMs = recoveredJob.createdAtMs || task.createdAtMs || 0;
+          task.submittedAtMs = recoveredJob.createdAtMs || task.submittedAtMs || task.createdAtMs || 0;
           task.durationMs = recoveredJob.durationMs || task.durationMs || 0;
           updateTaskCard(task);
           pollServerJob(task, resolve, reject);
@@ -1611,12 +1620,12 @@
     }
 
     function orderTasksForDisplay() {
+      const submittedTimeValue = (task) => Number(task.submittedAtMs || task.createdAtMs || 0);
       const sequenceValue = (task) => Number(task.historyId || task.index || 0);
-      const timeValue = (task) => Number(task.createdAtMs || task.finishedAtMs || task.startedAtMs || 0);
       state.tasks.sort((a, b) => {
-        const sequenceDiff = sequenceValue(b) - sequenceValue(a);
-        if (sequenceDiff !== 0) return sequenceDiff;
-        return timeValue(b) - timeValue(a);
+        const submittedDiff = submittedTimeValue(b) - submittedTimeValue(a);
+        if (submittedDiff !== 0) return submittedDiff;
+        return sequenceValue(b) - sequenceValue(a);
       });
     }
 

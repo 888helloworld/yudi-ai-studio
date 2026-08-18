@@ -1743,6 +1743,7 @@ function serializeXiJob(job) {
     sourcePreviewUrls: job.sourcePreviewUrls || [],
     sourceDimensions: job.sourceDimensions || [],
     outputDimensions: job.outputDimensions || [],
+    createdAtMs: job.createdAtMs,
     createdAt: formatBeijingDateTime(new Date(job.createdAtMs), { date: false }),
     startedAtMs: job.startedAtMs,
     finishedAtMs: job.finishedAtMs,
