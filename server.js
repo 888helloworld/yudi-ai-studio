@@ -107,13 +107,19 @@ const PUBLIC_FILES = new Set([
   'terms.html',
   'content-policy.html',
   'image-studio.html',
+  'reverse-prompt.html',
   'xi-image.html',
   'favicon.svg',
   'favicon.ico',
   'style.css',
   'script.js',
   'shared-shell.js',
-  'image-studio.js'
+  'image-studio.js',
+  'admin.js',
+  'profile.js',
+  'reverse-prompt.js',
+  'login.js',
+  'register.js'
 ]);
 
 const PUBLIC_STATIC_FILES = new Set([
@@ -121,6 +127,11 @@ const PUBLIC_STATIC_FILES = new Set([
   'script.js',
   'shared-shell.js',
   'image-studio.js',
+  'admin.js',
+  'profile.js',
+  'reverse-prompt.js',
+  'login.js',
+  'register.js',
   'favicon.svg',
   'favicon.ico'
 ]);
