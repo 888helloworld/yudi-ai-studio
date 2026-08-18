@@ -47,6 +47,14 @@ const {
   parseJsonLike
 } = require('./services/reverse-prompt-service');
 const { createXiJobManager } = require('./services/xi-job-manager');
+const { getPublicStats } = require('./repositories/stats-repository');
+const { getUserPaymentOrder } = require('./repositories/payment-repository');
+const {
+  getRecoverableXiJobHistories,
+  getXiHistoriesWithoutImages,
+  updateXiHistoryContent,
+  updateXiHistoryState
+} = require('./repositories/xi-history-repository');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -1038,10 +1046,7 @@ app.get('/api/packages', (req, res) => {
 });
 
 app.get('/api/public/stats', (req, res) => {
-  const totalUsers = db.db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
-  const totalRecords = db.db.prepare('SELECT COUNT(*) AS count FROM history').get().count;
-  const totalCopies = db.db.prepare("SELECT COUNT(*) AS count FROM history WHERE type IN ('copy', 'both') AND content IS NOT NULL AND TRIM(content) <> ''").get().count;
-  res.json({ totalUsers, totalRecords, totalCopies });
+  res.json(getPublicStats());
 });
 
 const xiJobManager = createXiJobManager({
@@ -1083,23 +1088,14 @@ function buildXiRecoveredSourceFiles(meta, mode) {
 function markXiHistoryRecoveryFailed(row, meta, reason) {
   meta.status = 'failed';
   meta.error = `服务重启后任务恢复失败，积分未退回：${reason}`;
-  db.db.prepare('UPDATE history SET content = ?, image_url = ? WHERE id = ?')
-    .run(JSON.stringify(meta), null, row.id);
+  updateXiHistoryState(row.id, JSON.stringify(meta), null);
 }
 
 function recoverStaleXiJobHistories() {
   let recovered = 0;
   let blocked = 0;
   try {
-    const rows = db.db.prepare(`
-      SELECT id, user_id, sub_type, content, prompt, ratio, cost_points, created_at
-      FROM history
-      WHERE type = 'image'
-        AND sub_type IN ('xi-edit', 'xi-generate')
-        AND (image_url IS NULL OR image_url = '')
-      ORDER BY id DESC
-      LIMIT 500
-    `).all();
+    const rows = getRecoverableXiJobHistories(500);
     for (const row of rows) {
       let meta = {};
       try { meta = JSON.parse(row.content || '{}'); } catch {}
@@ -1142,8 +1138,7 @@ function recoverStaleXiJobHistories() {
         };
         meta.status = 'queued';
         meta.error = '';
-        db.db.prepare('UPDATE history SET content = ?, image_url = NULL WHERE id = ?')
-          .run(JSON.stringify(meta), row.id);
+        updateXiHistoryState(row.id, JSON.stringify(meta), null);
         xiJobManager.restoreJob(job);
         recovered += 1;
       } catch (err) {
@@ -1310,13 +1305,7 @@ function assertXiImageSizeSupported(size) {
 function repairXiRecoveryInitializationFailures() {
   const brokenMessage = "服务重启后任务恢复失败，积分已自动退回：Cannot access 'XI_IMAGE_SIZE_ALIASES' before initialization";
   try {
-    const rows = db.db.prepare(`
-      SELECT id, content
-      FROM history
-      WHERE type = 'image'
-        AND sub_type IN ('xi-edit', 'xi-generate')
-        AND image_url IS NULL
-    `).all();
+    const rows = getXiHistoriesWithoutImages();
     let repaired = 0;
     for (const row of rows) {
       let meta = {};
@@ -1324,7 +1313,7 @@ function repairXiRecoveryInitializationFailures() {
       if (meta.status !== 'failed' || meta.error !== brokenMessage) continue;
       meta.status = 'queued';
       meta.error = '';
-      db.db.prepare('UPDATE history SET content = ? WHERE id = ?').run(JSON.stringify(meta), row.id);
+      updateXiHistoryContent(row.id, JSON.stringify(meta));
       repaired += 1;
     }
     if (repaired > 0) console.log(`已修复 ${repaired} 条初始化顺序导致的任务，准备重新生成`);
@@ -2347,7 +2336,7 @@ app.post('/api/payment/callback', authMiddleware, async (req, res) => {
   const { orderNo, tradeNo } = req.body;
   if (!orderNo) return res.status(400).json({ error: '参数不完整' });
 
-  const order = db.db.prepare('SELECT * FROM payment_orders WHERE order_no = ? AND user_id = ?').get(orderNo, req.userId);
+  const order = getUserPaymentOrder(req.userId, orderNo);
   if (!order) return res.status(404).json({ error: '订单不存在' });
   
   const result = db.paySuccess(orderNo, tradeNo || ('MOCK' + Date.now()));
@@ -2368,7 +2357,7 @@ app.post('/api/payment/wxpay/notify', async (req, res) => {
 
 // 查询订单状态
 app.get('/api/payment/status/:orderNo', authMiddleware, (req, res) => {
-  const order = db.db.prepare('SELECT * FROM payment_orders WHERE order_no = ? AND user_id = ?').get(req.params.orderNo, req.userId);
+  const order = getUserPaymentOrder(req.userId, req.params.orderNo);
   if (!order) return res.status(404).json({ error: '订单不存在' });
   res.json({ order, balance: db.getUserPoints(req.userId) });
 });

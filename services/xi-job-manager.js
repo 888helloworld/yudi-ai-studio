@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { updateXiJobHistory: persistXiJobHistory } = require('../repositories/xi-history-repository');
 
 const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
 
@@ -63,17 +64,13 @@ function createXiJobManager({ db, maxActiveJobs, formatDateTime, runJob, getMode
   function updateJobHistory(job, status, imageUrls, costPoints, extra = {}) {
     if (!job.historyId) return false;
     try {
-      db.db.prepare(`
-        UPDATE history
-        SET content = ?, image_url = ?, cost_points = ?
-        WHERE id = ? AND user_id = ?
-      `).run(
-        buildJobHistoryContent(job, status, extra),
-        imageUrls && imageUrls.length ? JSON.stringify(imageUrls) : null,
-        costPoints,
-        job.historyId,
-        job.userId
-      );
+      persistXiJobHistory({
+        historyId: job.historyId,
+        userId: job.userId,
+        content: buildJobHistoryContent(job, status, extra),
+        imageUrls,
+        costPoints
+      });
       return true;
     } catch (historyErr) {
       console.error('更新 gpt-image-2 任务历史失败:', historyErr);

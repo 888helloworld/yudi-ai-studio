@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check db.js && node --check script.js && node --check shared-shell.js && node --check image-studio.js && node --check admin.js && node --check profile.js && node --check reverse-prompt.js && node --check login.js && node --check register.js && node --check routes/auth.js && node --check routes/admin.js && node --check routes/user.js && node --check middleware/auth.js && node --check config/points.js && node --check utils/pagination.js && node --check utils/image-storage.js && node --check services/point-service.js && node --check services/prompt-service.js && node --check services/copy-service.js && node --check services/reverse-prompt-service.js && node --check services/xi-job-manager.js"
+    "check": "node scripts/check-js.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
