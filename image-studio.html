@@ -2494,7 +2494,7 @@
 
     async function prepareSourceImage(file) {
       const keepOriginal = file.size <= MAX_SOURCE_IMAGE_BYTES
-        && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type);
+        && file.type === 'image/png';
       if (keepOriginal) return file;
 
       if (file.size > MAX_SOURCE_INPUT_BYTES) {
@@ -2503,29 +2503,15 @@
 
       const dataUrl = await readFileAsDataUrl(file);
       const image = await loadImage(dataUrl);
-      const maxSides = [4096, 3072, 2560, 2048];
-      const preferredType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      const maxSides = [4096, 3072, 2560, 2048, 1792, 1536];
 
       for (const maxSide of maxSides) {
         const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
         const width = Math.max(1, Math.round(image.naturalWidth * scale));
         const height = Math.max(1, Math.round(image.naturalHeight * scale));
-        const blob = await drawImageToBlob(image, width, height, preferredType, preferredType === 'image/jpeg' ? 0.94 : undefined);
+        const blob = await drawImageToBlob(image, width, height, 'image/png');
         if (blob && blob.size <= TARGET_PREPARED_SOURCE_BYTES) {
-          const extension = preferredType === 'image/png' ? 'png' : 'jpg';
-          return new File([blob], normalizePreparedImageName(file.name, extension), { type: preferredType });
-        }
-      }
-
-      for (const maxSide of maxSides) {
-        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-        const width = Math.max(1, Math.round(image.naturalWidth * scale));
-        const height = Math.max(1, Math.round(image.naturalHeight * scale));
-        for (const quality of [0.92, 0.88, 0.82]) {
-          const blob = await drawImageToBlob(image, width, height, 'image/jpeg', quality);
-          if (blob && blob.size <= TARGET_PREPARED_SOURCE_BYTES) {
-            return new File([blob], normalizePreparedImageName(file.name, 'jpg'), { type: 'image/jpeg' });
-          }
+          return new File([blob], normalizePreparedImageName(file.name, 'png'), { type: 'image/png' });
         }
       }
 
@@ -2550,7 +2536,7 @@
       });
     }
 
-    function drawImageToBlob(image, width, height, type, quality) {
+    function drawImageToBlob(image, width, height, type) {
       return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -2560,7 +2546,7 @@
         canvas.toBlob((blob) => {
           if (blob) resolve(blob);
           else reject(new Error('图片压缩失败'));
-        }, type, quality);
+        }, type);
       });
     }
 

@@ -2550,8 +2550,8 @@ app.post('/api/xi-image/jobs/edit', xiImageLimiter, authMiddleware, upload.array
   if (sourceFiles.some((file) => file.mimetype !== 'image/png')) {
     return res.status(400).json({ error: '改图原图需为 PNG 格式，请刷新页面后重新上传，页面会自动转换' });
   }
-  if (sourceFiles.some((file) => (file.buffer?.length || 0) > 5 * 1024 * 1024)) {
-    return res.status(400).json({ error: '改图原图处理后仍超过 5MB，请换一张更小的参考图' });
+  if (sourceFiles.some((file) => (file.buffer?.length || 0) > 20 * 1024 * 1024)) {
+    return res.status(400).json({ error: '改图原图处理后仍超过 20MB，请换一张更小的参考图' });
   }
   const costPoints = POINTS.image * count;
   try {
@@ -2807,8 +2807,8 @@ app.post('/api/xi-image/edit', xiImageLimiter, authMiddleware, upload.array('ima
   if (sourceFiles.some((file) => file.mimetype !== 'image/png')) {
     return res.status(400).json({ error: '改图原图需为 PNG 格式，请刷新页面后重新上传，页面会自动转换' });
   }
-  if (sourceFiles.some((file) => (file.buffer?.length || 0) > 5 * 1024 * 1024)) {
-    return res.status(400).json({ error: '改图原图处理后仍超过 5MB，请换一张更小的参考图' });
+  if (sourceFiles.some((file) => (file.buffer?.length || 0) > 20 * 1024 * 1024)) {
+    return res.status(400).json({ error: '改图原图处理后仍超过 20MB，请换一张更小的参考图' });
   }
   const totalCost = POINTS.image * count;
   let charged = false;
