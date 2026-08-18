@@ -46,6 +46,7 @@ const {
   normalizeReversePromptResult,
   parseJsonLike
 } = require('./services/reverse-prompt-service');
+const { createXiJobManager } = require('./services/xi-job-manager');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -512,7 +513,7 @@ app.get('/uploads/:filename', authMiddleware, (req, res, next) => {
     return res.status(400).json({ error: '图片路径无效' });
   }
 
-  if (req.user?.role !== 'admin' && !canUserAccessUpload(req.userId, filename)) {
+  if (req.user?.role !== 'admin' && !xiJobManager.canUserAccessUpload(req.userId, filename)) {
     return res.status(403).json({ error: '无权访问这张图片' });
   }
 
@@ -1043,215 +1044,23 @@ app.get('/api/public/stats', (req, res) => {
   res.json({ totalUsers, totalRecords, totalCopies });
 });
 
-const xiJobs = new Map();
+const xiJobManager = createXiJobManager({
+  db,
+  maxActiveJobs: XI_XU_MAX_ACTIVE_JOBS,
+  formatDateTime: formatBeijingDateTime,
+  runJob: (job) => runXiJob(job),
+  getModel: () => process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2'
+});
 
-function localUploadMatchesFilename(url, filename) {
-  return String(url || '') === `/uploads/${filename}`;
-}
-
-function canUserAccessUpload(userId, filename) {
-  if (db.userOwnsUpload(userId, filename)) return true;
-  for (const job of xiJobs.values()) {
-    if (job.userId !== userId) continue;
-    const outputUrls = Array.isArray(job.imageUrls) ? job.imageUrls : [];
-    const sourceUrls = Array.isArray(job.sourcePreviewUrls) ? job.sourcePreviewUrls : [];
-    if ([...outputUrls, ...sourceUrls].some((url) => localUploadMatchesFilename(url, filename))) {
-      return true;
-    }
-  }
-  return false;
-}
-const xiJobQueue = [];
-let xiActiveJobs = 0;
-
-function getXiJobHistorySubType(job) {
-  return job.mode === 'edit' ? 'xi-edit' : 'xi-generate';
-}
-
-function buildXiJobHistoryContent(job, status, extra = {}) {
-  const durationMs = job.finishedAtMs && job.startedAtMs ? job.finishedAtMs - job.startedAtMs : 0;
-  return JSON.stringify({
-    status,
-    model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
-    provider: job.provider || '',
-    fallback_reason: job.fallbackReason || '',
-    quality: job.quality,
-    requested_quality: job.upstreamMeta?.requested_quality || job.quality,
-    actual_quality: job.upstreamMeta?.actual_quality || '',
-    requested_size: job.upstreamMeta?.requested_size || job.size,
-    actual_size: job.upstreamMeta?.actual_size || '',
-    billing_output_tokens: job.upstreamMeta?.billing_output_tokens || 0,
-    usage_output_tokens: job.upstreamMeta?.usage_output_tokens || 0,
-    billing_mode: job.upstreamMeta?.billing_mode || '',
-    billing_note: job.upstreamMeta?.billing_note || '',
-    image_parameter_mode: job.upstreamMeta?.image_parameter_mode || '',
-    image_parameter_note: job.upstreamMeta?.image_parameter_note || '',
-    size_source: job.upstreamMeta?.size_source || '',
-    size_parameter_affects_output_guarantee: job.upstreamMeta?.size_parameter_affects_output_guarantee,
-    quality_parameter_affects_output_guarantee: job.upstreamMeta?.quality_parameter_affects_output_guarantee,
-    count: job.count,
-    sources: job.sourceFileNames || [],
-    source_urls: job.sourcePreviewUrls || [],
-    source_dimensions: job.sourceDimensions || [],
-    output_dimensions: job.outputDimensions || [],
-    duration_ms: durationMs,
-    error: job.error || '',
-    refunded_points: job.refundedPoints || 0,
-    ...extra
-  });
-}
-
-function createXiJobHistory(job) {
-  try {
-    job.historyId = db.addHistory(job.userId, 'image', {
-      sub_type: getXiJobHistorySubType(job),
-      image_url: null,
-      content: buildXiJobHistoryContent(job, 'queued'),
-      prompt: job.prompt,
-      ratio: job.size,
-      cost_points: job.costPoints || 0
-    });
-  } catch (historyErr) {
-    console.error('创建 gpt-image-2 任务历史失败:', historyErr);
-  }
-}
-
-function updateXiJobHistory(job, status, imageUrls, costPoints, extra = {}) {
-  if (!job.historyId) return false;
-  try {
-    db.db.prepare(`
-      UPDATE history
-      SET content = ?, image_url = ?, cost_points = ?
-      WHERE id = ? AND user_id = ?
-    `).run(
-      buildXiJobHistoryContent(job, status, extra),
-      imageUrls && imageUrls.length ? JSON.stringify(imageUrls) : null,
-      costPoints,
-      job.historyId,
-      job.userId
-    );
-    return true;
-  } catch (historyErr) {
-    console.error('更新 gpt-image-2 任务历史失败:', historyErr);
-    return false;
-  }
-}
-
-function createXiJob(userId, payload) {
-  const id = `xijob_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-  const now = Date.now();
-  const job = {
-    id,
-    userId,
-    status: 'queued',
-    createdAtMs: now,
-    startedAtMs: 0,
-    finishedAtMs: 0,
-    imageUrls: [],
-    error: '',
-    historyId: null,
-    ...payload
-  };
-  createXiJobHistory(job);
-  xiJobs.set(id, job);
-  enqueueXiJob(job);
-  return job;
-}
-
-function enqueueXiJob(job) {
-  xiJobQueue.push(job);
-  scheduleXiJobs();
-}
-
-function scheduleXiJobs() {
-  while (xiActiveJobs < XI_XU_MAX_ACTIVE_JOBS && xiJobQueue.length > 0) {
-    const job = xiJobQueue.shift();
-    if (!job || !xiJobs.has(job.id) || job.status !== 'queued') continue;
-    xiActiveJobs += 1;
-    runXiJob(job)
-      .catch((err) => {
-        console.error('gpt-image-2 任务运行异常:', err);
-      })
-      .finally(() => {
-        xiActiveJobs = Math.max(0, xiActiveJobs - 1);
-        scheduleXiJobs();
-      });
-  }
-}
-
-function serializeXiJob(job) {
-  const durationMs = job.startedAtMs
-    ? ((job.finishedAtMs || (job.status === 'running' ? Date.now() : 0)) - job.startedAtMs)
-    : 0;
-  return {
-    id: job.id,
-    status: job.status,
-    mode: job.mode,
-    prompt: job.prompt,
-    size: job.size,
-    count: job.count,
-    quality: job.quality,
-    upstreamMeta: job.upstreamMeta || {},
-    sourceFileNames: job.sourceFileNames || [],
-    sourcePreviewUrls: job.sourcePreviewUrls || [],
-    sourceDimensions: job.sourceDimensions || [],
-    outputDimensions: job.outputDimensions || [],
-    createdAtMs: job.createdAtMs,
-    createdAt: formatBeijingDateTime(new Date(job.createdAtMs), { date: false }),
-    startedAtMs: job.startedAtMs,
-    finishedAtMs: job.finishedAtMs,
-    durationMs: Math.max(durationMs, 0),
-    imageUrls: job.imageUrls || [],
-    imageUrl: job.imageUrls?.[0] || '',
-    error: job.error || '',
-    historyId: job.historyId,
-    costPoints: job.costPoints || 0,
-    refundedPoints: job.refundedPoints || 0,
-    provider: job.provider || '',
-    fallbackReason: job.fallbackReason || '',
-    remainingPoints: db.getUserPoints(job.userId),
-    model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2'
-  };
-}
-
-function saveXiJobFailureHistory(job) {
-  const durationMs = job.finishedAtMs && job.startedAtMs ? job.finishedAtMs - job.startedAtMs : 0;
-  if (updateXiJobHistory(job, 'failed', [], 0, {
-    duration_ms: durationMs,
-    error: job.error || '任务失败',
-    refunded_points: job.refundedPoints || 0
-  })) {
-    return job.historyId;
-  }
-  try {
-    job.historyId = db.addHistory(job.userId, 'image', {
-      sub_type: getXiJobHistorySubType(job),
-      image_url: null,
-      content: JSON.stringify({
-        status: 'failed',
-        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
-        provider: job.provider || '',
-        fallback_reason: job.fallbackReason || '',
-        quality: job.quality,
-        count: job.count,
-        sources: job.sourceFileNames || [],
-        source_urls: job.sourcePreviewUrls || [],
-        source_dimensions: job.sourceDimensions || [],
-        output_dimensions: job.outputDimensions || [],
-        duration_ms: durationMs,
-        error: job.error || '任务失败',
-        refunded_points: job.refundedPoints || 0
-      }),
-      prompt: job.prompt,
-      ratio: job.size,
-      cost_points: 0
-    });
-  } catch (historyErr) {
-    console.error('保存 gpt-image-2 失败历史失败:', historyErr);
-  }
-  return job.historyId;
-}
-
+const {
+  buildJobHistoryContent: buildXiJobHistoryContent,
+  createJob: createXiJob,
+  getHistorySubType: getXiJobHistorySubType,
+  saveFailureHistory: saveXiJobFailureHistory,
+  scheduleCleanup: scheduleXiJobCleanup,
+  serializeJob: serializeXiJob,
+  updateJobHistory: updateXiJobHistory
+} = xiJobManager;
 function buildXiRecoveredSourceFiles(meta, mode) {
   if (mode !== 'edit') return [];
   const sourceUrls = Array.isArray(meta.source_urls) ? meta.source_urls : [];
@@ -1335,8 +1144,7 @@ function recoverStaleXiJobHistories() {
         meta.error = '';
         db.db.prepare('UPDATE history SET content = ?, image_url = NULL WHERE id = ?')
           .run(JSON.stringify(meta), row.id);
-        xiJobs.set(job.id, job);
-        enqueueXiJob(job);
+        xiJobManager.restoreJob(job);
         recovered += 1;
       } catch (err) {
         markXiHistoryRecoveryFailed(row, meta, err.message || '任务参数无效');
@@ -1939,34 +1747,13 @@ async function runXiJob(job) {
   scheduleXiJobCleanup(job);
 }
 
-const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
-const xiJobCleanupTimers = new Map();
-
-function scheduleXiJobCleanup(job) {
-  // 立即清空大块 buffer，减轻内存压力（历史记录里只存了 URL，不依赖 buffer）
-  if (Array.isArray(job.sourceFiles)) {
-    job.sourceFiles.forEach((file) => { if (file) file.buffer = null; });
-  }
-  // 已有定时器则不重复设置
-  if (xiJobCleanupTimers.has(job.id)) return;
-  const timer = setTimeout(() => {
-    xiJobs.delete(job.id);
-    xiJobCleanupTimers.delete(job.id);
-  }, XI_JOB_CLEANUP_DELAY_MS);
-  xiJobCleanupTimers.set(job.id, timer);
-}
-
 app.get('/api/xi-image/jobs', authMiddleware, (req, res) => {
-  const jobs = Array.from(xiJobs.values())
-    .filter((job) => job.userId === req.userId && ['queued', 'running'].includes(job.status))
-    .sort((a, b) => b.createdAtMs - a.createdAtMs)
-    .map(serializeXiJob);
-  res.json({ jobs });
+  res.json({ jobs: xiJobManager.listActiveJobsForUser(req.userId) });
 });
 
 app.get('/api/xi-image/jobs/:id', authMiddleware, (req, res) => {
-  const job = xiJobs.get(req.params.id);
-  if (!job || job.userId !== req.userId) return res.status(404).json({ error: '任务不存在' });
+  const job = xiJobManager.getUserJob(req.userId, req.params.id);
+  if (!job) return res.status(404).json({ error: '任务不存在' });
   res.json({ job: serializeXiJob(job) });
 });
 
