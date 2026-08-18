@@ -112,13 +112,15 @@ const PUBLIC_FILES = new Set([
   'favicon.ico',
   'style.css',
   'script.js',
-  'shared-shell.js'
+  'shared-shell.js',
+  'image-studio.js'
 ]);
 
 const PUBLIC_STATIC_FILES = new Set([
   'style.css',
   'script.js',
   'shared-shell.js',
+  'image-studio.js',
   'favicon.svg',
   'favicon.ico'
 ]);
