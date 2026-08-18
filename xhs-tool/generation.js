@@ -288,7 +288,7 @@ async function generateBoth() {
   }
 }
 
-window.generateBoth = generateBoth;
+XhsTool.generateBoth = generateBoth;
 
 async function rewriteCopy() {
   if (!localStorage.getItem('token')) {
@@ -340,4 +340,3 @@ async function rewriteCopy() {
     updateTaskCard(taskId, { error: '请求失败：' + err.message });
   }
 }
-

@@ -1,3 +1,5 @@
+const XhsTool = window.XhsTool = window.XhsTool || {};
+
 // =============================================
 // 鍏ㄥ眬鐘舵€?// =============================================
 let serverHistory = [];
@@ -35,7 +37,18 @@ const REVERSE_TEMPLATE_HINTS = {
   structured: '按主体、背景、构图、镜头、光线、颜色、材质、风格、细节和画质关键词结构化拆图。'
 };
 
+const xhsToolState = {};
+Object.defineProperties(xhsToolState, {
+  serverHistory: { get: () => serverHistory, set: (value) => { serverHistory = value; } },
+  activeTasks: { get: () => activeTasks, set: (value) => { activeTasks = value; } },
+  selectedRatio: { get: () => selectedRatio, set: (value) => { selectedRatio = value; } },
+  selectedCopyType: { get: () => selectedCopyType, set: (value) => { selectedCopyType = value; } },
+  activePresets: { get: () => activePresets },
+  pageSize: { get: () => pageSize, set: (value) => { pageSize = value; } },
+  currentUser: { get: () => currentUser, set: (value) => { currentUser = value; } }
+});
+XhsTool.state = xhsToolState;
+
 // =============================================
 // 宸ュ叿鍑芥暟
 // =============================================
-

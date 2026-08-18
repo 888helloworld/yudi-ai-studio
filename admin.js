@@ -650,12 +650,6 @@
       window.location.href = 'login.html';
     });
 
-    function escapeHtml(value) {
-      const div = document.createElement('div');
-      div.textContent = value == null ? '' : String(value);
-      return div.innerHTML;
-    }
-
     function escapeJsString(value) {
       return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }

@@ -19,7 +19,7 @@ function initXhsToolTabs() {
   const panels = Array.from(document.querySelectorAll('[data-xhs-panel]'));
   if (!tabs.length || !panels.length) return;
 
-  window.switchXhsTool = function(tool) {
+XhsTool.switchTool = function(tool) {
     const nextTool = tabs.some((tab) => tab.dataset.xhsTool === tool) ? tool : 'image';
     tabs.forEach(tab => {
       const active = tab.dataset.xhsTool === nextTool;
@@ -35,9 +35,9 @@ function initXhsToolTabs() {
 
   tabs.forEach(tab => {
     tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
-    tab.addEventListener('click', () => window.switchXhsTool(tab.dataset.xhsTool));
+    tab.addEventListener('click', () => XhsTool.switchTool(tab.dataset.xhsTool));
   });
-  window.switchXhsTool(sessionStorage.getItem(XHS_ACTIVE_TOOL_KEY) || 'image');
+  XhsTool.switchTool(sessionStorage.getItem(XHS_ACTIVE_TOOL_KEY) || 'image');
 }
 
 function updateXhsHistoryView(tool) {
@@ -242,22 +242,12 @@ function initDropZone() {
     if (referencePreviewUrl) URL.revokeObjectURL(referencePreviewUrl);
     const url = URL.createObjectURL(file);
     referencePreviewUrl = url;
-    previewRef.innerHTML = `<img src="${url}" alt="参考图"><button class="remove-ref" onclick="removeRef()">×</button>`;
+  previewRef.innerHTML = `<img src="${url}" alt="参考图"><button class="remove-ref" onclick="XhsTool.removeReference()">×</button>`;
     dropHint.style.display = 'none';
   }
 }
 
-function getImageFileFromClipboard(clipboardData) {
-  const items = Array.from(clipboardData?.items || []);
-  for (const item of items) {
-    if (item.kind === 'file' && item.type.startsWith('image/')) {
-      return item.getAsFile();
-    }
-  }
-  return null;
-}
-
-window.removeRef = function() {
+XhsTool.removeReference = function() {
   const previewRef = document.getElementById('previewRef');
   const dropHint = document.getElementById('dropHint');
   const referenceInput = document.getElementById('referenceImage');
@@ -431,4 +421,3 @@ function setXhsReverseStatus(text, type) {
   status.textContent = text || '';
   status.className = 'xhs-reverse-status' + (type ? ' ' + type : '');
 }
-

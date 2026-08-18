@@ -14,6 +14,7 @@ process.env.JWT_SECRET = 'test-jwt-secret-at-least-16-characters';
 
 const api = require('../db');
 const { db } = require('../database');
+const templateRepository = require('../repositories/template-repository');
 
 function removeTestDatabase() {
   for (const suffix of ['', '-shm', '-wal']) {
@@ -31,6 +32,13 @@ function runDatabaseWorker(action, values) {
       result = api.redeemCdkey(process.env.TEST_CODE, Number(process.env.TEST_USER_ID));
     } else if (process.env.TEST_ACTION === 'pay') {
       result = api.paySuccess(process.env.TEST_ORDER_NO, process.env.TEST_TRADE_NO);
+    } else if (process.env.TEST_ACTION === 'template') {
+      const templates = require('./repositories/template-repository');
+      result = templates.saveTemplate(Number(process.env.TEST_USER_ID), {
+        name: process.env.TEST_TEMPLATE_NAME,
+        type: 'copy',
+        content: process.env.TEST_TEMPLATE_CONTENT
+      });
     } else {
       throw new Error('unknown action');
     }
@@ -108,6 +116,18 @@ test('积分、卡密、支付和历史记录保持原子与幂等', async () =>
   ]);
   assert.equal(concurrentPayments.every((result) => result.success), true);
   assert.equal(api.getUserPoints(user.id), 1050);
+
+  await runDatabaseWorker('template', {
+    TEST_USER_ID: String(user.id),
+    TEST_TEMPLATE_NAME: '跨进程模板',
+    TEST_TEMPLATE_CONTENT: '模板内容会保存到 SQLite'
+  });
+  assert.equal(templateRepository.getTemplates(user.id, 'copy')[0].content, '模板内容会保存到 SQLite');
+
+  const disposableUser = api.createUser('template_delete_user', 'TemplateDelete123');
+  templateRepository.saveTemplate(disposableUser.id, { name: '待删除', type: 'copy', content: '随用户删除' });
+  assert.equal(api.deleteUser(disposableUser.id), true);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM templates WHERE user_id = ?').get(disposableUser.id).count, 0);
 
   const historyId = api.addHistory(user.id, 'image', {
     image_url: JSON.stringify(['/uploads/a.png', '/uploads/b.png']),

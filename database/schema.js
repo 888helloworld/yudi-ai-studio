@@ -79,6 +79,20 @@ function initDatabase(db) {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, name, type),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_history_client_task ON history(user_id, client_task_id)');
@@ -86,6 +100,7 @@ function initDatabase(db) {
   db.exec('CREATE INDEX IF NOT EXISTS idx_cdkeys_code ON cdkeys(code)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_payment_orders_user ON payment_orders(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_payment_orders_status ON payment_orders(status)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_templates_user_type ON templates(user_id, type)');
 
   const adminExists = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
   if (!adminExists) {

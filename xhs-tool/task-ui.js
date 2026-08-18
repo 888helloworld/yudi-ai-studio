@@ -54,7 +54,7 @@ function updateTaskCard(taskId, data) {
     const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
     const encodedPrompt = encodeURIComponent(data.prompt || '');
     const actionsHtml = imageUrls.length
-      ? `<button class="task-btn" onclick="downloadImagesFromEncoded('${encodedImageUrls}', decodeURIComponent('${encodedPrompt}'), '${escapeJsString(data.ratio || '1:1')}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
+      ? `<button class="task-btn" onclick="XhsTool.downloadImagesFromEncoded('${encodedImageUrls}', decodeURIComponent('${encodedPrompt}'), '${escapeJsString(data.ratio || '1:1')}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
       : '';
     body.innerHTML = `
       <div class="task-image-grid">${imageHtml}</div>
@@ -76,7 +76,7 @@ function updateTaskCard(taskId, data) {
       <div class="task-copy">${escapeHtml(data.copy)}</div>
       <div class="task-meta">${escapeHtml(typeLabel)} · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
-        <button class="task-btn" onclick="copyText(this, \`${escapeQuotes(data.copy)}\`)">复制</button>
+        <button class="task-btn" onclick="XhsTool.copyText(this, \`${escapeQuotes(data.copy)}\`)">复制</button>
       </div>
     `;
   } else if (data.type === 'both' || (data.imageUrl && data.copy)) {
@@ -90,7 +90,7 @@ function updateTaskCard(taskId, data) {
     const imageHtml = imageUrls.map(url => protectedImageHtml(url, '生成的图片', 'task-image', 'max-height:180px;')).join('');
     const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
     const downloadButtons = imageUrls.length
-      ? `<button class="task-btn" onclick="downloadImagesFromEncoded('${encodedImageUrls}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
+      ? `<button class="task-btn" onclick="XhsTool.downloadImagesFromEncoded('${encodedImageUrls}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
       : '';
     body.innerHTML = `
       ${imageHtml ? `<div class="task-image-grid">${imageHtml}</div>` : ''}
@@ -99,7 +99,7 @@ function updateTaskCard(taskId, data) {
       <div class="task-meta">${escapeHtml(data.ratio || '1:1')} · ${imageUrls.length} 张 · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
         ${downloadButtons}
-        <button class="task-btn" onclick="copyText(this, \`${escapeQuotes(data.copy || '')}\`)">复制文案</button>
+        <button class="task-btn" onclick="XhsTool.copyText(this, \`${escapeQuotes(data.copy || '')}\`)">复制文案</button>
       </div>
     `;
   }
@@ -134,7 +134,7 @@ function removeTask(taskId) {
   updateXhsWorkStats();
 }
 
-window.removeTask = removeTask;
+XhsTool.removeTask = removeTask;
 
 function escapeQuotes(str) {
   return String(str || '').replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
@@ -166,7 +166,7 @@ async function downloadImage(url, prompt = '', ratio = 'image') {
   }
 }
 
-window.downloadImage = downloadImage;
+XhsTool.downloadImage = downloadImage;
 
 function copyText(btn, text) {
   navigator.clipboard.writeText(text).then(() => {
@@ -175,7 +175,7 @@ function copyText(btn, text) {
   });
 }
 
-window.copyText = copyText;
+XhsTool.copyText = copyText;
 
 // 鎸夐挳鐘舵€佹洿鏂?
 function updateButtonState(btnId, disabled, text) {
@@ -187,19 +187,12 @@ function updateButtonState(btnId, disabled, text) {
 }
 
 // HTML杞箟鍑芥暟锛堥槻XSS锛?
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 function downloadImages(urls, prompt = '', ratio = 'image') {
   const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
   list.forEach((url, index) => {
     setTimeout(() => {
       const suffix = list.length > 1 ? `${ratio || 'image'}_${index + 1}` : ratio;
-      window.downloadImage(url, prompt, suffix);
+      XhsTool.downloadImage(url, prompt, suffix);
     }, index * 200);
   });
 }
@@ -212,6 +205,5 @@ function downloadImagesFromEncoded(encodedUrls, prompt = '', ratio = 'image') {
   }
 }
 
-window.downloadImages = downloadImages;
-window.downloadImagesFromEncoded = downloadImagesFromEncoded;
-
+XhsTool.downloadImages = downloadImages;
+XhsTool.downloadImagesFromEncoded = downloadImagesFromEncoded;

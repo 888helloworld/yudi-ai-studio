@@ -137,16 +137,6 @@
       return Boolean(target.closest?.('.panel'));
     }
 
-    function getImageFileFromClipboard(clipboardData) {
-      const items = Array.from(clipboardData?.items || []);
-      const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
-      const file = imageItem?.getAsFile();
-      if (!file) return null;
-      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.type.split('/')[1] || 'png');
-      const name = file.name || `pasted_reverse_${Date.now()}.${ext}`;
-      return new File([file], name, { type: file.type || 'image/png' });
-    }
-
     function clearImage() {
       selectedFile = null;
       imageInput.value = '';

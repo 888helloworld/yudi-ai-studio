@@ -297,35 +297,6 @@
       setStatus(`已填入${title}，可以直接开始出图。`, 'ok');
     }
 
-    async function copyTextToClipboard(text) {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return;
-      }
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      textarea.style.top = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      const copied = document.execCommand('copy');
-      textarea.remove();
-      if (!copied) throw new Error('copy failed');
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[char]));
-    }
-
     function setReverseBusy(busy) {
       reverseBtn.disabled = !reverseSelectedFile;
       const span = reverseBtn.querySelector('span');
@@ -336,4 +307,3 @@
       reverseStatusEl.textContent = text || '';
       reverseStatusEl.className = 'reverse-status' + (type ? ' ' + type : '');
     }
-

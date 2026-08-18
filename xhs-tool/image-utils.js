@@ -3,15 +3,6 @@ function getAuthHeader() {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
-function isProtectedUploadUrl(url) {
-  try {
-    const parsed = new URL(String(url || ''), window.location.origin);
-    return parsed.origin === window.location.origin && parsed.pathname.startsWith('/uploads/');
-  } catch (err) {
-    return false;
-  }
-}
-
 async function fetchImageBlob(url) {
   const headers = isProtectedUploadUrl(url) ? getAuthHeader() : {};
   const res = await fetch(new URL(url, window.location.origin).href, {
@@ -162,4 +153,3 @@ function normalizeReferenceUploadName(name) {
   const base = String(name || 'reference').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_') || 'reference';
   return `${base}.jpg`;
 }
-

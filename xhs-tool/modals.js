@@ -78,32 +78,13 @@ function addPromptBlock(targetEl, title, text) {
 function usePromptForXhsImage(text, title = 'Prompt') {
   const promptEl = document.getElementById('imgPrompt');
   if (!promptEl) return;
-  if (typeof window.switchXhsTool === 'function') window.switchXhsTool('image', false);
+  if (typeof XhsTool.switchTool === 'function') XhsTool.switchTool('image', false);
   promptEl.value = text;
   const modal = document.querySelector('.modal-overlay');
   if (modal) modal.remove();
   promptEl.focus();
   promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setXhsReverseStatus(`已填入${title}，可以直接开始生成图片。`, 'ok');
-}
-
-async function copyTextToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', '');
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  textarea.style.top = '0';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  const copied = document.execCommand('copy');
-  textarea.remove();
-  if (!copied) throw new Error('copy failed');
 }
 
 // =============================================
@@ -182,5 +163,4 @@ function showModal(title, content, editable) {
   });
 }
 
-window.showModal = showModal;
-
+XhsTool.showModal = showModal;

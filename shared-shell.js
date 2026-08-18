@@ -186,12 +186,6 @@ async function createPayment() {
   }
 }
 
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value == null ? '' : String(value);
-  return div.innerHTML;
-}
-
 function startCreating() {
   if (!isXhsLanding) {
     window.location.href = 'xhs.html';

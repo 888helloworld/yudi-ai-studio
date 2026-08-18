@@ -200,16 +200,6 @@
       return Boolean(pasteTargetMode === 'reverse' || target?.closest?.('#reversePrompt') || active?.closest?.('#reversePrompt'));
     }
 
-    function getImageFileFromClipboard(clipboardData, basename = 'pasted_source') {
-      const items = Array.from(clipboardData?.items || []);
-      const imageItem = items.find((item) => item.kind === 'file' && item.type.startsWith('image/'));
-      const file = imageItem?.getAsFile();
-      if (!file) return null;
-      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.type.split('/')[1] || 'png');
-      const name = file.name || `${basename}_${Date.now()}.${ext}`;
-      return new File([file], name, { type: file.type || 'image/png' });
-    }
-
     function getPasteTargetSourceIndex(target) {
       const slot = target?.closest?.('[data-source-slot]');
       if (slot) {
@@ -355,4 +345,3 @@
       if (minutes <= 0) return `${seconds} 秒`;
       return `${minutes} 分 ${seconds} 秒`;
     }
-

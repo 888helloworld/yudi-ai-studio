@@ -80,6 +80,7 @@ function deleteUser(id) {
     db.prepare('UPDATE cdkeys SET used_by = NULL WHERE used_by = ?').run(userId);
     db.prepare('UPDATE cdkeys SET created_by = ? WHERE created_by = ?').run(admin.id, userId);
     db.prepare('DELETE FROM payment_orders WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM templates WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM point_logs WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM history WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM users WHERE id = ?').run(userId);

@@ -1,15 +1,8 @@
+    const ImageStudio = window.ImageStudio = window.ImageStudio || {};
     const token = localStorage.getItem('token');
     const protectedImageUrlCache = new Map();
     const protectedImagePromiseCache = new Map();
 
-    function isProtectedUploadUrl(url) {
-      try {
-        const parsed = new URL(String(url || ''), window.location.origin);
-        return parsed.origin === window.location.origin && parsed.pathname.startsWith('/uploads/');
-      } catch {
-        return false;
-      }
-    }
     function getThumbnailImageUrl(url) {
       if (!isProtectedUploadUrl(url)) return url;
       const parsed = new URL(String(url || ''), window.location.origin);
@@ -266,9 +259,16 @@
       historyPageSize: 50,
       historyLoading: false
     };
+    ImageStudio.state = state;
+    ImageStudio.assets = Object.freeze({
+      buildAssetFetchOptions,
+      fetchAssetBlob,
+      getThumbnailImageUrl,
+      isProtectedUploadUrl,
+      setProtectedImageSource
+    });
 
     function refreshPromptPlaceholder() {
       const index = Math.floor(Math.random() * PROMPT_PLACEHOLDERS.length);
       promptEl.placeholder = PROMPT_PLACEHOLDERS[index] || '写下你想要的画面，越具体越好。';
     }
-
