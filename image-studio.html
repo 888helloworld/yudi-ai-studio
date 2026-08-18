@@ -125,8 +125,12 @@
     .preview-actions a,.preview-actions button{padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);font-size:13px;font-weight:800;transition:var(--base)}
     .preview-actions a:hover,.preview-actions button:hover{border-color:var(--neon-cyan);color:var(--neon-cyan)}
     .preview-actions .close-preview:hover{border-color:var(--neon-red);color:#fff;background:var(--neon-red)}
-    .preview-body{min-height:0;display:flex;align-items:center;justify-content:center;padding:18px;background:var(--bg-input)}
-    .preview-body img{max-width:100%;max-height:calc(100vh - 190px);object-fit:contain;border-radius:var(--radius-sm);box-shadow:var(--shadow-md)}
+    .preview-body{position:relative;min-height:min(68vh,760px);display:flex;align-items:center;justify-content:center;padding:18px;background:var(--bg-input)}
+    .preview-body img{max-width:100%;max-height:calc(100vh - 190px);object-fit:contain;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);opacity:0;transition:opacity .18s ease}
+    .preview-body img.preview-image-ready{opacity:1}
+    .preview-body img.preview-image-loading,.preview-body img.preview-image-failed{opacity:0}
+    .preview-loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:8px;color:var(--text-muted);font-size:12px;pointer-events:none}
+    .preview-loading.show{display:flex}
     .preview-footer{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg-secondary)}
     .preview-edit-btn{padding:10px 16px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--neon-pink),#059050);color:#fff;font-size:13px;font-weight:800;box-shadow:0 4px 14px rgba(7,193,96,.22)}
     .preview-edit-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(7,193,96,.32)}
@@ -240,6 +244,7 @@
         </div>
       </div>
       <div class="preview-body">
+        <div class="preview-loading" id="previewLoading" aria-hidden="true"><div class="spinner"></div><span>正在加载原图...</span></div>
         <img id="previewImage" src="" alt="生成图片预览">
       </div>
       <div class="preview-footer">
@@ -523,6 +528,7 @@
     const clearQueuedBtn = document.getElementById('clearQueuedBtn');
     const previewOverlay = document.getElementById('imagePreview');
     const previewImage = document.getElementById('previewImage');
+    const previewLoading = document.getElementById('previewLoading');
     const previewTitle = document.getElementById('previewTitle');
     const previewDownload = document.getElementById('previewDownload');
     const previewOpen = document.getElementById('previewOpen');
@@ -602,6 +608,7 @@
     let activeReverseRequests = 0;
     let reverseHistoryPollId = null;
     let currentPreviewImage = null;
+    let previewRequestSeq = 0;
     let pasteTargetMode = 'source';
     let taskHistoryLoaded = false;
 
@@ -1991,6 +1998,45 @@
       return grid;
     }
 
+    function setPreviewImageSource(url, altText = '') {
+      const requestId = ++previewRequestSeq;
+      previewImage.removeAttribute('src');
+      previewImage.alt = '';
+      previewImage.classList.remove('preview-image-ready', 'preview-image-failed');
+      previewImage.classList.add('preview-image-loading');
+      previewImage.setAttribute('aria-busy', 'true');
+      previewImage.loading = 'eager';
+      previewLoading?.classList.add('show');
+
+      const markFailed = () => {
+        if (requestId !== previewRequestSeq) return;
+        previewImage.classList.remove('preview-image-loading', 'preview-image-ready');
+        previewImage.classList.add('preview-image-failed');
+        previewImage.removeAttribute('aria-busy');
+        previewImage.alt = '';
+        previewLoading?.classList.remove('show');
+      };
+
+      const markReady = () => {
+        if (requestId !== previewRequestSeq) return;
+        previewImage.classList.remove('preview-image-loading', 'preview-image-failed');
+        previewImage.classList.add('preview-image-ready');
+        previewImage.removeAttribute('aria-busy');
+        previewImage.alt = altText || '图片预览';
+        previewLoading?.classList.remove('show');
+      };
+
+      getDisplayImageUrl(url)
+        .then((displayUrl) => {
+          if (requestId !== previewRequestSeq) return;
+          previewImage.onload = markReady;
+          previewImage.onerror = markFailed;
+          previewImage.src = displayUrl;
+          if (previewImage.complete && previewImage.naturalWidth > 0) markReady();
+        })
+        .catch(markFailed);
+    }
+
     async function downloadImageFile(url, filename) {
       const safeName = filename || 'xi_xu_image.png';
       try {
@@ -2022,7 +2068,7 @@
     function openImagePreview(url, task, index) {
       const filename = buildImageDownloadName(task, index);
       currentPreviewImage = { url, filename, title: '' };
-      setProtectedImageSource(previewImage, url, '图片预览');
+      setPreviewImageSource(url, '图片预览');
       previewTitle.textContent = '';
       previewDownload.href = url;
       previewDownload.download = filename;
@@ -2076,7 +2122,7 @@
 
     function openStandaloneImagePreview(url, title = '图片预览', filename = 'preview.png') {
       currentPreviewImage = { url, filename, title };
-      setProtectedImageSource(previewImage, url, title);
+      setPreviewImageSource(url, title);
       previewTitle.textContent = title;
       previewDownload.href = url;
       previewDownload.download = filename;
@@ -2087,9 +2133,15 @@
     }
 
     function closeImagePreview() {
+      previewRequestSeq += 1;
+      if (previewOverlay.contains(document.activeElement)) document.activeElement.blur();
       previewOverlay.classList.remove('show');
       previewOverlay.setAttribute('aria-hidden', 'true');
       delete previewImage.dataset.sourceUrl;
+      previewImage.removeAttribute('src');
+      previewImage.classList.remove('preview-image-ready', 'preview-image-loading', 'preview-image-failed');
+      previewImage.removeAttribute('aria-busy');
+      previewLoading?.classList.remove('show');
       currentPreviewImage = null;
       document.body.style.overflow = '';
     }
