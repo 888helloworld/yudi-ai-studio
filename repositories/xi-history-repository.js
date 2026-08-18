@@ -1,4 +1,4 @@
-const { db } = require('../database/connection');
+const { db } = require('../database');
 
 function updateXiJobHistory({ historyId, userId, content, imageUrls, costPoints }) {
   return db.prepare(`

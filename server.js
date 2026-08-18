@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { PNG } = require('pngjs');
-const { POINTS, POINT_PACKAGES } = require('./config/points');
+const { POINTS } = require('./config/points');
 const {
   UPLOAD_DIR,
   downloadAndSaveImage,
@@ -27,18 +27,10 @@ const {
   buildReferenceBoardPrompt,
   buildXiEditPrompt,
   buildXiGeneratePrompt,
-  buildXhsImagePrompt,
   getSourceImageFilename,
   getSourceImageLabel,
   normalizeSourceImageFilename
 } = require('./services/prompt-service');
-const {
-  buildBothCopyPrompt,
-  buildCopyPrompt,
-  buildRewritePrompt,
-  cleanCopyText,
-  requestDeepSeekText
-} = require('./services/copy-service');
 const {
   buildReversePromptInstruction,
   extractChatText,
@@ -47,8 +39,15 @@ const {
   parseJsonLike
 } = require('./services/reverse-prompt-service');
 const { createXiJobManager } = require('./services/xi-job-manager');
-const { getPublicStats } = require('./repositories/stats-repository');
-const { getUserPaymentOrder } = require('./repositories/payment-repository');
+const { createGenerationRouter } = require('./routes/generation');
+const { createTemplateRouter } = require('./routes/templates');
+const { createPublicInfoRouter } = require('./routes/public-info');
+const { createPaymentRouter } = require('./routes/payment');
+const {
+  isAllowedUploadMime,
+  sniffImageMime,
+  validateUploadedImageFiles
+} = require('./middleware/image-upload');
 const {
   getRecoverableXiJobHistories,
   getXiHistoriesWithoutImages,
@@ -145,6 +144,29 @@ const PUBLIC_STATIC_FILES = new Set([
   'favicon.ico'
 ]);
 
+const XHS_TOOL_FILES = new Set([
+  'state.js',
+  'image-utils.js',
+  'workspace.js',
+  'generation.js',
+  'task-ui.js',
+  'history.js',
+  'modals.js',
+  'bootstrap.js'
+]);
+
+const IMAGE_STUDIO_FILES = new Set([
+  'state.js',
+  'auth-history.js',
+  'detail-suite.js',
+  'task-queue.js',
+  'task-rendering.js',
+  'source-images.js',
+  'reverse-prompt.js',
+  'utilities.js',
+  'bootstrap.js'
+]);
+
 const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
 const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
@@ -165,6 +187,20 @@ app.get('/:filename', (req, res, next) => {
   const filename = path.basename(req.params.filename);
   if (filename !== req.params.filename || !PUBLIC_FILES.has(filename)) return next();
   sendPublicFile(res, filename, next);
+});
+
+app.get('/xhs-tool/:filename', (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  if (filename !== req.params.filename || !XHS_TOOL_FILES.has(filename)) return next();
+  res.setHeader('Cache-Control', PUBLIC_STATIC_CACHE_CONTROL);
+  res.sendFile(path.join(__dirname, 'xhs-tool', filename), { cacheControl: false }, next);
+});
+
+app.get('/image-studio/:filename', (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  if (filename !== req.params.filename || !IMAGE_STUDIO_FILES.has(filename)) return next();
+  res.setHeader('Cache-Control', PUBLIC_STATIC_CACHE_CONTROL);
+  res.sendFile(path.join(__dirname, 'image-studio', filename), { cacheControl: false }, next);
 });
 
 // 速率限制（放宽阈值，避免正常操作被误限）
@@ -216,51 +252,6 @@ const upload = multer({
   }
 });
 
-const ALLOWED_UPLOAD_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
-
-function normalizeMimeType(mimeType) {
-  return String(mimeType || '').toLowerCase().split(';')[0].trim();
-}
-
-function isAllowedUploadMime(mimeType) {
-  return ALLOWED_UPLOAD_MIME_TYPES.has(normalizeMimeType(mimeType));
-}
-
-function sniffImageMime(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
-  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
-  if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
-  const gifHeader = buffer.subarray(0, 6).toString('ascii');
-  if (gifHeader === 'GIF87a' || gifHeader === 'GIF89a') return 'image/gif';
-  return null;
-}
-
-function validateUploadedImageFiles(req, res, next) {
-  const files = [];
-  if (req.file) files.push(req.file);
-  if (Array.isArray(req.files)) files.push(...req.files);
-  if (req.files && !Array.isArray(req.files) && typeof req.files === 'object') {
-    Object.values(req.files).forEach((value) => {
-      if (Array.isArray(value)) files.push(...value);
-    });
-  }
-
-  for (const file of files) {
-    const declaredMime = normalizeMimeType(file.mimetype);
-    const detectedMime = sniffImageMime(file.buffer);
-    if (!detectedMime) {
-      return res.status(400).json({ error: '上传文件不是有效图片' });
-    }
-    if (declaredMime === 'image/jpg') file.mimetype = 'image/jpeg';
-    if (normalizeMimeType(file.mimetype) !== detectedMime) {
-      return res.status(400).json({ error: '上传图片格式与文件内容不一致' });
-    }
-  }
-
-  next();
-}
-
 function sanitizeInput(str, maxLen) {
   if (typeof str !== 'string') return '';
   return str.slice(0, maxLen).replace(/[<>]/g, '').trim();
@@ -283,8 +274,6 @@ function getRequiredEnv(name) {
   const value = process.env[name];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
-
-const DEEPSEEK_TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat';
 
 function buildXiXuUrl(pathname) {
   const baseUrl = (process.env.XI_XU_API_BASE_URL || 'https://api.xi-xu.me').replace(/\/+$/, '');
@@ -727,327 +716,24 @@ function extractXiXuImageMetadata(data = {}, requested = {}) {
   };
 }
 
-// 图片生成
-app.post('/generate', imageLimiter, authMiddleware, upload.single('referenceImage'), validateUploadedImageFiles, async (req, res) => {
-  const prompt = sanitizeInput(req.body.prompt, 2000);
-  const ratio = req.body.ratio || '1:1';
-  const imageCount = parseImageCount(req.body.imageCount);
-  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
-  if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
-  if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
+app.use(createGenerationRouter({
+  imageLimiter,
+  copyLimiter,
+  authMiddleware,
+  upload,
+  validateUploadedImageFiles,
+  sanitizeInput,
+  normalizeClientTaskId,
+  parseImageCount,
+  sizeMap: SIZE_MAP,
+  getRequiredEnv,
+  generateArkImageUrls,
+  formatUpstreamError,
+  arkImageBaseUrl: ARK_IMAGE_BASE_URL
+}));
 
-  const totalCost = POINTS.image * imageCount;
-  let charged = false;
-  try {
-    chargePoints(req.userId, totalCost, `图片生成 x${imageCount}`);
-    charged = true;
-  } catch (err) {
-    return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
-  }
-
-  const size = SIZE_MAP[ratio];
-  const API_KEY = getRequiredEnv('ARK_API_KEY');
-  if (!API_KEY) {
-    refundPoints(req.userId, totalCost, '图片生成失败退款');
-    return res.status(500).json({ error: '图片服务未配置' });
-  }
-  try {
-    const requestBody = {
-      model: 'doubao-seedream-5-0-lite-260128',
-      prompt: buildXhsImagePrompt(prompt, ratio),
-      size: `${size.width}x${size.height}`,
-      output_format: 'png',
-      watermark: false,
-    };
-    if (req.file) {
-      requestBody.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-    }
-
-    const remoteUrls = await generateArkImageUrls(ARK_IMAGE_BASE_URL, API_KEY, requestBody, imageCount);
-    
-    if (remoteUrls.length === 0) {
-      refundPoints(req.userId, totalCost, '图片生成失败退款');
-      return res.status(500).json({ error: '图片生成失败' });
-    }
-
-    // 下载到本地
-    const localUrls = await Promise.all(remoteUrls.map((url, index) => (
-      downloadAndSaveImage(url, `xhs_${ratio.replace(':', '')}_${index + 1}`)
-    )));
-    const missingCount = Math.max(imageCount - localUrls.length, 0);
-    if (missingCount > 0) {
-      refundPoints(req.userId, POINTS.image * missingCount, `图片生成少出${missingCount}张退款`);
-    }
-    const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
-    localUrls.forEach((localUrl) => {
-      db.addHistory(req.userId, 'image', { sub_type: 'generate', image_url: localUrl, prompt: prompt, ratio: ratio, cost_points: POINTS.image, client_task_id: clientTaskId });
-    });
-
-    res.json({ imageUrl: localUrls[0], imageUrls: localUrls, remainingPoints: db.getUserPoints(req.userId), createdAt });
-  } catch (err) {
-    if (charged) refundPoints(req.userId, totalCost, '图片生成失败退款');
-    console.error('小红书图片生成失败:', err.message || err);
-    res.status(502).json({ error: formatUpstreamError(err.message || err, '图片生成失败，请稍后再试') });
-  }
-});
-
-// 文案生成（DeepSeek API）
-app.post('/generate-copy', copyLimiter, authMiddleware, async (req, res) => {
-  const topic = sanitizeInput(req.body.topic, 500);
-  const type = req.body.type;
-  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
-  if (!topic) return res.status(400).json({ error: '请输入主题' });
-
-  const pointsResult = db.deductPoints(req.userId, POINTS.copy, '文案生成');
-  if (!pointsResult.success) return res.status(400).json({ error: '积分不足，请充值' });
-
-  const fullPrompt = buildCopyPrompt(topic, type);
-  if (!fullPrompt) {
-    db.rechargePoints(req.userId, POINTS.copy, '文案生成失败退款');
-    return res.status(400).json({ error: '无效的文案类型' });
-  }
-
-  const DEEPSEEK_API_KEY = getRequiredEnv('DEEPSEEK_API_KEY');
-  if (!DEEPSEEK_API_KEY) {
-    db.rechargePoints(req.userId, POINTS.copy, '文案生成失败退款');
-    return res.status(500).json({ error: '文案服务未配置' });
-  }
-  try {
-    const text = await requestDeepSeekText({
-      apiKey: DEEPSEEK_API_KEY,
-      model: DEEPSEEK_TEXT_MODEL,
-      systemPrompt: fullPrompt,
-      userPrompt: `主题：${topic}`
-    });
-    
-    if (!text) {
-      db.rechargePoints(req.userId, POINTS.copy, '文案生成失败退款');
-      return res.status(500).json({ error: '文案生成失败' });
-    }
-
-    const cleanText = cleanCopyText(text);
-    const titleMatch = cleanText.match(/^(.+)$/m);
-    const title = titleMatch ? titleMatch[1].trim().substring(0, 30) : (topic.length > 20 ? topic.substring(0, 20) + '...' : topic);
-    const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
-    
-    db.addHistory(req.userId, 'copy', { sub_type: 'generate', content: cleanText, prompt: topic, cost_points: POINTS.copy, client_task_id: clientTaskId });
-    res.json({ copy: cleanText, title, remainingPoints: pointsResult.balance, createdAt });
-  } catch (err) {
-    db.rechargePoints(req.userId, POINTS.copy, '文案生成失败退款');
-    res.status(500).json({ error: '请求失败' });
-  }
-});
-
-// 文案改写（DeepSeek API）
-app.post('/rewrite', copyLimiter, authMiddleware, async (req, res) => {
-  const originalText = sanitizeInput(req.body.originalText, 5000);
-  const style = req.body.style;
-  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
-  if (!originalText) return res.status(400).json({ error: '请输入要改写的文案' });
-
-  const pointsResult = db.deductPoints(req.userId, POINTS.rewrite, '文案改写');
-  if (!pointsResult.success) return res.status(400).json({ error: '积分不足，请充值' });
-
-  const rewritePrompt = buildRewritePrompt(originalText, style);
-
-  const DEEPSEEK_API_KEY = getRequiredEnv('DEEPSEEK_API_KEY');
-  if (!DEEPSEEK_API_KEY) {
-    db.rechargePoints(req.userId, POINTS.rewrite, '文案改写失败退款');
-    return res.status(500).json({ error: '文案服务未配置' });
-  }
-  try {
-    const text = await requestDeepSeekText({
-      apiKey: DEEPSEEK_API_KEY,
-      model: DEEPSEEK_TEXT_MODEL,
-      systemPrompt: rewritePrompt.systemPrompt,
-      userPrompt: rewritePrompt.userPrompt
-    });
-    
-    if (!text) {
-      db.rechargePoints(req.userId, POINTS.rewrite, '文案改写失败退款');
-      return res.status(500).json({ error: '文案改写失败' });
-    }
-
-    const cleanText = cleanCopyText(text);
-    const titleMatch = cleanText.match(/^(.+)$/m);
-    const title = titleMatch ? titleMatch[1].trim().substring(0, 30) : '改写文案';
-    const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
-    
-    db.addHistory(req.userId, 'copy', { sub_type: 'rewrite', content: cleanText, prompt: title, cost_points: POINTS.rewrite, client_task_id: clientTaskId });
-    res.json({ copy: cleanText, title, remainingPoints: pointsResult.balance, createdAt });
-  } catch (err) {
-    db.rechargePoints(req.userId, POINTS.rewrite, '文案改写失败退款');
-    res.status(500).json({ error: '请求失败' });
-  }
-});
-
-// =============================================
-// 图文一体生成
-// =============================================
-app.post('/generate-both', imageLimiter, authMiddleware, async (req, res) => {
-  const prompt = sanitizeInput(req.body.prompt, 2000);
-  const ratio = req.body.ratio || '1:1';
-  const imageCount = parseImageCount(req.body.imageCount);
-  const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
-  if (!prompt) return res.status(400).json({ error: '请输入描述' });
-  if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
-
-  const totalCost = POINTS.copy + (POINTS.image * imageCount);
-  const pointsResult = db.deductPoints(req.userId, totalCost, `图文一体生成 x${imageCount}`);
-  if (!pointsResult.success) return res.status(400).json({ error: '积分不足，请充值' });
-
-  const size = SIZE_MAP[ratio];
-  const API_KEY = getRequiredEnv('ARK_API_KEY');
-  if (!API_KEY) {
-    db.rechargePoints(req.userId, totalCost, '图文一体生成失败退款');
-    return res.status(500).json({ error: '图片服务未配置' });
-  }
-  const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
-  const DEEPSEEK_API_KEY = getRequiredEnv('DEEPSEEK_API_KEY');
-  if (!DEEPSEEK_API_KEY) {
-    db.rechargePoints(req.userId, totalCost, '图文一体生成失败退款');
-    return res.status(500).json({ error: '文案服务未配置' });
-  }
-  try {
-    // 并行调用：同时生成图片和文案
-    const [imageResult, copyResult] = await Promise.allSettled([
-      // 1. 生成图片
-      (async () => {
-        const body = {
-          model: 'doubao-seedream-5-0-lite-260128',
-          prompt: buildXhsImagePrompt(prompt, ratio),
-          size: `${size.width}x${size.height}`,
-          output_format: 'png',
-          watermark: false,
-        };
-        const urls = await generateArkImageUrls(ARK_BASE_URL, API_KEY, body, imageCount);
-        if (urls.length === 0) throw new Error('图片生成失败');
-        return await Promise.all(urls.map((url, index) => (
-          downloadAndSaveImage(url, `both_${ratio.replace(':', '')}_${index + 1}`)
-        )));
-      })(),
-
-      // 2. 生成文案
-      (async () => {
-        const text = await requestDeepSeekText({
-          apiKey: DEEPSEEK_API_KEY,
-          model: DEEPSEEK_TEXT_MODEL,
-          systemPrompt: '你是小红书爆款内容专家。',
-          userPrompt: buildBothCopyPrompt(prompt)
-        });
-        if (!text) throw new Error('文案生成失败');
-        return text;
-      })()
-    ]);
-
-    // 检查结果
-    if (imageResult.status === 'rejected' && copyResult.status === 'rejected') {
-      db.rechargePoints(req.userId, totalCost, '图文一体生成失败退款');
-      return res.status(500).json({ error: '图片和文案生成均失败' });
-    }
-
-    const imageUrls = imageResult.status === 'fulfilled' ? imageResult.value : [];
-    const imageUrl = imageUrls[0] || null;
-    const rawCopy = copyResult.status === 'fulfilled' ? copyResult.value : null;
-    const copyText = rawCopy ? cleanCopyText(rawCopy) : null;
-
-    // 如果图片失败退图片部分的积分
-    const missingImageCount = Math.max(imageCount - imageUrls.length, 0);
-    if (missingImageCount > 0) db.rechargePoints(req.userId, POINTS.image * missingImageCount, `图文一体-图片少出${missingImageCount}张退款`);
-    // 如果文案失败退文案部分的积分
-    if (!copyText) db.rechargePoints(req.userId, POINTS.copy, '图文一体-文案失败退款');
-
-    const createdAt = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
-    const refundedPoints = (POINTS.image * missingImageCount) + (copyText ? 0 : POINTS.copy);
-    const actualCost = Math.max(totalCost - refundedPoints, 0);
-    
-    if (imageUrls.length > 0) {
-      db.addHistory(req.userId, 'both', {
-        sub_type: 'generate',
-        image_url: JSON.stringify(imageUrls),
-        content: copyText || '',
-        prompt: prompt,
-        ratio: ratio,
-        cost_points: actualCost,
-        client_task_id: clientTaskId
-      });
-    } else if (copyText) {
-      db.addHistory(req.userId, 'copy', {
-        sub_type: 'both-copy',
-        content: copyText,
-        prompt: prompt,
-        cost_points: POINTS.copy,
-        client_task_id: clientTaskId
-      });
-    }
-    const remainingPoints = pointsResult.balance + refundedPoints;
-
-    res.json({
-      imageUrl,
-      imageUrls,
-      copy: copyText,
-      remainingPoints,
-      createdAt
-    });
-  } catch (err) {
-    db.rechargePoints(req.userId, totalCost, '图文一体生成失败退款');
-    res.status(500).json({ error: '请求失败' });
-  }
-});
-
-// 模板管理
-const templates = {};
-
-// 保存模板
-app.post('/api/templates', authMiddleware, (req, res) => {
-  const { name, type, content } = req.body;
-  if (!name || !type || !content) return res.status(400).json({ error: '参数不完整' });
-  if (name.length > 50) return res.status(400).json({ error: '模板名称太长' });
-  
-  if (!templates[req.userId]) templates[req.userId] = [];
-  const existing = templates[req.userId].findIndex(t => t.name === name && t.type === type);
-  if (existing >= 0) {
-    templates[req.userId][existing].content = content;
-    templates[req.userId][existing].updatedAt = Date.now();
-  } else {
-    templates[req.userId].push({ id: Date.now().toString(36), name, type, content, createdAt: Date.now() });
-  }
-  res.json({ success: true, templates: templates[req.userId] });
-});
-
-// 获取模板列表
-app.get('/api/templates', authMiddleware, (req, res) => {
-  const type = req.query.type;
-  let list = templates[req.userId] || [];
-  if (type) list = list.filter(t => t.type === type);
-  res.json({ templates: list });
-});
-
-// 删除模板
-app.delete('/api/templates/:id', authMiddleware, (req, res) => {
-  if (!templates[req.userId]) return res.json({ success: true });
-  templates[req.userId] = templates[req.userId].filter(t => t.id !== req.params.id);
-  res.json({ success: true });
-});
-
-// 简化版用户信息接口
-app.get('/api/user/info', optionalAuth, (req, res) => {
-  if (req.user) res.json({ loggedIn: true, user: req.user });
-  else res.json({ loggedIn: false });
-});
-
-// =============================================
-// 支付功能
-// =============================================
-
-// 获取积分商品列表
-app.get('/api/packages', (req, res) => {
-  res.json({ packages: POINT_PACKAGES, paymentAvailable: false });
-});
-
-app.get('/api/public/stats', (req, res) => {
-  res.json(getPublicStats());
-});
+app.use(createTemplateRouter({ authMiddleware }));
+app.use(createPublicInfoRouter({ optionalAuth }));
 
 const xiJobManager = createXiJobManager({
   db,
@@ -2312,76 +1998,7 @@ app.post('/api/xi-image/reverse-prompt', copyLimiter, authMiddleware, upload.sin
   }
 });
 
-// 创建支付订单
-app.post('/api/payment/create', authMiddleware, async (req, res) => {
-  res.status(503).json({ error: '在线充值暂未开放，请使用卡密兑换' });
-});
-
-// 模拟支付回调 - 实际应替换为支付平台异步通知和平台验签
-app.post('/api/payment/callback', authMiddleware, async (req, res) => {
-  const mockPaymentEnabled = process.env.ENABLE_MOCK_PAYMENT === 'true';
-  const mockPaymentToken = process.env.MOCK_PAYMENT_TOKEN;
-
-  if (!mockPaymentEnabled) {
-    return res.status(403).json({ error: '模拟支付回调已禁用，请接入真实支付平台回调和验签' });
-  }
-  if (!mockPaymentToken) {
-    return res.status(500).json({ error: '模拟支付回调缺少服务端保护令牌配置' });
-  }
-  const providedToken = req.get('X-Mock-Payment-Token') || req.body.mockPaymentToken;
-  if (!safeCompareSecret(providedToken, mockPaymentToken)) {
-    return res.status(403).json({ error: '模拟支付回调令牌无效' });
-  }
-
-  const { orderNo, tradeNo } = req.body;
-  if (!orderNo) return res.status(400).json({ error: '参数不完整' });
-
-  const order = getUserPaymentOrder(req.userId, orderNo);
-  if (!order) return res.status(404).json({ error: '订单不存在' });
-  
-  const result = db.paySuccess(orderNo, tradeNo || ('MOCK' + Date.now()));
-  if (!result.success) return res.status(400).json({ error: result.error });
-  res.json({ success: true, balance: result.balance });
-});
-
-// 真实支付回调占位：密钥和验签逻辑未完成前，不自动入账，避免被伪造回调刷积分。
-app.post('/api/payment/alipay/notify', async (req, res) => {
-  console.warn('收到支付宝回调，但真实支付验签尚未接入。');
-  res.status(501).json({ error: '支付宝回调验签尚未接入，请在管理后台人工核对订单后确认到账' });
-});
-
-app.post('/api/payment/wxpay/notify', async (req, res) => {
-  console.warn('收到微信支付回调，但真实支付验签尚未接入。');
-  res.status(501).json({ error: '微信支付回调验签尚未接入，请在管理后台人工核对订单后确认到账' });
-});
-
-// 查询订单状态
-app.get('/api/payment/status/:orderNo', authMiddleware, (req, res) => {
-  const order = getUserPaymentOrder(req.userId, req.params.orderNo);
-  if (!order) return res.status(404).json({ error: '订单不存在' });
-  res.json({ order, balance: db.getUserPoints(req.userId) });
-});
-
-// 获取用户支付订单列表
-app.get('/api/payment/orders', authMiddleware, (req, res) => {
-  const orders = db.getUserPaymentOrders(req.userId);
-  res.json({ orders });
-});
-
-// =============================================
-// 卡密兑换
-// =============================================
-
-// 兑换卡密
-app.post('/api/cdkey/redeem', authMiddleware, (req, res) => {
-  const { code } = req.body;
-  if (!code) return res.status(400).json({ error: '请输入卡密' });
-  
-  const result = db.redeemCdkey(code.trim().toUpperCase(), req.userId);
-  if (!result.success) return res.status(400).json({ error: result.error });
-  
-  res.json({ success: true, points: result.points, balance: result.balance });
-});
+app.use(createPaymentRouter({ authMiddleware, safeCompareSecret }));
 
 app.use(handleRequestError);
 
