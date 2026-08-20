@@ -58,17 +58,22 @@ XI_XU_GENERATE_TIMEOUT_MS=1800000
 XI_XU_GENERATE_RETRIES=1
 XI_XU_EDIT_TIMEOUT_MS=180000
 XI_XU_EDIT_RETRIES=1
-XI_XU_EDIT_FORCE_FALLBACK=false
-XI_XU_EDIT_CIRCUIT_BREAKER_MS=120000
-XI_XU_MAX_ACTIVE_JOBS=0
+XI_XU_MAX_ACTIVE_JOBS=2
+XI_XU_MAX_ACTIVE_JOBS_PER_USER=2
+XI_XU_MAX_QUEUED_JOBS=20
 XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 XI_XU_NORMALIZE_OUTPUT_SIZE=false
 
-ARK_FALLBACK_ENABLED=true
-MAX_UPLOAD_IMAGE_MB=10
+MAX_UPLOAD_IMAGE_MB=20
+MAX_UPLOAD_TOTAL_MB=40
+MAX_UPLOAD_PIXELS=16000000
+MAX_UPLOAD_TOTAL_PIXELS=24000000
 
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN=7d
+AUTH_COOKIE_MAX_AGE_MS=604800000
+AUTH_COOKIE_SECURE=true
+AUTH_RETURN_TOKEN=false
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace_with_a_strong_password
@@ -76,6 +81,7 @@ ADMIN_PASSWORD=replace_with_a_strong_password
 NEW_USER_BONUS_POINTS=1000
 USER_INVITE_POINTS=0
 LOCAL_REGISTER_WITHOUT_INVITE=false
+BACKUP_RETENTION_DAYS=30
 
 ENABLE_MOCK_PAYMENT=false
 MOCK_PAYMENT_TOKEN=replace_with_a_long_random_token
@@ -213,10 +219,20 @@ ssh user@your-server "pm2 list"
 
 ## 备份建议
 
+运行中的数据库使用 SQLite 在线备份，不要直接复制：
+
+```powershell
+npm run backup
+```
+
 生产环境至少定期备份：
 
 - `data.db`
 - `uploads/`
 - 云端 `.env`
 
+`BACKUP_RETENTION_DAYS` 控制本地数据库备份保留天数。建议再通过系统计划任务或 cron 每天执行一次 `npm run backup`，并定期做恢复演练；只生成备份但从未恢复验证，不算真正可用的备份。
+
 备份文件不要放进公开仓库。`data.db` 里有用户、积分、历史、订单等业务数据；`uploads/` 里有用户上传图和生成图。
+
+清理图片前先运行 `npm run audit:uploads`。它默认只报告，不删除；只有人工确认后才可使用 `--quarantine` 隔离疑似孤儿文件。

@@ -5,17 +5,19 @@
   "scripts": {
     "start": "node server.js",
     "check": "node scripts/check-js.js",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "backup": "node scripts/backup-database.js",
+    "audit:uploads": "node scripts/audit-orphan-uploads.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "express-rate-limit": "^8.3.2",
+    "express": "^4.22.2",
+    "express-rate-limit": "^8.6.2",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "pngjs": "^7.0.0"
   }
 }

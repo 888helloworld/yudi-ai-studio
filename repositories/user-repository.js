@@ -64,6 +64,10 @@ function getUserById(id) {
   return db.prepare('SELECT id, username, points, role, created_at FROM users WHERE id = ?').get(id);
 }
 
+function getUserAuthById(id) {
+  return db.prepare('SELECT id, username, points, role, created_at, token_version FROM users WHERE id = ?').get(id);
+}
+
 function getAllUsers() {
   return db.prepare('SELECT id, username, points, role, created_at FROM users ORDER BY created_at DESC').all();
 }
@@ -91,6 +95,7 @@ function deleteUser(id) {
 
 function validatePasswordPolicy(password) {
   if (typeof password !== 'string' || password.length < 8) return '密码长度至少8位';
+  if (password.length > 128) return '密码长度不能超过128位';
   if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) return '密码需包含大小写字母和数字';
   return null;
 }
@@ -103,7 +108,7 @@ function changePassword(userId, oldPassword, newPassword) {
   if (passwordError) return { success: false, error: passwordError };
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
+  db.prepare('UPDATE users SET password_hash = ?, token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
   return { success: true };
 }
 
@@ -114,8 +119,14 @@ function adminResetPassword(userId, newPassword) {
   if (passwordError) return { success: false, error: passwordError };
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
+  db.prepare('UPDATE users SET password_hash = ?, token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, userId);
   return { success: true };
+}
+
+function revokeUserTokens(userId) {
+  const result = db.prepare('UPDATE users SET token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run(userId);
+  return result.changes > 0;
 }
 
 module.exports = {
@@ -125,6 +136,8 @@ module.exports = {
   createUserWithInvite,
   deleteUser,
   getAllUsers,
+  getUserAuthById,
   getUserById,
+  revokeUserTokens,
   verifyUser
 };

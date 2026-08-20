@@ -6,6 +6,23 @@ const { POINT_PACKAGES } = require('../config/points');
 const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats, paySuccess, closePaymentOrder } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { parsePositiveInt } = require('../utils/pagination');
+const { addAdminAuditLog, getAdminAuditLogs, getAdminAuditLogCount } = require('../repositories/admin-audit-repository');
+
+function auditAdminAction(req, action, targetType, targetId, details = {}) {
+  try {
+    addAdminAuditLog({
+      adminUserId: req.userId,
+      action,
+      targetType,
+      targetId,
+      details,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent') || ''
+    });
+  } catch (error) {
+    console.error('管理员审计日志写入失败:', error.message || error);
+  }
+}
 
 function hasEnv(name) {
   return Boolean(String(process.env[name] || '').trim());
@@ -127,9 +144,7 @@ router.get('/image-service-diagnostics', async (req, res) => {
       xiXuVisionModel: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
       xiXuProxyTokenConfigured: hasEnv('XI_XU_PROXY_TOKEN'),
       xiXuMaxActiveJobs: process.env.XI_XU_MAX_ACTIVE_JOBS || '1',
-      xiXuRateLimitPerMin: process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || '30',
-      arkFallbackEnabled: /^true$/i.test(process.env.ARK_FALLBACK_ENABLED || ''),
-      arkApiKeyConfigured: hasEnv('ARK_API_KEY')
+      xiXuRateLimitPerMin: process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || '30'
     },
     storage: {
       uploads: checkUploadDirectory()
@@ -169,7 +184,7 @@ router.post('/users/recharge', (req, res) => {
   if (!result) {
     return res.status(400).json({ error: '用户不存在' });
   }
-  
+  auditAdminAction(req, 'user.recharge', 'user', userId, { amount: numAmount, description: description || '管理员充值' });
   res.json({ success: true, balance: result.balance });
 });
 
@@ -185,6 +200,7 @@ router.delete('/users/:id', (req, res) => {
   try {
     const deleted = deleteUser(parseInt(id));
     if (!deleted) return res.status(404).json({ error: '用户不存在' });
+    auditAdminAction(req, 'user.delete', 'user', id);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message || '删除用户失败' });
@@ -219,6 +235,7 @@ router.get('/history', (req, res) => {
 router.delete('/history/:id', (req, res) => {
   const { id } = req.params;
   deleteHistoryAdmin(parseInt(id));
+  auditAdminAction(req, 'history.delete', 'history', id);
   res.json({ success: true });
 });
 
@@ -235,7 +252,7 @@ router.post('/users/reset-password', (req, res) => {
   if (!result.success) {
     return res.status(400).json({ error: result.error });
   }
-  
+  auditAdminAction(req, 'user.reset_password', 'user', userId);
   res.json({ success: true });
 });
 
@@ -276,6 +293,7 @@ router.post('/cdkeys/generate', (req, res) => {
   if (numPoints < 10 || numPoints > 100000) return res.status(400).json({ error: '积分值10-100000' });
   
   const keys = generateCdkeys(numCount, numPoints, req.userId);
+  auditAdminAction(req, 'cdkey.generate', 'cdkey', '', { count: numCount, points: numPoints });
   const stats = getCdkeyStats();
   res.json({ success: true, keys, stats });
 });
@@ -332,6 +350,20 @@ router.get('/payment-orders/stats', (req, res) => {
   res.json(stats);
 });
 
+router.get('/audit-logs', (req, res) => {
+  const page = parsePositiveInt(req.query.page, 1, 100000);
+  const limit = parsePositiveInt(req.query.limit, 50, 200);
+  const offset = (page - 1) * limit;
+  const total = getAdminAuditLogCount();
+  res.json({
+    logs: getAdminAuditLogs({ limit, offset }),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  });
+});
+
 // 获取支付对接状态。只返回配置状态，不返回任何密钥明文。
 router.get('/payment-config', (req, res) => {
   res.json(getPaymentIntegrationStatus(req));
@@ -343,6 +375,7 @@ router.post('/payment-orders/:orderNo/mark-paid', (req, res) => {
   const tradeNo = String(req.body.tradeNo || '').trim() || `ADMIN-${Date.now()}`;
   const result = paySuccess(orderNo, tradeNo);
   if (!result.success) return res.status(400).json({ error: result.error });
+  auditAdminAction(req, 'payment.mark_paid', 'payment_order', orderNo, { tradeNo });
   res.json({ success: true, balance: result.balance });
 });
 
@@ -350,6 +383,7 @@ router.post('/payment-orders/:orderNo/close', (req, res) => {
   const { orderNo } = req.params;
   const result = closePaymentOrder(orderNo);
   if (!result.success) return res.status(400).json({ error: result.error });
+  auditAdminAction(req, 'payment.close', 'payment_order', orderNo);
   res.json({ success: true });
 });
 

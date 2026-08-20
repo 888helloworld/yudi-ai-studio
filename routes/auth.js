@@ -1,16 +1,68 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { createUser, createUserWithInvite, verifyUser, getUserById } = require('../db');
-const { generateToken, authMiddleware } = require('../middleware/auth');
+const { createUser, createUserWithInvite, verifyUser, revokeUserTokens } = require('../db');
+const { AUTH_COOKIE_NAME, generateToken, authMiddleware, optionalAuth } = require('../middleware/auth');
+
+const configuredCookieMaxAge = Number(process.env.AUTH_COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000);
+const cookieMaxAge = Number.isFinite(configuredCookieMaxAge)
+  ? Math.min(Math.max(Math.floor(configuredCookieMaxAge), 60 * 1000), 30 * 24 * 60 * 60 * 1000)
+  : 7 * 24 * 60 * 60 * 1000;
+const cookieSecure = /^true$/i.test(process.env.AUTH_COOKIE_SECURE || '')
+  || (process.env.NODE_ENV === 'production' && !/^false$/i.test(process.env.AUTH_COOKIE_SECURE || ''));
+
+function authCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: cookieSecure,
+    path: '/',
+    maxAge: cookieMaxAge
+  };
+}
+
+function setAuthCookie(res, token) {
+  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions());
+  res.setHeader('Cache-Control', 'no-store');
+}
+
+function publicAuthResponse(user, token) {
+  const response = {
+    success: true,
+    user: { id: user.id, username: user.username, points: user.points, role: user.role }
+  };
+  if (/^true$/i.test(process.env.AUTH_RETURN_TOKEN || '')) response.token = token;
+  return response;
+}
 
 // 注册接口：每小时最多3次，防止批量注册
 const registerLimiter = rateLimit({ windowMs: 3600000, max: 3, message: { error: '注册过于频繁，请稍后再试' } });
 
 // 登录失败计数：按"用户名+IP"维度，连续失败5次锁定15分钟，防暴力破解
-const loginFailCounts = new Map(); // key -> { count, lockedUntilMs }
+const loginFailCounts = new Map(); // key -> { count, lockedUntilMs, touchedAtMs }
 const LOGIN_FAIL_MAX = 5;
 const LOGIN_LOCK_MS = 15 * 60 * 1000;
+const LOGIN_TRACKER_MAX = 10000;
+
+function normalizeUsername(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizePassword(value) {
+  return typeof value === 'string' ? value : '';
+}
+
+function cleanupLoginTrackers() {
+  const cutoff = Date.now() - LOGIN_LOCK_MS;
+  for (const [key, entry] of loginFailCounts) {
+    if ((entry.touchedAtMs || 0) < cutoff && Date.now() >= (entry.lockedUntilMs || 0)) loginFailCounts.delete(key);
+  }
+  while (loginFailCounts.size >= LOGIN_TRACKER_MAX) {
+    const oldestKey = loginFailCounts.keys().next().value;
+    if (oldestKey === undefined) break;
+    loginFailCounts.delete(oldestKey);
+  }
+}
 
 function isLoginLocked(username, ip) {
   const key = `${username}:${ip}`;
@@ -23,8 +75,10 @@ function isLoginLocked(username, ip) {
 
 function recordLoginFailure(username, ip) {
   const key = `${username}:${ip}`;
-  const entry = loginFailCounts.get(key) || { count: 0, lockedUntilMs: 0 };
+  cleanupLoginTrackers();
+  const entry = loginFailCounts.get(key) || { count: 0, lockedUntilMs: 0, touchedAtMs: 0 };
   entry.count += 1;
+  entry.touchedAtMs = Date.now();
   if (entry.count >= LOGIN_FAIL_MAX) {
     entry.lockedUntilMs = Date.now() + LOGIN_LOCK_MS;
   }
@@ -49,8 +103,7 @@ function isPrivateAddress(value = '') {
 function allowRegisterWithoutInvite(req) {
   if (/^true$/i.test(process.env.LOCAL_REGISTER_WITHOUT_INVITE || '')) return true;
   if (/^false$/i.test(process.env.LOCAL_REGISTER_WITHOUT_INVITE || '')) return false;
-  const host = String(req.hostname || '').split(':')[0];
-  return isPrivateAddress(host) || isPrivateAddress(req.ip);
+  return isPrivateAddress(req.ip);
 }
 
 router.get('/register-config', (req, res) => {
@@ -59,7 +112,9 @@ router.get('/register-config', (req, res) => {
 
 // 注册（公网需要邀请码，本地/内网部署可免邀请码）
 router.post('/register', registerLimiter, (req, res) => {
-  const { username, password, inviteCode } = req.body;
+  const username = normalizeUsername(req.body.username);
+  const password = normalizePassword(req.body.password);
+  const inviteCode = typeof req.body.inviteCode === 'string' ? req.body.inviteCode.trim() : '';
   const inviteRequired = !allowRegisterWithoutInvite(req);
   
   if (!username || !password) {
@@ -73,10 +128,14 @@ router.post('/register', registerLimiter, (req, res) => {
   if (username.length < 3 || username.length > 20) {
     return res.status(400).json({ error: '用户名长度需在3-20个字符之间' });
   }
+  if (/[\u0000-\u001f\u007f]/.test(username)) {
+    return res.status(400).json({ error: '用户名包含无效字符' });
+  }
   
   if (password.length < 8) {
     return res.status(400).json({ error: '密码长度至少8位' });
   }
+  if (password.length > 128) return res.status(400).json({ error: '密码长度不能超过128位' });
   if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
     return res.status(400).json({ error: '密码需包含大小写字母和数字' });
   }
@@ -86,17 +145,7 @@ router.post('/register', registerLimiter, (req, res) => {
       ? createUserWithInvite(username, password, inviteCode)
       : createUser(username, password);
     const token = generateToken(user);
-    
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        points: user.points,
-        role: user.role
-      }
-    });
+    res.json(publicAuthResponse(user, token));
   } catch (e) {
     if (e.message === '用户名已存在') {
       return res.status(400).json({ error: '用户名已存在' });
@@ -111,13 +160,17 @@ router.post('/register', registerLimiter, (req, res) => {
 
 // 登录
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
+  const username = normalizeUsername(req.body.username);
+  const password = normalizePassword(req.body.password);
   
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' });
   }
+  if (username.length > 20 || password.length > 128) {
+    return res.status(400).json({ error: '用户名或密码格式不正确' });
+  }
 
-  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+  const clientIp = req.ip;
   if (isLoginLocked(username, clientIp)) {
     return res.status(429).json({ error: '登录失败次数过多，请15分钟后再试' });
   }
@@ -136,17 +189,20 @@ router.post('/login', (req, res) => {
 
   clearLoginFailures(username, clientIp);
   const token = generateToken(user);
-  
-  res.json({
-    success: true,
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      points: user.points,
-      role: user.role
-    }
+  setAuthCookie(res, token);
+  res.json(publicAuthResponse(user, token));
+});
+
+router.post('/logout', optionalAuth, (req, res) => {
+  if (req.userId) revokeUserTokens(req.userId);
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: cookieSecure,
+    path: '/'
   });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ success: true });
 });
 
 // 获取当前登录用户信息

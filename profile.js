@@ -10,7 +10,8 @@
     let invitesLoaded = false;
     let ordersLoaded = false;
 
-    document.getElementById('logoutBtn').addEventListener('click', () => {
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = 'login.html';
@@ -22,7 +23,7 @@
         const res = await fetch('/api/user/stats', { headers: authHeaders });
         const data = await res.json();
         if (!res.ok) {
-          document.getElementById('statsContainer').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">加载失败：' + (data.error || '未知错误') + '</div>';
+          document.getElementById('statsContainer').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">加载失败：${escapeHtml(data.error || '未知错误')}</div>`;
           return;
         }
         document.getElementById('statBalance').textContent = data.currentPoints ?? 0;
@@ -126,6 +127,7 @@
         if (!res.ok) throw new Error(data.error || '加载失败');
         const user = data.user || data;
         document.getElementById('profileUserName').textContent = user.username || '';
+        document.getElementById('passwordUsername').value = user.username || '';
         document.getElementById('accountUsername').textContent = user.username || '-';
         document.getElementById('accountRole').textContent = user.role === 'admin' ? '管理员' : '普通用户';
         document.getElementById('accountCreatedAt').textContent = user.created_at || '-';
@@ -296,7 +298,8 @@
     });
 
     // 修改密码
-    document.getElementById('changePwBtn').addEventListener('click', async () => {
+    document.getElementById('passwordTab').addEventListener('submit', async (event) => {
+      event.preventDefault();
       const oldPw = document.getElementById('oldPassword').value;
       const newPw = document.getElementById('newPassword').value;
       const confirmPw = document.getElementById('confirmPassword').value;
@@ -305,6 +308,7 @@
 
       if (!oldPw || !newPw) { msgEl.textContent = '请填写完整'; msgEl.className = 'profile-msg error'; return; }
       if (newPw.length < 8) { msgEl.textContent = '新密码至少8位'; msgEl.className = 'profile-msg error'; return; }
+      if (newPw.length > 128) { msgEl.textContent = '新密码不能超过128位'; msgEl.className = 'profile-msg error'; return; }
       if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPw)) { msgEl.textContent = '新密码需包含大小写字母和数字'; msgEl.className = 'profile-msg error'; return; }
       if (newPw !== confirmPw) { msgEl.textContent = '两次密码不一致'; msgEl.className = 'profile-msg error'; return; }
 

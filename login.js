@@ -33,7 +33,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '登录失败');
 
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('token', 'cookie');
         localStorage.setItem('user', JSON.stringify(data.user));
         if (safeNext) {
           window.location.href = safeNext;

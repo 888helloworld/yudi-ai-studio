@@ -26,6 +26,9 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     try { assertXiImageSizeSupported(size); } catch (error) {
       return res.status(error.statusCode || 400).json({ error: error.message });
     }
+    try { manager.assertCanCreateJob(req.userId); } catch (error) {
+      return res.status(error.statusCode || 429).json({ error: error.message });
+    }
     const costPoints = POINTS.image * count;
     let charged = false;
     try {
@@ -55,6 +58,9 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     }
     if (sourceFiles.some((file) => (file.buffer?.length || 0) > 20 * 1024 * 1024)) {
       return res.status(400).json({ error: '改图原图处理后仍超过 20MB，请换一张更小的参考图' });
+    }
+    try { manager.assertCanCreateJob(req.userId); } catch (error) {
+      return res.status(error.statusCode || 429).json({ error: error.message });
     }
     const costPoints = POINTS.image * count;
     let charged = false;

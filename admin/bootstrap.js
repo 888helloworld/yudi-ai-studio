@@ -9,10 +9,12 @@
         if (tab.dataset.tab === 'pointlogs') loadPointLogs(1);
         if (tab.dataset.tab === 'cdkeys') { loadCdkeys(1); loadCdkeyStats(); }
         if (tab.dataset.tab === 'payment') { loadPaymentConfig(); loadPaymentStats(); loadPaymentOrders(1); }
+        if (tab.dataset.tab === 'audit') loadAuditLogs(1);
       });
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', () => {
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = 'login.html';

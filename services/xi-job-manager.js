@@ -3,11 +3,27 @@ const { updateXiJobHistory: persistXiJobHistory } = require('../repositories/xi-
 
 const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
 
-function createXiJobManager({ db, maxActiveJobs, formatDateTime, runJob, getModel }) {
+function createXiJobManager({ db, maxActiveJobs = 2, maxJobsPerUser = 2, maxQueuedJobs = 20, formatDateTime, runJob, getModel }) {
   const jobs = new Map();
   const queue = [];
   const cleanupTimers = new Map();
   let activeJobs = 0;
+
+  function assertCanCreateJob(userId) {
+    const userActiveJobs = Array.from(jobs.values()).filter((job) => (
+      job.userId === userId && ['queued', 'running'].includes(job.status)
+    )).length;
+    if (userActiveJobs >= maxJobsPerUser) {
+      const error = new Error(`每个账号最多同时处理 ${maxJobsPerUser} 个画面工坊任务，请等待当前任务完成`);
+      error.statusCode = 429;
+      throw error;
+    }
+    if (queue.length >= maxQueuedJobs) {
+      const error = new Error('画面工坊当前排队任务较多，请稍后再试');
+      error.statusCode = 503;
+      throw error;
+    }
+  }
 
   function getHistorySubType(job) {
     return job.mode === 'edit' ? 'xi-edit' : 'xi-generate';
@@ -47,18 +63,14 @@ function createXiJobManager({ db, maxActiveJobs, formatDateTime, runJob, getMode
   }
 
   function createJobHistory(job) {
-    try {
-      job.historyId = db.addHistory(job.userId, 'image', {
-        sub_type: getHistorySubType(job),
-        image_url: null,
-        content: buildJobHistoryContent(job, 'queued'),
-        prompt: job.prompt,
-        ratio: job.size,
-        cost_points: job.costPoints || 0
-      });
-    } catch (historyErr) {
-      console.error('创建 gpt-image-2 任务历史失败:', historyErr);
-    }
+    job.historyId = db.addHistory(job.userId, 'image', {
+      sub_type: getHistorySubType(job),
+      image_url: null,
+      content: buildJobHistoryContent(job, 'queued'),
+      prompt: job.prompt,
+      ratio: job.size,
+      cost_points: job.costPoints || 0
+    });
   }
 
   function updateJobHistory(job, status, imageUrls, costPoints, extra = {}) {
@@ -238,6 +250,7 @@ function createXiJobManager({ db, maxActiveJobs, formatDateTime, runJob, getMode
   }
 
   return {
+    assertCanCreateJob,
     buildJobHistoryContent,
     canUserAccessUpload,
     createJob,

@@ -4,28 +4,31 @@ const { POINTS } = require('../config/points');
 const { sniffImageMime } = require('../middleware/image-upload');
 const {
   getRecoverableXiJobHistories,
-  getXiHistoriesWithoutImages,
-  updateXiHistoryContent,
   updateXiHistoryState
 } = require('../repositories/xi-history-repository');
 const { getSourceImageFilename } = require('./prompt-service');
 const { createXiJobManager } = require('./xi-job-manager');
-const { formatUpstreamError } = require('./upstream-http');
 const { assertXiImageSizeSupported, parseXiImageSize } = require('./xi-image-size');
 const { getLocalImageDimensions, getLocalUploadPath } = require('../utils/image-storage');
 const { parseImageCount } = require('../utils/request-utils');
 
 function getMaxActiveJobs() {
-  const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS || '1').trim();
-  if (/^(0|unlimited|infinite|none)$/i.test(raw)) return Number.MAX_SAFE_INTEGER;
+  const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS || '2').trim();
   const parsed = Number(raw);
-  return Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : 1;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 8) : 2;
+}
+
+function getPositiveJobLimit(name, fallback, maximum) {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), maximum) : fallback;
 }
 
 function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
   const manager = createXiJobManager({
     db,
     maxActiveJobs: getMaxActiveJobs(),
+    maxJobsPerUser: getPositiveJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 2, 5),
+    maxQueuedJobs: getPositiveJobLimit('XI_XU_MAX_QUEUED_JOBS', 20, 100),
     formatDateTime,
     runJob: (job) => runXiJob(job),
     getModel: () => process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2'
@@ -47,9 +50,15 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
   }
 
   function markRecoveryFailed(row, meta, reason) {
+    const alreadyRefunded = Math.max(Number(meta.refunded_points) || 0, 0);
+    const refundAmount = Math.max((Number(row.cost_points) || 0) - alreadyRefunded, 0);
+    if (refundAmount > 0) {
+      refundPoints(row.user_id, refundAmount, 'gpt-image-2 重启恢复失败退款', `xi-job-recovery-failure:${row.id}`);
+    }
     meta.status = 'failed';
-    meta.error = `服务重启后任务恢复失败，积分未退回：${reason}`;
-    updateXiHistoryState(row.id, JSON.stringify(meta), null);
+    meta.refunded_points = alreadyRefunded + refundAmount;
+    meta.error = `服务重启后任务恢复失败，积分已自动退回：${reason}`;
+    updateXiHistoryState(row.id, JSON.stringify(meta), null, 0);
   }
 
   function recoverStaleHistories() {
@@ -68,6 +77,11 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
           if (!prompt) throw new Error('任务提示词为空');
           assertXiImageSizeSupported(size);
           const sourceFiles = buildRecoveredSourceFiles(meta, mode);
+          const costPoints = Math.max(Number(row.cost_points) || 0, 0);
+          const refundedPoints = Math.max(Number(meta.refunded_points) || 0, 0);
+          if (costPoints > 0 && refundedPoints >= costPoints) {
+            throw new Error('任务积分已经全部退回，禁止重复恢复');
+          }
           meta.status = 'queued';
           meta.error = '';
           updateXiHistoryState(row.id, JSON.stringify(meta), null);
@@ -86,7 +100,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
             size,
             count,
             quality: provider.fixedQuality,
-            costPoints: Math.max(Number(row.cost_points) || 0, 0),
+            costPoints,
             sourceFiles,
             sourceFileNames: Array.isArray(meta.sources) ? meta.sources : [],
             sourcePreviewUrls: Array.isArray(meta.source_urls) ? meta.source_urls : [],
@@ -95,7 +109,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
             upstreamMeta: {},
             provider: '',
             fallbackReason: '',
-            refundedPoints: 0,
+            refundedPoints,
             refundedOnFail: false
           });
           recovered += 1;
@@ -105,29 +119,10 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
         }
       }
       if (recovered > 0 || blocked > 0) {
-        console.log(`已处理重启遗留的 gpt-image-2 任务：恢复 ${recovered} 条，无法恢复 ${blocked} 条（积分未退）`);
+        console.log(`已处理重启遗留的 gpt-image-2 任务：恢复 ${recovered} 条，无法恢复并退款 ${blocked} 条`);
       }
     } catch (error) {
       console.error('处理重启遗留 gpt-image-2 任务失败:', error);
-    }
-  }
-
-  function repairLegacyInitializationFailures() {
-    const brokenMessage = "服务重启后任务恢复失败，积分已自动退回：Cannot access 'XI_IMAGE_SIZE_ALIASES' before initialization";
-    try {
-      let repaired = 0;
-      for (const row of getXiHistoriesWithoutImages()) {
-        let meta = {};
-        try { meta = JSON.parse(row.content || '{}'); } catch { continue; }
-        if (meta.status !== 'failed' || meta.error !== brokenMessage) continue;
-        meta.status = 'queued';
-        meta.error = '';
-        updateXiHistoryContent(row.id, JSON.stringify(meta));
-        repaired += 1;
-      }
-      if (repaired > 0) console.log(`已修复 ${repaired} 条初始化顺序导致的任务，准备重新生成`);
-    } catch (error) {
-      console.error('修复初始化顺序导致的任务失败:', error);
     }
   }
 
@@ -138,26 +133,17 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
     try {
       let localUrls;
       if (job.mode === 'edit') {
-        const editResult = await provider.callXiEditWithFallback(job);
+        const editResult = await provider.callXiXuEdit(job);
         localUrls = editResult.localUrls;
         job.upstreamMeta = editResult.upstreamMeta || {};
-        job.provider = editResult.provider;
-        job.fallbackReason = editResult.fallbackReason;
+        job.provider = 'xixu';
+        job.fallbackReason = '';
       } else {
-        try {
-          const generateResult = await provider.callXiXuGenerate(job);
-          localUrls = generateResult.localUrls;
-          job.upstreamMeta = generateResult.upstreamMeta || {};
-          job.provider = 'xixu';
-        } catch (error) {
-          job.fallbackReason = error.message || 'gpt-image-2 生图失败';
-          if (!provider.arkFallbackEnabled) {
-            throw new Error(formatUpstreamError(job.fallbackReason, '图片服务暂时不可用，请稍后重试。本次没有生成图片，积分已退回。'));
-          }
-          localUrls = await provider.callArkGenerateForXiJob(job);
-          job.upstreamMeta = {};
-          job.provider = 'ark-fallback';
-        }
+        const generateResult = await provider.callXiXuGenerate(job);
+        localUrls = generateResult.localUrls;
+        job.upstreamMeta = generateResult.upstreamMeta || {};
+        job.provider = 'xixu';
+        job.fallbackReason = '';
       }
       job.status = 'done';
       job.finishedAtMs = Date.now();
@@ -167,9 +153,9 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       const expectedCount = Math.max(Number(job.count) || 1, 1);
       const actualCount = Math.min(localUrls.length, expectedCount);
       const actualCost = POINTS.image * actualCount;
-      const refundAmount = Math.max((job.costPoints || 0) - actualCost, 0);
+      const refundAmount = Math.max((job.costPoints || 0) - actualCost - (job.refundedPoints || 0), 0);
       if (refundAmount > 0) {
-        refundPoints(job.userId, refundAmount, `gpt-image-2 少出${expectedCount - actualCount}张退款`);
+        refundPoints(job.userId, refundAmount, `gpt-image-2 少出${expectedCount - actualCount}张退款`, `xi-job-partial:${job.historyId}`);
         job.refundedPoints = (job.refundedPoints || 0) + refundAmount;
       }
       if (!manager.updateJobHistory(job, 'done', localUrls, actualCost, { duration_ms: durationMs })) {
@@ -183,9 +169,10 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
         });
       }
     } catch (error) {
-      if (job.costPoints && !job.refundedOnFail) {
-        refundPoints(job.userId, job.costPoints, `gpt-image-2 ${job.mode === 'edit' ? '改图' : '生图'}失败退款`);
-        job.refundedPoints = (job.refundedPoints || 0) + job.costPoints;
+      const remainingRefund = Math.max((job.costPoints || 0) - (job.refundedPoints || 0), 0);
+      if (remainingRefund > 0 && !job.refundedOnFail) {
+        refundPoints(job.userId, remainingRefund, `gpt-image-2 ${job.mode === 'edit' ? '改图' : '生图'}失败退款`, `xi-job-failure:${job.historyId}`);
+        job.refundedPoints = (job.refundedPoints || 0) + remainingRefund;
         job.refundedOnFail = true;
       }
       job.status = 'failed';
@@ -207,7 +194,6 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
   }
 
   function initializeRecovery() {
-    repairLegacyInitializationFailures();
     recoverStaleHistories();
   }
 

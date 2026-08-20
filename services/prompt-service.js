@@ -91,9 +91,8 @@ function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
     .join('\n');
   return [
     '请严格按参考图编号理解图片，不要只参考第一张图。',
-    sourceFiles.length > 1 ? '本次还会额外提供一张 reference_board.png 编号参考板；参考板里的数字就是图1、图2、图3、图4的编号，请用它确认每张图的对应关系。' : '',
     sourceList ? `参考图说明：\n${sourceList}` : '',
-    '如果用户提到“图1、图2、图3、图4”，必须对应上面的编号说明和参考板数字，不要按任意顺序重新解释。',
+    '如果用户提到“图1、图2、图3、图4”，必须对应上面的文件顺序和编号说明，不要按任意顺序重新解释。',
     '需要把用户指定的各参考图元素组合到同一张最终图片里；不要遗漏用户点名的参考图元素。',
     size ? `最终图片目标画布是 ${size}，请按这个画布比例重新构图。` : '',
     '必须让主体完整出现在画面内，四周保留安全留白；不要裁掉脚尖、脚跟、袜口、袜身、产品边缘或用户要求保留的细节。',
@@ -103,24 +102,10 @@ function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
   ].filter(Boolean).join('\n\n');
 }
 
-function buildReferenceBoardPrompt(prompt, sourceFiles = []) {
-  const sourceList = sourceFiles
-    .map((file, index) => `${getSourceImageLabel(file, index)}：${file?.originalname || getSourceImageFilename(index)}`)
-    .join('\n');
-  return [
-    `上传图片是一张参考板，里面按数字标出了 ${sourceFiles.length} 张原始参考图。`,
-    '请按参考板左上角的数字理解图1、图2、图3、图4，不要把参考板当成拼贴成品。',
-    sourceList ? `编号说明：\n${sourceList}` : '',
-    '需要把用户指定的元素组合成一张自然完整的新图；最终结果不要保留参考板、数字角标或多宫格布局。',
-    `用户要求：${prompt}`
-  ].filter(Boolean).join('\n\n');
-}
-
 module.exports = {
   buildAmazonMainImagePrompt,
   buildAmazonMainImageVariationPrompt,
   buildImageVariationPrompt,
-  buildReferenceBoardPrompt,
   buildXiEditPrompt,
   buildXiGeneratePrompt,
   buildXhsImagePrompt,

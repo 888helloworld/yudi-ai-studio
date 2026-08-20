@@ -19,7 +19,8 @@ async function initNav() {
   }
 }
 
-function logout() {
+async function logout() {
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
   localStorage.removeItem('token');
 }
 

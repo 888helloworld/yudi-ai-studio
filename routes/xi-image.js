@@ -132,7 +132,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const sourceDimensions = getUploadedImageDimensions(sourceFiles);
     const startedAtMs = Date.now();
     try {
-      const editResult = await provider.callXiEditWithFallback({
+      const editResult = await provider.callXiXuEdit({
         prompt,
         size,
         count,
@@ -166,8 +166,8 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
           durationMs,
           outputDimensions,
           extra: {
-            provider: editResult.provider,
-            fallback_reason: editResult.fallbackReason || '',
+            provider: 'xixu',
+            fallback_reason: '',
             sources: sourceFiles.map((file, index) => file.originalname || getSourceImageFilename(index)),
             source_urls: sourcePreviewUrls,
             source_dimensions: sourceDimensions

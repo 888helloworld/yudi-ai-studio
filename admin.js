@@ -1,5 +1,5 @@
 (() => {
-  const files = ['state-users.js', 'history.js', 'billing.js', 'bootstrap.js'];
+  const files = ['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js'];
 
   function loadScript(filename) {
     return new Promise((resolve, reject) => {

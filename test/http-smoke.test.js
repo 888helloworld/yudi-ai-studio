@@ -14,6 +14,7 @@ process.env.OPENAI_IMAGE_API_KEY = 'test-image-key';
 process.env.XI_XU_GENERATE_RETRIES = '0';
 process.env.DEEPSEEK_API_KEY = '';
 process.env.ARK_API_KEY = '';
+process.env.AUTH_RETURN_TOKEN = 'true';
 
 const app = require('../server');
 const { db } = require('../database');
@@ -133,7 +134,9 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
       body: JSON.stringify({ username: 'http_template_user', password: 'HttpTemplate123' })
     });
     assert.equal(login.status, 200);
-    assert.equal(typeof (await login.json()).token, 'string');
+    assert.match(login.headers.get('set-cookie') || '', /xhs_session=.*HttpOnly.*SameSite=Strict/i);
+    const loginBody = await login.json();
+    assert.equal(typeof loginBody.token, 'string');
 
     const beforeCopyFailureResponse = await fetch(`${baseUrl}/api/user/me`, {
       headers: { Authorization: `Bearer ${registerBody.token}` }
@@ -214,6 +217,55 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     } finally {
       await close(upstream);
     }
+
+    const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'TestAdmin123' })
+    });
+    assert.equal(adminLogin.status, 200);
+    const adminToken = (await adminLogin.json()).token;
+    const recharge = await fetch(`${baseUrl}/api/admin/users/recharge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ userId: registerBody.user.id, amount: 1, description: '审计测试' })
+    });
+    assert.equal(recharge.status, 200);
+    const auditResponse = await fetch(`${baseUrl}/api/admin/audit-logs`, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    assert.equal(auditResponse.status, 200);
+    const auditBody = await auditResponse.json();
+    assert.equal(auditBody.logs[0].action, 'user.recharge');
+
+    const passwordChange = await fetch(`${baseUrl}/api/user/change-password`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ oldPassword: 'HttpTemplate123', newPassword: 'HttpTemplate456' })
+    });
+    assert.equal(passwordChange.status, 200);
+    const oldTokenAfterPasswordChange = await fetch(`${baseUrl}/api/user/me`, {
+      headers: { Authorization: `Bearer ${registerBody.token}` }
+    });
+    assert.equal(oldTokenAfterPasswordChange.status, 401);
+
+    const relogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'http_template_user', password: 'HttpTemplate456' })
+    });
+    assert.equal(relogin.status, 200);
+    const reloginToken = (await relogin.json()).token;
+    const logout = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${reloginToken}` }
+    });
+    assert.equal(logout.status, 200);
+    assert.match(logout.headers.get('set-cookie') || '', /xhs_session=;/i);
+    const tokenAfterLogout = await fetch(`${baseUrl}/api/user/me`, {
+      headers: { Authorization: `Bearer ${reloginToken}` }
+    });
+    assert.equal(tokenAfterLogout.status, 401);
   } finally {
     await close(server);
   }

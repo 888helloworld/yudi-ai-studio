@@ -37,7 +37,15 @@ function collectUploadedFiles(req) {
 }
 
 function validateUploadedImageFiles(req, res, next) {
-  for (const file of collectUploadedFiles(req)) {
+  const files = collectUploadedFiles(req);
+  const maxTotalBytes = Math.max(1, Number(process.env.MAX_UPLOAD_TOTAL_MB || 40)) * 1024 * 1024;
+  const maxPixelsPerImage = Math.max(1000000, Number(process.env.MAX_UPLOAD_PIXELS || 16000000));
+  const maxTotalPixels = Math.max(maxPixelsPerImage, Number(process.env.MAX_UPLOAD_TOTAL_PIXELS || 24000000));
+  const totalBytes = files.reduce((sum, file) => sum + (file.buffer?.length || 0), 0);
+  if (totalBytes > maxTotalBytes) return res.status(400).json({ error: '本次上传图片总大小过大，请减少图片数量或压缩后重试' });
+
+  let totalPixels = 0;
+  for (const file of files) {
     const declaredMime = normalizeMimeType(file.mimetype);
     const detectedMime = sniffImageMime(file.buffer);
     if (!detectedMime) return res.status(400).json({ error: '上传文件不是有效图片' });
@@ -45,6 +53,14 @@ function validateUploadedImageFiles(req, res, next) {
     if (normalizeMimeType(file.mimetype) !== detectedMime) {
       return res.status(400).json({ error: '上传图片格式与文件内容不一致' });
     }
+    const dimensions = getImageDimensionsFromBuffer(file.buffer);
+    if (!dimensions) return res.status(400).json({ error: '无法读取上传图片尺寸，文件可能已损坏' });
+    const pixels = dimensions.width * dimensions.height;
+    if (!Number.isSafeInteger(pixels) || pixels > maxPixelsPerImage || dimensions.width > 8192 || dimensions.height > 8192) {
+      return res.status(400).json({ error: '上传图片像素尺寸过大，请缩小图片后重试' });
+    }
+    totalPixels += pixels;
+    if (totalPixels > maxTotalPixels) return res.status(400).json({ error: '本次上传图片总像素过大，请减少图片数量或缩小图片' });
   }
   next();
 }
@@ -55,3 +71,4 @@ module.exports = {
   sniffImageMime,
   validateUploadedImageFiles
 };
+const { getImageDimensionsFromBuffer } = require('../utils/image-storage');

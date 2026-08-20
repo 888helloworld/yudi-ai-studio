@@ -26,29 +26,13 @@ function getRecoverableXiJobHistories(limit = 500) {
   `).all(limit);
 }
 
-function getXiHistoriesWithoutImages() {
-  return db.prepare(`
-    SELECT id, content
-    FROM history
-    WHERE type = 'image'
-      AND sub_type IN ('xi-edit', 'xi-generate')
-      AND image_url IS NULL
-  `).all();
-}
-
-function updateXiHistoryState(historyId, content, imageUrl = null) {
-  return db.prepare('UPDATE history SET content = ?, image_url = ? WHERE id = ?')
-    .run(content, imageUrl, historyId);
-}
-
-function updateXiHistoryContent(historyId, content) {
-  return db.prepare('UPDATE history SET content = ? WHERE id = ?').run(content, historyId);
+function updateXiHistoryState(historyId, content, imageUrl = null, costPoints = null) {
+  return db.prepare('UPDATE history SET content = ?, image_url = ?, cost_points = COALESCE(?, cost_points) WHERE id = ?')
+    .run(content, imageUrl, costPoints, historyId);
 }
 
 module.exports = {
   getRecoverableXiJobHistories,
-  getXiHistoriesWithoutImages,
-  updateXiHistoryContent,
   updateXiHistoryState,
   updateXiJobHistory
 };

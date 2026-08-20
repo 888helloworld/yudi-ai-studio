@@ -29,7 +29,7 @@
 | 事项 | Reach | Impact | Confidence | Effort | 结论 |
 | --- | ---: | ---: | ---: | ---: | --- |
 | 正式支付回调验签 | 4 | 5 | 5 | 3 | P0 |
-| `/uploads` 鉴权或签名 URL | 5 | 5 | 4 | 3 | P0 |
+| `/uploads` 鉴权或签名 URL | 5 | 5 | 4 | 3 | 已完成鉴权代理 |
 | XSS 和 JWT 存储治理 | 5 | 5 | 4 | 4 | P0 |
 | 上游尺寸监控和告警 | 5 | 4 | 5 | 2 | P0 |
 | 文档体系同步更新 | 4 | 3 | 5 | 1 | P0 |
@@ -87,9 +87,9 @@
 
 目标：图片资产和安全更扎实。
 
-- `/uploads` 改为鉴权图片代理或签名 URL。
+- [x] `/uploads` 已改为鉴权图片代理，并校验用户归属。
 - 生成图片接对象存储。
-- JWT 从 localStorage 迁移到 HttpOnly Cookie。
+- [x] JWT 已从 localStorage 迁移到 HttpOnly Cookie。
 - 增加更严格 CSP。
 - 增加上游错误告警。
 - 增加任务队列持久化，减少重启对长任务的影响。

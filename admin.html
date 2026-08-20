@@ -192,6 +192,7 @@
       <button class="admin-tab" data-tab="pointlogs">积分流水</button>
       <button class="admin-tab" data-tab="cdkeys">卡密管理</button>
       <button class="admin-tab" data-tab="payment">支付订单</button>
+      <button class="admin-tab" data-tab="audit">操作审计</button>
     </nav>
 
     <section class="admin-panel active" id="usersPanel">
@@ -364,35 +365,49 @@
       </div>
       <div id="paymentOrdersPager"></div>
     </section>
+
+    <section class="admin-panel" id="auditPanel">
+      <div class="admin-panel-title">
+        <div><h2>管理员操作审计</h2><p>记录充值、删用户、删历史、重置密码、卡密和订单操作。</p></div>
+      </div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>管理员</th><th>动作</th><th>对象</th><th>详情</th><th>IP</th></tr></thead>
+          <tbody id="auditLogsList"></tbody>
+        </table>
+      </div>
+      <div id="auditLogsPager"></div>
+    </section>
   </main>
 
   <div class="admin-modal" id="rechargeModal" style="display:none;">
-    <div class="admin-modal-content">
+    <form class="admin-modal-content" id="rechargeForm" onsubmit="event.preventDefault(); AdminApp.confirmRecharge()">
       <h3>积分充值</h3>
       <div class="admin-error" id="rechargeError"></div>
       <p id="rechargeUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
       <input type="number" id="rechargeAmount" placeholder="充值积分数量">
       <input type="text" id="rechargeDesc" placeholder="备注（可选）">
       <div class="admin-modal-actions">
-                <button class="admin-btn" onclick="AdminApp.closeRechargeModal()">取消</button>
-                <button class="admin-btn admin-btn-primary" onclick="AdminApp.confirmRecharge()">确认充值</button>
+                <button class="admin-btn" type="button" onclick="AdminApp.closeRechargeModal()">取消</button>
+                <button class="admin-btn admin-btn-primary" type="submit">确认充值</button>
       </div>
-    </div>
+    </form>
   </div>
 
   <!-- 改密码弹窗 -->
   <div class="admin-modal" id="resetPasswordModal" style="display:none;">
-    <div class="admin-modal-content">
+    <form class="admin-modal-content" id="resetPasswordForm" onsubmit="event.preventDefault(); AdminApp.confirmResetPassword()">
       <h3>重置用户密码</h3>
       <div class="admin-error" id="resetPwdError"></div>
       <p id="resetPwdUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
-      <input type="password" id="newPassword" placeholder="新密码（至少8位，需含大小写字母+数字）" style="margin-bottom:8px;">
-      <input type="password" id="confirmPassword" placeholder="确认新密码">
+      <input type="text" id="resetPasswordUsername" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;opacity:0;">
+      <input type="password" id="newPassword" placeholder="新密码（至少8位，需含大小写字母+数字）" minlength="8" maxlength="128" autocomplete="new-password" style="margin-bottom:8px;">
+      <input type="password" id="confirmPassword" placeholder="确认新密码" maxlength="128" autocomplete="new-password">
       <div class="admin-modal-actions">
-                <button class="admin-btn" onclick="AdminApp.closeResetPasswordModal()">取消</button>
-                <button class="admin-btn admin-btn-primary" onclick="AdminApp.confirmResetPassword()">确认重置</button>
+                <button class="admin-btn" type="button" onclick="AdminApp.closeResetPasswordModal()">取消</button>
+                <button class="admin-btn admin-btn-primary" type="submit">确认重置</button>
       </div>
-    </div>
+    </form>
   </div>
 
     <script src="frontend/shared-utils.js"></script>

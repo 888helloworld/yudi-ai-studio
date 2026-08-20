@@ -19,7 +19,7 @@
 | 看图写 Prompt | `reverse-prompt.html` | 上传一张图，让 AI 反推出提示词 |
 | 个人中心 | `profile.html` | 查看积分、历史、卡密、订单、邀请码 |
 | 管理后台 | `admin.html` | 管理员专用：管用户、充积分、看流水、发卡密 |
-| 登录/注册 | `login.html` / `register.html` | 用 JWT 登录；本地或内网访问时可以不需要邀请码 |
+| 登录/注册 | `login.html` / `register.html` | 浏览器使用 HttpOnly Cookie 登录；本地或内网访问时可以不需要邀请码 |
 | 帮助与协议 | `help.html`、`terms.html`、`privacy.html`、`content-policy.html` | 一些基础说明 |
 
 如果你刚来，建议直奔**画面工坊**（`image-studio.html`），那是目前打磨最久、功能最集中的地方。
@@ -29,6 +29,8 @@
 ## 画面工坊：你的私人 AI 画室
 
 画面工坊是整个项目目前最重要的页面。它专门负责和图片模型打交道，尤其是 `gpt-image-2` 这个能在文字描述和参考图之间切换的画图引擎。
+
+画面工坊的文生图和参考图改图都只调用 `gpt-image-2`。上游失败时任务会报错并退款，不会静默切换豆包、参考板或其他备用模型。小红书普通生图、图文一体和亚马逊主图仍是各自独立的豆包功能。
 
 ### 它能做的事情
 
@@ -136,7 +138,7 @@ priceUsd = tokens * 30 / 1000000
 - 扣积分用的是 SQLite 的原子更新操作，保证在高并发时不会把余额扣成负数。
 - 图片生成如果失败了，积分自动退。
 - 批量生成时实际出图少于请求数量，按缺的图数退款。
-- 服务重启后，所有还没完成的 `gpt-image-2` 队列任务会被标记为失败并退积分。
+- 服务重启后会优先恢复未完成的 `gpt-image-2` 队列任务；参考图缺失或记录损坏而无法恢复时，会按任务号幂等退款，重复启动不会重复加积分。
 - 管理员可以在后台给用户充值、生成卡密、查看积分流水。
 
 ---
@@ -151,12 +153,14 @@ priceUsd = tokens * 30 / 1000000
 环境变量示例：
 
 ```env
-XI_XU_MAX_ACTIVE_JOBS=0
+XI_XU_MAX_ACTIVE_JOBS=2
+XI_XU_MAX_ACTIVE_JOBS_PER_USER=2
+XI_XU_MAX_QUEUED_JOBS=20
 XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 ```
 
-- 当 `XI_XU_MAX_ACTIVE_JOBS=0`、`unlimited`、`infinite`、`none` 时，服务端不设任务并发上限。
-- 如果你填其他数字，会被解析成至少为 1 的整数。
+- 全局并发默认 2，最大 8；`0` 或无效值会回到安全默认值 2，不再表示无限。
+- 每个用户默认最多同时保留 2 个未完成任务，全局排队默认最多 20 个。
 - `XI_XU_IMAGE_RATE_LIMIT_PER_MIN` 限制了图片相关接口每分钟请求数，默认 30。
 - 实际生成速度还会受上游 API 限流、网络、服务器带宽等因素影响，并不是开得越大越快。
 
@@ -164,7 +168,7 @@ XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 
 ## API 概览
 
-所有的用户侧生成接口都要求先登录，然后在请求头里带上 JWT：
+浏览器登录后使用 `HttpOnly + SameSite=Strict` Cookie，JavaScript 读不到真实 JWT。旧 API 客户端仍可在开启 `AUTH_RETURN_TOKEN=true` 后使用 Bearer：
 
 ```http
 Authorization: Bearer <你的令牌>
@@ -304,17 +308,22 @@ XI_XU_GENERATE_TIMEOUT_MS=1800000
 XI_XU_GENERATE_RETRIES=1
 XI_XU_EDIT_TIMEOUT_MS=180000
 XI_XU_EDIT_RETRIES=1
-XI_XU_EDIT_FORCE_FALLBACK=false
-XI_XU_EDIT_CIRCUIT_BREAKER_MS=120000
-XI_XU_MAX_ACTIVE_JOBS=0
+XI_XU_MAX_ACTIVE_JOBS=2
+XI_XU_MAX_ACTIVE_JOBS_PER_USER=2
+XI_XU_MAX_QUEUED_JOBS=20
 XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 XI_XU_NORMALIZE_OUTPUT_SIZE=false
 
-ARK_FALLBACK_ENABLED=true
 MAX_UPLOAD_IMAGE_MB=20
+MAX_UPLOAD_TOTAL_MB=40
+MAX_UPLOAD_PIXELS=16000000
+MAX_UPLOAD_TOTAL_PIXELS=24000000
 
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN=7d
+AUTH_COOKIE_MAX_AGE_MS=604800000
+AUTH_COOKIE_SECURE=true
+AUTH_RETURN_TOKEN=false
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace_with_a_strong_password
@@ -397,7 +406,7 @@ Windows 下如果想让服务在后台保活，可以用我们准备好的脚本
 
 目前支付流程还是“模拟订单 + 人工确认”模式，主要方便内部测试：
 
-- `/api/payment/create` 创建订单。
+- `/api/payment/create` 当前固定返回 `503`，在线充值尚未开放；现阶段使用卡密兑换或管理员人工核对到账。
 - 管理员在后台手动把订单标记为已支付。
 - 真实的支付宝/微信回调接口已经留好了位置，但在完成验签逻辑之前不会自动入账。
 
@@ -439,11 +448,25 @@ data.db
 - `node_modules/`
 - `history.json`
 
-生产环境建议定期备份这几个关键东西：
+运行中的 SQLite 不建议直接复制。使用在线备份命令：
+
+```bash
+npm run backup
+```
+
+它会调用 SQLite backup API，在 `backups/` 生成带时间戳的数据库副本。生产环境建议定期备份：
 
 - `data.db`
 - `uploads/`
 - 云端 `.env`（安全存放，不要公开）
+
+上传目录清理前先只读审计：
+
+```bash
+npm run audit:uploads
+```
+
+默认只报告疑似孤儿文件，不删除。确认后可手工运行 `node scripts/audit-orphan-uploads.js --quarantine` 将文件移入 `uploads/_quarantine/`，仍不会直接删除。
 
 ---
 
@@ -453,7 +476,7 @@ data.db
 - 改图时上传的参考图会在服务端先处理并限制大小。
 - 支持常见图片 MIME 并校验文件头，防止伪装文件。
 - 生成的图片会先下载到本地的 `uploads/` 目录，然后以本地 URL 返回。
-- 现在 `/uploads` 的设置是“知道链接就能访问”，适合内部工具。如果你处理的是客户隐私图、人脸图、未公开商品图，强烈建议升级为鉴权图片代理或签名 URL。
+- `/uploads` 已要求登录，并核对图片是否属于当前用户；管理员可以访问全部图片。
 
 ---
 
@@ -466,13 +489,16 @@ data.db
 - 图片接口、注册接口都有限流。
 - 用户列表和历史查询都有分页限制。
 - 上传文件有大小限制、MIME 白名单和文件头检查。
-- `/uploads` 添加了 `Cache-Control: private`、`X-Content-Type-Options: nosniff`、`X-Robots-Tag: noindex`。
+- 上传还限制单次总大小、单图/总像素和最大边长，避免像素炸弹。
+- `/uploads` 有用户归属鉴权，并添加 `Cache-Control: private`、`X-Content-Type-Options: nosniff`、`X-Robots-Tag: noindex`。
 - 响应头关闭了 `X-Powered-By`。
 - 上传依赖库使用了 `multer` 2.x。
+- 浏览器 JWT 存在 HttpOnly Cookie，不写入 `localStorage`；修改或重置密码后旧令牌立即失效。
+- 外部图片下载会校验 DNS、拦截内网/保留地址、逐次校验重定向并限制下载大小。
+- 管理员敏感操作写入审计日志，可在后台“操作审计”查看。
 
 你仍然需要注意这几点：
 
-- JWT 目前存在浏览器 `localStorage`，万一以后出现 XSS 漏洞，令牌可能被偷走。生产环境时，建议升级为 HttpOnly Cookie，并收紧 CSP 策略，给 `/uploads` 加上鉴权。
 - 支付正式上线前，必须完成真实回调验签，否则一切都只是模拟。
 - **任何时候都不要把真实 API Key、服务器地址、SSH 信息、管理员密码、支付密钥提交到仓库或公开分享。**
 
@@ -535,6 +561,5 @@ git push
 - 4K 按钮已经拿掉了，因为目前上游不管你怎么请求大横图，返回的实际尺寸都和 2K 横图一样，没必要单独保留。
 - 积分扣费（每张 10 积分）和页面展示的美元成本是两套独立的逻辑：前端算的是上游成本估算，后端按积分扣费，互不干扰。
 - 支付目前还是模拟/人工确认，不是生产级自动收款。
-- `/uploads` 还不是严格私有资源，暴露给知道链接的人。
 - 项目是轻量单体结构，特别适合低并发场景。如果要上高并发商用，后面需要拆分任务队列、引入对象存储、升级支付服务和日志监控等。
-- 服务重启会清理未完成的任务并退积分，如果你在运行大量长时间任务，注意安排好重启时机。
+- 服务重启会尝试恢复未完成的画面工坊任务；参考图缺失或记录损坏的任务会自动退款，并用唯一退款业务号防止重复到账。

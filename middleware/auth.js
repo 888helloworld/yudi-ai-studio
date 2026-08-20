@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { getUserById } = require('../db');
+const { getUserAuthById } = require('../db');
 
 // JWT_SECRET 必须显式配置，避免随机回退导致重启后所有 token 失效、或弱密钥被伪造。
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim().length < 16) {
@@ -7,11 +7,37 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim().length < 16) {
 }
 const JWT_SECRET = process.env.JWT_SECRET.trim();
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const AUTH_COOKIE_NAME = 'xhs_session';
+
+function getCookieToken(req) {
+  const header = String(req.headers.cookie || '');
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator < 0) continue;
+    const name = part.slice(0, separator).trim();
+    if (name !== AUTH_COOKIE_NAME) continue;
+    try {
+      return decodeURIComponent(part.slice(separator + 1).trim());
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+function getRequestToken(req) {
+  const authHeader = String(req.headers.authorization || '');
+  if (authHeader.startsWith('Bearer ')) {
+    const bearer = authHeader.slice(7).trim();
+    if (bearer && !['cookie', 'null', 'undefined'].includes(bearer.toLowerCase())) return bearer;
+  }
+  return getCookieToken(req);
+}
 
 // 生成Token
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user.id, username: user.username, role: user.role, tv: Number(user.token_version || 0) },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -19,20 +45,20 @@ function generateToken(user) {
 
 // 验证Token中间件
 function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = getRequestToken(req);
+  if (!token) {
     return res.status(401).json({ error: '请先登录' });
   }
   
-  const token = authHeader.substring(7);
-  
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUserById(decoded.id);
+    const user = getUserAuthById(decoded.id);
     
     if (!user) {
       return res.status(401).json({ error: '用户不存在' });
+    }
+    if (Number(decoded.tv || 0) !== Number(user.token_version || 0)) {
+      return res.status(401).json({ error: '登录状态已失效，请重新登录' });
     }
     
     req.user = user;
@@ -56,14 +82,12 @@ function adminMiddleware(req, res, next) {
 
 // 可选认证（不强制登录）
 function optionalAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
+  const token = getRequestToken(req);
+  if (token) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = getUserById(decoded.id);
-      if (user) {
+      const user = getUserAuthById(decoded.id);
+      if (user && Number(decoded.tv || 0) === Number(user.token_version || 0)) {
         req.user = user;
         req.userId = user.id;
       }
@@ -78,7 +102,9 @@ function optionalAuth(req, res, next) {
 module.exports = {
   JWT_SECRET,
   JWT_EXPIRES_IN,
+  AUTH_COOKIE_NAME,
   generateToken,
+  getRequestToken,
   authMiddleware,
   adminMiddleware,
   optionalAuth

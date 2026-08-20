@@ -163,22 +163,23 @@
             <button class="profile-tab" data-tab="invite">邀请注册</button>
           </div>
           <div class="account-content">
-            <div class="profile-tab-content active" id="passwordTab">
+            <form class="profile-tab-content active" id="passwordTab">
               <div class="profile-msg" id="pwMsg"></div>
+              <input type="text" id="passwordUsername" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;opacity:0;">
               <div class="profile-form-group">
                 <label for="oldPassword">当前密码</label>
-                <input type="password" id="oldPassword" placeholder="输入当前密码">
+                <input type="password" id="oldPassword" placeholder="输入当前密码" maxlength="128" autocomplete="current-password">
               </div>
               <div class="profile-form-group">
                 <label for="newPassword">新密码</label>
-                <input type="password" id="newPassword" placeholder="至少8位，需含大小写字母和数字" minlength="8">
+                <input type="password" id="newPassword" placeholder="至少8位，需含大小写字母和数字" minlength="8" maxlength="128" autocomplete="new-password">
               </div>
               <div class="profile-form-group">
                 <label for="confirmPassword">确认新密码</label>
-                <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+                <input type="password" id="confirmPassword" placeholder="再次输入新密码" maxlength="128" autocomplete="new-password">
               </div>
-              <button class="profile-btn" id="changePwBtn">修改密码</button>
-            </div>
+              <button class="profile-btn" id="changePwBtn" type="submit">修改密码</button>
+            </form>
             <div class="profile-tab-content" id="redeemTab">
               <div class="profile-msg" id="redeemMsg"></div>
               <div class="redeem-row">

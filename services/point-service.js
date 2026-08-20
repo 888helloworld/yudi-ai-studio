@@ -10,8 +10,8 @@ function chargePoints(userId, amount, description) {
   return result.balance;
 }
 
-function refundPoints(userId, amount, description) {
-  if (amount > 0) db.rechargePoints(userId, amount, description);
+function refundPoints(userId, amount, description, referenceKey = null) {
+  if (amount > 0) db.rechargePoints(userId, amount, description, referenceKey);
   return db.getUserPoints(userId);
 }
 

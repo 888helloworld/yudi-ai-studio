@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const dns = require('dns').promises;
+const net = require('net');
 const { PNG } = require('pngjs');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
@@ -9,6 +11,18 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_SAVED_IMAGE_BYTES = 80 * 1024 * 1024;
 const MAX_THUMBNAIL_SOURCE_BYTES = 25 * 1024 * 1024;
 const IMAGE_THUMBNAIL_MAX_SIDE = 480;
+
+const privateAddressBlockList = new net.BlockList();
+[
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
+  ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
+  ['192.168.0.0', 16], ['198.18.0.0', 15], ['198.51.100.0', 24], ['203.0.113.0', 24],
+  ['224.0.0.0', 4], ['240.0.0.0', 4]
+].forEach(([address, prefix]) => privateAddressBlockList.addSubnet(address, prefix, 'ipv4'));
+[
+  ['::', 128], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8],
+  ['2001:db8::', 32]
+].forEach(([address, prefix]) => privateAddressBlockList.addSubnet(address, prefix, 'ipv6'));
 
 function isInternalHost(hostname) {
   const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
@@ -25,7 +39,16 @@ function isInternalHost(hostname) {
   return false;
 }
 
-function assertSafeExternalUrl(rawUrl) {
+function isPrivateIpAddress(address) {
+  const family = net.isIP(address);
+  if (!family) return true;
+  if (family === 4) return privateAddressBlockList.check(address, 'ipv4');
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
+  if (mapped) return privateAddressBlockList.check(mapped[1], 'ipv4');
+  return privateAddressBlockList.check(address, 'ipv6');
+}
+
+async function assertSafeExternalUrl(rawUrl) {
   let parsed;
   try {
     parsed = new URL(rawUrl);
@@ -38,27 +61,64 @@ function assertSafeExternalUrl(rawUrl) {
   if (isInternalHost(parsed.hostname)) {
     throw new Error('禁止下载内网图片地址');
   }
+  const addresses = await dns.lookup(parsed.hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some((entry) => isPrivateIpAddress(entry.address))) {
+    throw new Error('图片地址解析到了内网或保留地址');
+  }
+  return parsed;
+}
+
+async function fetchExternalImage(url, signal) {
+  let currentUrl = String(url || '');
+  for (let redirects = 0; redirects <= 5; redirects += 1) {
+    await assertSafeExternalUrl(currentUrl);
+    const response = await fetch(currentUrl, { signal, redirect: 'manual' });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (!location) throw new Error('图片下载跳转地址缺失');
+      if (redirects >= 5) throw new Error('图片下载跳转次数过多');
+      currentUrl = new URL(location, currentUrl).href;
+      try { await response.body?.cancel(); } catch {}
+      continue;
+    }
+    return { response, finalUrl: currentUrl };
+  }
+  throw new Error('图片下载跳转次数过多');
+}
+
+async function readResponseWithLimit(response, maximumBytes) {
+  const declaredLength = Number(response.headers.get('content-length') || 0);
+  if (declaredLength > maximumBytes) throw new Error('图片文件过大');
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of response.body) {
+    const buffer = Buffer.from(chunk);
+    total += buffer.length;
+    if (total > maximumBytes) throw new Error('图片文件过大');
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks, total);
 }
 
 async function downloadAndSaveImage(url, prefix) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
   try {
-    assertSafeExternalUrl(url);
-    const response = await fetch(url, { signal: controller.signal });
+    const { response, finalUrl } = await fetchExternalImage(url, controller.signal);
     if (!response.ok) throw new Error(`下载失败: ${response.status}`);
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.startsWith('image/')) throw new Error('下载内容不是图片');
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > MAX_SAVED_IMAGE_BYTES) throw new Error('图片文件过大');
-    const ext = url.includes('.jpg') || url.includes('jpeg') ? '.jpg' : '.png';
+    const buffer = await readResponseWithLimit(response, MAX_SAVED_IMAGE_BYTES);
+    const dimensions = getImageDimensionsFromBuffer(buffer);
+    if (!dimensions) throw new Error('下载内容不是有效图片');
+    const ext = contentType.includes('jpeg') || finalUrl.includes('.jpg') || finalUrl.includes('jpeg') ? '.jpg' : '.png';
     const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
     const filepath = path.join(UPLOAD_DIR, filename);
     fs.writeFileSync(filepath, buffer);
     return `/uploads/${filename}`;
   } catch (err) {
     console.error('图片下载失败:', err.message);
-    return url;
+    throw err;
   } finally {
     clearTimeout(timeout);
   }
@@ -175,12 +235,19 @@ function getWebpDimensionsFromBuffer(buffer) {
 }
 
 function getImageDimensionsFromBuffer(buffer) {
-  try {
-    const png = PNG.sync.read(buffer);
-    return { width: png.width, height: png.height, size: `${png.width}x${png.height}` };
-  } catch {
-    return getJpegDimensionsFromBuffer(buffer) || getWebpDimensionsFromBuffer(buffer);
+  if (!Buffer.isBuffer(buffer) || buffer.length < 10) return null;
+  if (buffer.length >= 24 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    const width = buffer.readUInt32BE(16);
+    const height = buffer.readUInt32BE(20);
+    return width > 0 && height > 0 ? { width, height, size: `${width}x${height}` } : null;
   }
+  const gifHeader = buffer.subarray(0, 6).toString('ascii');
+  if ((gifHeader === 'GIF87a' || gifHeader === 'GIF89a') && buffer.length >= 10) {
+    const width = buffer.readUInt16LE(6);
+    const height = buffer.readUInt16LE(8);
+    return width > 0 && height > 0 ? { width, height, size: `${width}x${height}` } : null;
+  }
+  return getJpegDimensionsFromBuffer(buffer) || getWebpDimensionsFromBuffer(buffer);
 }
 
 function getLocalImageDimensions(localUrls) {

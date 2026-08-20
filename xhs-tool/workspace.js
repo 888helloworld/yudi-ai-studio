@@ -115,7 +115,8 @@ function showUserBar(user) {
   const logoutBtn = document.getElementById('logoutBtn');
   const newBtn = logoutBtn.cloneNode(true);
   logoutBtn.parentNode.replaceChild(newBtn, logoutBtn);
-  newBtn.addEventListener('click', () => {
+  newBtn.addEventListener('click', async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     location.reload();

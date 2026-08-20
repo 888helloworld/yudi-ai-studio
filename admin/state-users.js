@@ -12,6 +12,8 @@
     let cdkeysLimit = 10;
     let paymentPage = 1;
     let paymentLimit = 10;
+    let auditPage = 1;
+    let auditLimit = 20;
 
     async function checkAdmin() {
       try {
@@ -126,6 +128,7 @@
     function openResetPasswordModal(userId, username) {
       currentUserId = userId;
       document.getElementById('resetPwdUser').textContent = `重置用户 ${username} 的密码`;
+      document.getElementById('resetPasswordUsername').value = username || '';
       document.getElementById('newPassword').value = '';
       document.getElementById('confirmPassword').value = '';
       document.getElementById('resetPwdError').style.display = 'none';
@@ -147,6 +150,11 @@
       }
       if (newPassword.length < 8) {
         document.getElementById('resetPwdError').textContent = '密码长度至少8位';
+        document.getElementById('resetPwdError').style.display = 'block';
+        return;
+      }
+      if (newPassword.length > 128) {
+        document.getElementById('resetPwdError').textContent = '密码长度不能超过128位';
         document.getElementById('resetPwdError').style.display = 'block';
         return;
       }

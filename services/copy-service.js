@@ -121,19 +121,34 @@ function buildBothCopyPrompt(prompt) {
 }
 
 async function requestDeepSeekText({ apiKey, model, systemPrompt, userPrompt }) {
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ]
-    })
-  });
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  const controller = new AbortController();
+  const configuredTimeout = Number(process.env.DEEPSEEK_TIMEOUT_MS || 120000);
+  const timeoutMs = Number.isFinite(configuredTimeout) ? Math.min(300000, Math.max(30000, configuredTimeout)) : 120000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
+      })
+    });
+    const text = await response.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!response.ok) throw new Error(data?.error?.message || `文案服务返回 HTTP ${response.status}`);
+    return data.choices?.[0]?.message?.content || '';
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error(`文案服务请求超时（超过${Math.round(timeoutMs / 1000)}秒）`);
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 module.exports = {

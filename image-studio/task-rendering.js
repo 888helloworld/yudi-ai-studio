@@ -215,9 +215,6 @@
       const text = String(message || '').trim();
       if (!text) return '';
       const lower = text.toLowerCase();
-      if (text.includes('豆包备用通道已关闭') || text.includes('本次未使用豆包生成')) {
-        return '图片服务连接失败，请稍后重试。本次没有生成图片，积分已退回。';
-      }
       if (text.includes('系统已跳过这张')) {
         return '图片服务连接中断，请稍后重试。本次没有生成图片，积分已退回。';
       }

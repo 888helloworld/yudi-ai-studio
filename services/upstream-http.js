@@ -131,21 +131,33 @@ function withTimeout(promise, timeoutMs, message, onTimeout) {
 
 async function generateArkImageUrls(baseUrl, apiKey, requestBody, count, buildVariationPrompt = buildImageVariationPrompt) {
   const tasks = Array.from({ length: count }, async (_, index) => {
-    const response = await fetch(`${baseUrl}/images/generations`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...requestBody, prompt: buildVariationPrompt(requestBody.prompt, index, count) })
-    });
-    const text = await response.text();
-    let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!response.ok) {
-      const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
-      throw new Error(formatUpstreamError(upstreamError, `图片生成失败: ${response.status}`));
+    const controller = new AbortController();
+    const configuredTimeout = Number(process.env.ARK_IMAGE_TIMEOUT_MS || 180000);
+    const timeoutMs = Number.isFinite(configuredTimeout) ? Math.min(600000, Math.max(30000, configuredTimeout)) : 180000;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(`${baseUrl}/images/generations`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...requestBody, prompt: buildVariationPrompt(requestBody.prompt, index, count) })
+      });
+      const text = await response.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+      if (!response.ok) {
+        const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
+        throw new Error(formatUpstreamError(upstreamError, `图片生成失败: ${response.status}`));
+      }
+      const url = data.data?.[0]?.url;
+      if (!url) throw new Error('图片服务未返回图片地址');
+      return url;
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error(`图片服务请求超时（超过${Math.round(timeoutMs / 1000)}秒）`);
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-    const url = data.data?.[0]?.url;
-    if (!url) throw new Error('图片服务未返回图片地址');
-    return url;
   });
 
   const results = await Promise.allSettled(tasks);

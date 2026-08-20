@@ -1,8 +1,8 @@
 const { db } = require('../database');
 
-function addPointLog(userId, type, amount, balance, description) {
-  db.prepare('INSERT INTO point_logs (user_id, type, amount, balance, description) VALUES (?, ?, ?, ?, ?)')
-    .run(userId, type, amount, balance, description);
+function addPointLog(userId, type, amount, balance, description, referenceKey = null) {
+  db.prepare('INSERT INTO point_logs (user_id, type, amount, balance, description, reference_key) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(userId, type, amount, balance, description, referenceKey || null);
 }
 
 function deductPoints(userId, amount, description) {
@@ -22,15 +22,25 @@ function deductPoints(userId, amount, description) {
   return transaction();
 }
 
-function rechargePoints(userId, amount, description = '管理员充值') {
+function rechargePoints(userId, amount, description = '管理员充值', referenceKey = null) {
   if (amount <= 0) return null;
 
   const transaction = db.transaction(() => {
+    if (referenceKey) {
+      const existing = db.prepare('SELECT id, user_id, amount FROM point_logs WHERE reference_key = ?').get(referenceKey);
+      if (existing) {
+        if (Number(existing.user_id) !== Number(userId) || Number(existing.amount) !== Number(amount)) {
+          throw new Error('积分业务号冲突');
+        }
+        const current = db.prepare('SELECT points FROM users WHERE id = ?').get(userId);
+        return current ? { balance: current.points, alreadyApplied: true } : null;
+      }
+    }
     const result = db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(amount, userId);
     if (result.changes === 0) return null;
     const user = db.prepare('SELECT points FROM users WHERE id = ?').get(userId);
-    addPointLog(userId, 'recharge', amount, user.points, description);
-    return { balance: user.points };
+    addPointLog(userId, 'recharge', amount, user.points, description, referenceKey);
+    return { balance: user.points, alreadyApplied: false };
   });
   return transaction();
 }

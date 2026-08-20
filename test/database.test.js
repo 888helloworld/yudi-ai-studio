@@ -39,6 +39,13 @@ function runDatabaseWorker(action, values) {
         type: 'copy',
         content: process.env.TEST_TEMPLATE_CONTENT
       });
+    } else if (process.env.TEST_ACTION === 'refund') {
+      result = api.rechargePoints(
+        Number(process.env.TEST_USER_ID),
+        Number(process.env.TEST_AMOUNT),
+        '并发幂等退款测试',
+        process.env.TEST_REFERENCE_KEY
+      );
     } else {
       throw new Error('unknown action');
     }
@@ -117,6 +124,23 @@ test('积分、卡密、支付和历史记录保持原子与幂等', async () =>
   assert.equal(concurrentPayments.every((result) => result.success), true);
   assert.equal(api.getUserPoints(user.id), 1050);
 
+  const refundReferenceKey = `test-refund-${crypto.randomUUID()}`;
+  const refundResults = await Promise.all([
+    runDatabaseWorker('refund', {
+      TEST_USER_ID: String(user.id),
+      TEST_AMOUNT: '30',
+      TEST_REFERENCE_KEY: refundReferenceKey
+    }),
+    runDatabaseWorker('refund', {
+      TEST_USER_ID: String(user.id),
+      TEST_AMOUNT: '30',
+      TEST_REFERENCE_KEY: refundReferenceKey
+    })
+  ]);
+  assert.equal(refundResults.filter((result) => result.alreadyApplied === false).length, 1);
+  assert.equal(refundResults.filter((result) => result.alreadyApplied === true).length, 1);
+  assert.equal(api.getUserPoints(user.id), 1080);
+
   await runDatabaseWorker('template', {
     TEST_USER_ID: String(user.id),
     TEST_TEMPLATE_NAME: '跨进程模板',
@@ -138,7 +162,7 @@ test('积分、卡密、支付和历史记录保持原子与幂等', async () =>
   assert.equal(api.getUserHistoryCount(user.id, { keyword: '测试图片' }), 1);
 
   const stats = api.getUserStats(user.id);
-  assert.equal(stats.currentPoints, 1050);
+  assert.equal(stats.currentPoints, 1080);
   assert.equal(stats.totalImages, 2);
   assert.equal(stats.totalRecords, 1);
 });

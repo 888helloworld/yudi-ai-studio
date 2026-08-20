@@ -35,7 +35,9 @@ const {
 } = require('./utils/request-utils');
 
 const app = express();
-app.set('trust proxy', 1);
+const ARK_IMAGE_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+app.set('trust proxy', Number.isSafeInteger(trustProxyHops) && trustProxyHops > 0 ? trustProxyHops : false);
 app.disable('x-powered-by');
 
 const corsOptions = {
@@ -85,7 +87,7 @@ const IMAGE_STUDIO_FILES = new Set([
   'image-actions.js', 'source-images.js', 'reverse-prompt.js', 'utilities.js', 'bootstrap.js'
 ]);
 const FRONTEND_FILES = new Set(['shared-utils.js']);
-const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'bootstrap.js']);
+const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js']);
 const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
 const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 
@@ -139,7 +141,14 @@ const configuredUploadImageMb = Number(process.env.MAX_UPLOAD_IMAGE_MB || 20);
 const maxUploadImageMb = Number.isFinite(configuredUploadImageMb) ? Math.max(configuredUploadImageMb, 1) : 20;
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: maxUploadImageMb * 1024 * 1024 },
+  limits: {
+    fileSize: maxUploadImageMb * 1024 * 1024,
+    files: 4,
+    fields: 20,
+    parts: 24,
+    fieldNameSize: 100,
+    fieldSize: 100 * 1024
+  },
   fileFilter: (req, file, callback) => {
     if (isAllowedUploadMime(file.mimetype)) callback(null, true);
     else callback(new Error('只允许图片文件'), false);
@@ -169,7 +178,7 @@ app.use(createGenerationRouter({
   getRequiredEnv,
   generateArkImageUrls,
   formatUpstreamError,
-  arkImageBaseUrl: provider.arkImageBaseUrl,
+  arkImageBaseUrl: ARK_IMAGE_BASE_URL,
   buildImageVariationPrompt
 }));
 app.use(createTemplateRouter({ authMiddleware }));
@@ -202,7 +211,7 @@ app.use(createAmazonImageRouter({
   db,
   chargePoints,
   refundPoints,
-  arkImageBaseUrl: provider.arkImageBaseUrl
+  arkImageBaseUrl: ARK_IMAGE_BASE_URL
 }));
 app.use(createReversePromptRouter({
   authMiddleware,

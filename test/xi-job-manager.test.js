@@ -98,3 +98,30 @@ test('Xi 队列限制并发并保持任务历史与上传权限', async () => {
   assert.equal(history.length, 3);
   assert.equal(JSON.parse(history[0].content).status, 'completed');
 });
+
+test('Xi 队列拒绝单用户超额任务和全局排队溢出', () => {
+  const users = [
+    api.createUser('xi_limit_user_a', 'XiLimitPass123'),
+    api.createUser('xi_limit_user_b', 'XiLimitPass123'),
+    api.createUser('xi_limit_user_c', 'XiLimitPass123')
+  ];
+  const manager = createXiJobManager({
+    db: api,
+    maxActiveJobs: 1,
+    maxJobsPerUser: 2,
+    maxQueuedJobs: 1,
+    formatDateTime: () => '12:00',
+    getModel: () => 'gpt-image-2',
+    runJob: async (job) => {
+      job.status = 'running';
+      await new Promise(() => {});
+    }
+  });
+  const payload = { mode: 'generate', prompt: '限额测试', size: '1024x1024', count: 1, quality: 'medium', costPoints: 10 };
+  manager.assertCanCreateJob(users[0].id);
+  manager.createJob(users[0].id, payload);
+  manager.assertCanCreateJob(users[0].id);
+  manager.createJob(users[0].id, payload);
+  assert.throws(() => manager.assertCanCreateJob(users[0].id), /最多同时处理 2 个/);
+  assert.throws(() => manager.assertCanCreateJob(users[1].id), /排队任务较多/);
+});

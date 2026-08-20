@@ -14,7 +14,7 @@ function createTaskCard(id, type, message) {
       <div class="xhs-task-state"><span class="task-type ${type}">生成中</span></div>
       <div class="task-loading">
         <div class="spinner"></div>
-        <span>${message}</span>
+        <span>${escapeHtml(message)}</span>
       </div>
     </div>
   `;
@@ -51,10 +51,8 @@ function updateTaskCard(taskId, data) {
     card.dataset.status = 'done';
     const imageUrls = Array.isArray(data.imageUrls) && data.imageUrls.length ? data.imageUrls : [data.imageUrl].filter(Boolean);
     const imageHtml = imageUrls.map(url => protectedImageHtml(url, '生成的图片', 'task-image')).join('');
-    const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
-    const encodedPrompt = encodeURIComponent(data.prompt || '');
     const actionsHtml = imageUrls.length
-      ? `<button class="task-btn" onclick="XhsTool.downloadImagesFromEncoded('${encodedImageUrls}', decodeURIComponent('${encodedPrompt}'), '${escapeJsString(data.ratio || '1:1')}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
+      ? `<button class="task-btn" data-download-images>${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
       : '';
     body.innerHTML = `
       <div class="task-image-grid">${imageHtml}</div>
@@ -64,6 +62,9 @@ function updateTaskCard(taskId, data) {
         ${actionsHtml}
       </div>
     `;
+    body.querySelector('[data-download-images]')?.addEventListener('click', () => {
+      XhsTool.downloadImages(imageUrls, data.prompt || '', data.ratio || '1:1');
+    });
   } else if (data.type === 'copy') {
     card.dataset.status = 'done';
     const typeLabel = data.isRewrite ? '改写' : (data.copyType || '生成');
@@ -76,9 +77,12 @@ function updateTaskCard(taskId, data) {
       <div class="task-copy">${escapeHtml(data.copy)}</div>
       <div class="task-meta">${escapeHtml(typeLabel)} · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
-        <button class="task-btn" onclick="XhsTool.copyText(this, \`${escapeQuotes(data.copy)}\`)">复制</button>
+        <button class="task-btn" data-copy-result>复制</button>
       </div>
     `;
+    body.querySelector('[data-copy-result]')?.addEventListener('click', (event) => {
+      XhsTool.copyText(event.currentTarget, data.copy || '');
+    });
   } else if (data.type === 'both' || (data.imageUrl && data.copy)) {
     card.dataset.status = 'done';
     const header = card.querySelector('.task-header');
@@ -88,9 +92,8 @@ function updateTaskCard(taskId, data) {
     const copyPreview = (data.copy || '').substring(0, 100) + (data.copy && data.copy.length > 100 ? '...' : '');
     const imageUrls = Array.isArray(data.imageUrls) && data.imageUrls.length ? data.imageUrls : [data.imageUrl].filter(Boolean);
     const imageHtml = imageUrls.map(url => protectedImageHtml(url, '生成的图片', 'task-image', 'max-height:180px;')).join('');
-    const encodedImageUrls = encodeURIComponent(JSON.stringify(imageUrls));
     const downloadButtons = imageUrls.length
-      ? `<button class="task-btn" onclick="XhsTool.downloadImagesFromEncoded('${encodedImageUrls}')">${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
+      ? `<button class="task-btn" data-download-images>${imageUrls.length > 1 ? '下载全部图片' : '下载图片'}</button>`
       : '';
     body.innerHTML = `
       ${imageHtml ? `<div class="task-image-grid">${imageHtml}</div>` : ''}
@@ -99,9 +102,15 @@ function updateTaskCard(taskId, data) {
       <div class="task-meta">${escapeHtml(data.ratio || '1:1')} · ${imageUrls.length} 张 · ${escapeHtml(data.createdAt || '')}</div>
       <div class="task-actions">
         ${downloadButtons}
-        <button class="task-btn" onclick="XhsTool.copyText(this, \`${escapeQuotes(data.copy || '')}\`)">复制文案</button>
+        <button class="task-btn" data-copy-result>复制文案</button>
       </div>
     `;
+    body.querySelector('[data-download-images]')?.addEventListener('click', () => {
+      XhsTool.downloadImages(imageUrls);
+    });
+    body.querySelector('[data-copy-result]')?.addEventListener('click', (event) => {
+      XhsTool.copyText(event.currentTarget, data.copy || '');
+    });
   }
   hydrateProtectedImages(body);
   forgetPendingTask(taskId);
@@ -135,10 +144,6 @@ function removeTask(taskId) {
 }
 
 XhsTool.removeTask = removeTask;
-
-function escapeQuotes(str) {
-  return String(str || '').replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-}
 
 function escapeJsString(str) {
   return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
