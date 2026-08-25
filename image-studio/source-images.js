@@ -73,6 +73,7 @@
       if (state.sourcePreviewUrls[index]) URL.revokeObjectURL(state.sourcePreviewUrls[index]);
       state.sourceFiles[index] = preparedFile;
       state.sourcePreviewUrls[index] = URL.createObjectURL(preparedFile);
+      resetPromptPolish();
       renderSourceSlot(index);
       generateBtn.disabled = false;
       updateGenerateButton();
@@ -214,9 +215,11 @@
     }
 
     function clearSourceImage(index, options = {}) {
+      const hadSource = Boolean(state.sourceFiles[index] || state.sourcePreviewUrls[index]);
       state.sourceFiles[index] = null;
       if (state.sourcePreviewUrls[index]) URL.revokeObjectURL(state.sourcePreviewUrls[index]);
       state.sourcePreviewUrls[index] = '';
+      if (hadSource) resetPromptPolish();
       renderSourceSlot(index);
       updateGenerateButton();
       const selectedCount = getSelectedSourceImages().length;

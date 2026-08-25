@@ -7,6 +7,7 @@
     'task-rendering.js',
     'image-actions.js',
     'source-images.js',
+    'prompt-polish.js',
     'reverse-prompt.js',
     'utilities.js',
     'bootstrap.js'
@@ -15,7 +16,7 @@
   function loadScript(filename) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `image-studio/${filename}?v=20260818`;
+      script.src = `image-studio/${filename}?v=20260825`;
       script.async = false;
       script.onload = resolve;
       script.onerror = () => reject(new Error(`画面工坊脚本加载失败：${filename}`));

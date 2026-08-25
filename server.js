@@ -14,6 +14,7 @@ const adminRoutes = require('./routes/admin');
 const { createAmazonImageRouter, SIZE_MAP } = require('./routes/amazon-image');
 const { createGenerationRouter } = require('./routes/generation');
 const { createPaymentRouter } = require('./routes/payment');
+const { createPromptPolishRouter } = require('./routes/prompt-polish');
 const { createPublicInfoRouter } = require('./routes/public-info');
 const { createReversePromptRouter } = require('./routes/reverse-prompt');
 const { createTemplateRouter } = require('./routes/templates');
@@ -84,7 +85,7 @@ const XHS_TOOL_FILES = new Set([
 ]);
 const IMAGE_STUDIO_FILES = new Set([
   'state.js', 'auth-history.js', 'detail-suite.js', 'task-queue.js', 'task-rendering.js',
-  'image-actions.js', 'source-images.js', 'reverse-prompt.js', 'utilities.js', 'bootstrap.js'
+  'image-actions.js', 'source-images.js', 'prompt-polish.js', 'reverse-prompt.js', 'utilities.js', 'bootstrap.js'
 ]);
 const FRONTEND_FILES = new Set(['shared-utils.js']);
 const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js']);
@@ -221,6 +222,12 @@ app.use(createReversePromptRouter({
   db,
   chargePoints,
   refundPoints
+}));
+app.use(createPromptPolishRouter({
+  authMiddleware,
+  copyLimiter,
+  upload,
+  validateUploadedImageFiles
 }));
 app.use(createPaymentRouter({ authMiddleware, safeCompareSecret }));
 

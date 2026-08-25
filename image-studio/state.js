@@ -148,6 +148,15 @@
     const taskPageInfoEl = document.getElementById('taskPageInfo');
     const generateBtn = document.getElementById('generateBtn');
     const clearPromptBtn = document.getElementById('clearPromptBtn');
+    const polishPromptBtn = document.getElementById('polishPromptBtn');
+    const promptPolishCard = document.getElementById('promptPolishCard');
+    const promptPolishMeta = document.getElementById('promptPolishMeta');
+    const promptPolishResult = document.getElementById('promptPolishResult');
+    const promptPolishNotes = document.getElementById('promptPolishNotes');
+    const applyPromptPolishBtn = document.getElementById('applyPromptPolishBtn');
+    const retryPromptPolishBtn = document.getElementById('retryPromptPolishBtn');
+    const undoPromptPolishBtn = document.getElementById('undoPromptPolishBtn');
+    const closePromptPolishBtn = document.getElementById('closePromptPolishBtn');
     const clearSourcesBtn = document.getElementById('clearSourcesBtn');
     const reloadHistoryBtn = document.getElementById('reloadHistoryBtn');
     const clearQueuedBtn = document.getElementById('clearQueuedBtn');
@@ -257,7 +266,11 @@
       historyPage: 0,
       historyTotalPages: 1,
       historyPageSize: 50,
-      historyLoading: false
+      historyLoading: false,
+      promptPolishOriginal: '',
+      promptPolishApplied: false,
+      promptPolishLoading: false,
+      promptPolishSeq: 0
     };
     ImageStudio.state = state;
     ImageStudio.assets = Object.freeze({

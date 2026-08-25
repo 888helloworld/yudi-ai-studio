@@ -87,6 +87,10 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     assert.equal(imageActionsScript.status, 200);
     assert.match(await imageActionsScript.text(), /openImagePreview/);
 
+    const promptPolishScript = await fetch(`${baseUrl}/image-studio/prompt-polish.js`);
+    assert.equal(promptPolishScript.status, 200);
+    assert.match(await promptPolishScript.text(), /polishCurrentPrompt/);
+
     const adminBootstrap = await fetch(`${baseUrl}/admin/bootstrap.js`);
     assert.equal(adminBootstrap.status, 200);
     assert.match(await adminBootstrap.text(), /checkAdmin/);
@@ -112,6 +116,9 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
 
     const templatesRoute = await fetch(`${baseUrl}/api/templates`);
     assert.equal(templatesRoute.status, 401);
+
+    const promptPolishRoute = await fetch(`${baseUrl}/api/xi-image/polish-prompt`, { method: 'POST' });
+    assert.equal(promptPolishRoute.status, 401);
 
     const paymentRoute = await fetch(`${baseUrl}/api/payment/create`, { method: 'POST' });
     assert.equal(paymentRoute.status, 401);

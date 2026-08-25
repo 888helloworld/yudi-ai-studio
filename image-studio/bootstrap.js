@@ -4,6 +4,7 @@
       document.getElementById('loginPrompt').classList.add('show');
       document.body.classList.add('login-locked');
       generateBtn.disabled = true;
+      if (polishPromptBtn) polishPromptBtn.disabled = true;
       if (detailSuiteBtn) detailSuiteBtn.disabled = true;
     } else {
       initUser();
@@ -91,8 +92,14 @@
     document.addEventListener('paste', handleSourcePaste);
 
     generateBtn.addEventListener('click', enqueueTasks);
+    polishPromptBtn?.addEventListener('click', polishCurrentPrompt);
+    retryPromptPolishBtn?.addEventListener('click', polishCurrentPrompt);
+    applyPromptPolishBtn?.addEventListener('click', applyPolishedPrompt);
+    undoPromptPolishBtn?.addEventListener('click', undoPolishedPrompt);
+    closePromptPolishBtn?.addEventListener('click', closePromptPolish);
     clearPromptBtn.addEventListener('click', () => {
       promptEl.value = '';
+      resetPromptPolish();
       refreshPromptPlaceholder();
       promptEl.focus();
       setStatus('已清空图片描述。', 'ok');
@@ -199,4 +206,3 @@
       applyImageStudioDefaults();
     }
   })();
-

@@ -40,6 +40,22 @@
     #sizeSelector .ratio-btn.active .ratio-size{color:#fff}
     .field-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
     .field-label-row label{margin:0}
+    .field-label-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+    .prompt-polish-btn{border-color:rgba(7,193,96,.32);background:rgba(7,193,96,.09);color:var(--neon-cyan)}
+    .prompt-polish-btn:hover{border-color:var(--neon-cyan);background:rgba(7,193,96,.15);color:#fff}
+    .prompt-polish-btn:disabled{opacity:.55;cursor:wait;transform:none}
+    .prompt-polish-card{display:none;margin:-8px 0 16px;padding:12px;border:1px solid rgba(7,193,96,.2);border-radius:var(--radius-md);background:rgba(7,193,96,.045)}
+    .prompt-polish-card.show{display:grid;gap:10px}
+    .prompt-polish-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .prompt-polish-title{display:grid;gap:3px;min-width:0}
+    .prompt-polish-title strong{color:var(--text-primary);font-size:13px}
+    .prompt-polish-meta{color:var(--text-muted);font-size:11px;line-height:1.4}
+    .prompt-polish-result{min-height:150px;margin:0;font-size:13px;line-height:1.65;resize:vertical}
+    .prompt-polish-notes{display:grid;gap:5px;color:var(--text-secondary);font-size:11px;line-height:1.5}
+    .prompt-polish-notes:empty{display:none}
+    .prompt-polish-warning{color:#ffb45c}
+    .prompt-polish-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .prompt-polish-actions .primary{border-color:var(--neon-cyan);background:rgba(7,193,96,.15);color:#fff}
     .param-help{margin:-4px 0 18px;padding:14px;border:1px solid rgba(7,193,96,0.14);border-radius:var(--radius-md);background:rgba(7,193,96,0.045)}
     .param-help-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--text-primary);font-size:13px;font-weight:800}
     .param-help-total{color:var(--neon-cyan);white-space:nowrap}
@@ -260,9 +276,29 @@
         <div class="form-group">
           <div class="field-label-row">
             <label for="prompt">图片描述</label>
-            <button class="xi-small-btn" id="clearPromptBtn" type="button">清空描述</button>
+            <div class="field-label-actions">
+              <button class="xi-small-btn prompt-polish-btn" id="polishPromptBtn" type="button">✨ AI视觉润色</button>
+              <button class="xi-small-btn" id="clearPromptBtn" type="button">清空描述</button>
+            </div>
           </div>
           <textarea id="prompt" rows="8" placeholder="描述你想要的画面，越具体越好。"></textarea>
+        </div>
+
+        <div class="prompt-polish-card" id="promptPolishCard" aria-live="polite">
+          <div class="prompt-polish-header">
+            <div class="prompt-polish-title">
+              <strong>AI 视觉润色结果</strong>
+              <span class="prompt-polish-meta" id="promptPolishMeta">正在理解描述和参考图...</span>
+            </div>
+            <button class="xi-small-btn" id="closePromptPolishBtn" type="button">关闭</button>
+          </div>
+          <textarea class="prompt-polish-result" id="promptPolishResult" rows="7" aria-label="AI润色后的图片描述"></textarea>
+          <div class="prompt-polish-notes" id="promptPolishNotes"></div>
+          <div class="prompt-polish-actions">
+            <button class="xi-small-btn primary" id="applyPromptPolishBtn" type="button">替换原描述</button>
+            <button class="xi-small-btn" id="retryPromptPolishBtn" type="button">重新润色</button>
+            <button class="xi-small-btn" id="undoPromptPolishBtn" type="button" disabled>撤销替换</button>
+          </div>
         </div>
 
         <div class="form-group">

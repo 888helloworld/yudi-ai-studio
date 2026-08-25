@@ -4,6 +4,7 @@
       document.getElementById('loginPrompt').classList.add('show');
       document.body.classList.add('login-locked');
       generateBtn.disabled = true;
+      if (polishPromptBtn) polishPromptBtn.disabled = true;
       if (detailSuiteBtn) detailSuiteBtn.disabled = true;
       setStatus(message || '登录已过期，请重新登录。', 'error');
     }
@@ -319,4 +320,3 @@
       );
       return beijingLocalMs - (8 * 60 * 60 * 1000);
     }
-
