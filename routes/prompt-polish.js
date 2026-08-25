@@ -4,7 +4,7 @@ const { buildPromptPolishInstruction, normalizePromptPolishResult } = require('.
 const { formatUpstreamError } = require('../services/upstream-http');
 const { getRequiredEnv, sanitizeInput } = require('../utils/request-utils');
 
-const SUPPORTED_SIZES = new Set(['1024x1024', '1024x1536', '1536x1024', '2048x1152', '1152x2048']);
+const SUPPORTED_SIZES = new Set(['1024x1536', '1536x1024']);
 const DEFAULT_DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
 const MAX_DEEPSEEK_INLINE_IMAGE_BYTES = 34 * 1024 * 1024;
 
