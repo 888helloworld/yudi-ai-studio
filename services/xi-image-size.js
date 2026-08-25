@@ -3,10 +3,11 @@ const XI_IMAGE_MIN_DIMENSION = 16;
 const XI_IMAGE_MAX_WIDTH = 3840;
 const XI_IMAGE_MAX_HEIGHT = 3840;
 const XI_IMAGE_MAX_AREA = 3840 * 2160;
-const XI_IMAGE_NATIVE_SIZES = new Set([
-  '1024x1536',
-  '1536x1024'
-]);
+const XI_IMAGE_SIZE_ALIASES = {
+  '1254x1254': '1024x1024',
+  '1672x941': '2048x1152',
+  '941x1672': '1152x2048'
+};
 
 function normalizeXiQuality(value) {
   const quality = String(value || '').trim().toLowerCase();
@@ -24,9 +25,7 @@ function parseXiImageSizeDimensions(size) {
 }
 
 function isExplicitXiImageSizeSupported(size) {
-  const normalized = normalizeXiImageSizeText(size);
-  if (XI_IMAGE_NATIVE_SIZES.has(normalized)) return true;
-  const dimensions = parseXiImageSizeDimensions(normalized);
+  const dimensions = parseXiImageSizeDimensions(size);
   if (!dimensions) return false;
   const { width, height } = dimensions;
   if (width < XI_IMAGE_MIN_DIMENSION || height < XI_IMAGE_MIN_DIMENSION) return false;
@@ -40,12 +39,13 @@ function isExplicitXiImageSizeSupported(size) {
 function parseXiImageSize(size) {
   const value = normalizeXiImageSizeText(size);
   if (!value) return '1024x1536';
-  return XI_IMAGE_NATIVE_SIZES.has(value) ? value : '';
+  if (XI_IMAGE_SIZE_ALIASES[value]) return XI_IMAGE_SIZE_ALIASES[value];
+  return isExplicitXiImageSizeSupported(value) ? value : '';
 }
 
 function assertXiImageSizeSupported(size) {
-  if (XI_IMAGE_NATIVE_SIZES.has(normalizeXiImageSizeText(size))) return;
-  const error = new Error('无效的图片尺寸：当前上游原生支持且可严格对齐的尺寸只有 1024x1536 和 1536x1024');
+  if (isExplicitXiImageSizeSupported(size)) return;
+  const error = new Error('无效的图片尺寸：宽高必须是16的倍数，比例在1:3到3:1之间，且不超过3840x2160等量像素');
   error.statusCode = 400;
   throw error;
 }

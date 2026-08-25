@@ -185,10 +185,13 @@
     const detailSuitePreviewEl = document.getElementById('detailSuitePreview');
     const MAX_BATCH_COUNT = 5;
     const MAX_PARALLELISM = Number.MAX_SAFE_INTEGER;
-    const SUPPORTED_IMAGE_SIZES = ['1024x1536', '1536x1024'];
+    const SUPPORTED_IMAGE_SIZES = ['1024x1024', '1024x1536', '1536x1024', '2048x1152', '1152x2048'];
     const DISPLAY_IMAGE_SIZES = {
+      '1024x1024': '1254x1254',
       '1024x1536': '1024x1536',
-      '1536x1024': '1536x1024'
+      '1536x1024': '1536x1024',
+      '2048x1152': '1672x941',
+      '1152x2048': '941x1672'
     };
     const DEFAULT_SIZE = '1024x1536';
     const DEFAULT_QUALITY = 'medium';

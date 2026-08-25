@@ -212,7 +212,7 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
       const failedGeneration = await fetch(`${baseUrl}/api/xi-image/generate`, {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ prompt: '验证上游失败自动退款', size: '1024x1536', count: 5 })
+        body: JSON.stringify({ prompt: '验证上游失败自动退款', size: '1024x1024', count: 5 })
       });
       assert.equal(failedGeneration.status, 502);
       assert.equal(upstreamRequestedCount, 5);

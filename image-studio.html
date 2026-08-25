@@ -33,7 +33,7 @@
     .xi-status{min-height:22px;color:var(--text-muted);font-size:13px;line-height:1.5;margin-top:12px}
     .xi-status.ok{color:var(--neon-green)}
     .xi-status.error{color:var(--neon-red)}
-    #sizeSelector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    #sizeSelector{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
     #sizeSelector .ratio-btn{min-width:0;min-height:54px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;white-space:normal;overflow:hidden;line-height:1.2;gap:3px}
     #sizeSelector .ratio-main{display:block;font-weight:800;white-space:nowrap}
     #sizeSelector .ratio-size{display:block;font-size:11px;font-weight:400;color:#9A9A9A;white-space:nowrap}
@@ -345,8 +345,11 @@
         <div class="form-group">
           <label>图片尺寸</label>
           <div class="ratio-selector" id="sizeSelector">
+            <div class="ratio-btn" data-size="1024x1024"><span class="ratio-main">1:1 方图</span><span class="ratio-size">1254×1254</span></div>
             <div class="ratio-btn active" data-size="1024x1536"><span class="ratio-main">2:3 竖图</span><span class="ratio-size">1024×1536</span></div>
             <div class="ratio-btn" data-size="1536x1024"><span class="ratio-main">3:2 横图</span><span class="ratio-size">1536×1024</span></div>
+            <div class="ratio-btn" data-size="2048x1152"><span class="ratio-main">横图</span><span class="ratio-size">1672×941</span></div>
+            <div class="ratio-btn" data-size="1152x2048"><span class="ratio-main">竖图</span><span class="ratio-size">941×1672</span></div>
           </div>
         </div>
 
