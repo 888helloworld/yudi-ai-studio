@@ -54,6 +54,7 @@
 
     function resetImageForm() {
       promptEl.value = '';
+      resetPromptPolish();
       sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       countEl.value = 1;
       batchCountEl.value = DEFAULT_BATCH_COUNT;
@@ -340,4 +341,3 @@
       }
       return data;
     }
-

@@ -56,6 +56,9 @@
     .prompt-polish-warning{color:#ffb45c}
     .prompt-polish-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
     .prompt-polish-actions .primary{border-color:var(--neon-cyan);background:rgba(7,193,96,.15);color:#fff}
+    .prompt-polish-applied{display:none;align-items:center;justify-content:space-between;gap:10px;margin:-8px 0 16px;padding:8px 10px;border:1px solid rgba(7,193,96,.18);border-radius:var(--radius-sm);background:rgba(7,193,96,.055);color:var(--text-secondary);font-size:11px;line-height:1.4}
+    .prompt-polish-applied.show{display:flex}
+    .prompt-polish-applied strong{color:var(--neon-cyan);font-size:11px}
     .param-help{margin:-4px 0 18px;padding:14px;border:1px solid rgba(7,193,96,0.14);border-radius:var(--radius-md);background:rgba(7,193,96,0.045)}
     .param-help-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--text-primary);font-size:13px;font-weight:800}
     .param-help-total{color:var(--neon-cyan);white-space:nowrap}
@@ -299,6 +302,11 @@
             <button class="xi-small-btn" id="retryPromptPolishBtn" type="button">重新润色</button>
             <button class="xi-small-btn" id="undoPromptPolishBtn" type="button" disabled>撤销替换</button>
           </div>
+        </div>
+
+        <div class="prompt-polish-applied" id="promptPolishApplied" aria-live="polite">
+          <span><strong>已应用</strong> DeepSeek 润色结果</span>
+          <button class="xi-small-btn" id="undoAppliedPromptBtn" type="button">撤销</button>
         </div>
 
         <div class="form-group">

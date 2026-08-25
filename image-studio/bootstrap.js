@@ -96,6 +96,7 @@
     retryPromptPolishBtn?.addEventListener('click', polishCurrentPrompt);
     applyPromptPolishBtn?.addEventListener('click', applyPolishedPrompt);
     undoPromptPolishBtn?.addEventListener('click', undoPolishedPrompt);
+    undoAppliedPromptBtn?.addEventListener('click', undoPolishedPrompt);
     closePromptPolishBtn?.addEventListener('click', closePromptPolish);
     clearPromptBtn.addEventListener('click', () => {
       promptEl.value = '';

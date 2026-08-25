@@ -153,10 +153,12 @@
     const promptPolishMeta = document.getElementById('promptPolishMeta');
     const promptPolishResult = document.getElementById('promptPolishResult');
     const promptPolishNotes = document.getElementById('promptPolishNotes');
+    const promptPolishApplied = document.getElementById('promptPolishApplied');
     const applyPromptPolishBtn = document.getElementById('applyPromptPolishBtn');
     const retryPromptPolishBtn = document.getElementById('retryPromptPolishBtn');
     const undoPromptPolishBtn = document.getElementById('undoPromptPolishBtn');
     const closePromptPolishBtn = document.getElementById('closePromptPolishBtn');
+    const undoAppliedPromptBtn = document.getElementById('undoAppliedPromptBtn');
     const clearSourcesBtn = document.getElementById('clearSourcesBtn');
     const reloadHistoryBtn = document.getElementById('reloadHistoryBtn');
     const clearQueuedBtn = document.getElementById('clearQueuedBtn');

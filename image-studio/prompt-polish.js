@@ -51,6 +51,7 @@
 
       state.promptPolishOriginal = prompt;
       state.promptPolishApplied = false;
+      promptPolishApplied?.classList.remove('show');
       undoPromptPolishBtn.disabled = true;
       promptPolishCard.classList.add('show');
       promptPolishResult.value = '';
@@ -96,6 +97,8 @@
       promptEl.value = polished;
       state.promptPolishApplied = true;
       undoPromptPolishBtn.disabled = false;
+      promptPolishCard.classList.remove('show');
+      promptPolishApplied?.classList.add('show');
       promptEl.focus();
       setStatus('已用润色结果替换图片描述，可以继续修改或直接出图。', 'ok');
     }
@@ -105,6 +108,8 @@
       promptEl.value = state.promptPolishOriginal || '';
       state.promptPolishApplied = false;
       undoPromptPolishBtn.disabled = true;
+      promptPolishApplied?.classList.remove('show');
+      promptPolishCard?.classList.add('show');
       promptEl.focus();
       setStatus('已恢复润色前的图片描述。', 'ok');
     }
@@ -121,5 +126,6 @@
       if (promptPolishResult) promptPolishResult.value = '';
       if (promptPolishNotes) promptPolishNotes.innerHTML = '';
       if (undoPromptPolishBtn) undoPromptPolishBtn.disabled = true;
+      promptPolishApplied?.classList.remove('show');
       closePromptPolish();
     }
