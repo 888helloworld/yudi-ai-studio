@@ -16,7 +16,7 @@
   function loadScript(filename) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `image-studio/${filename}?v=20260825-2`;
+      script.src = `image-studio/${filename}?v=20260826`;
       script.async = false;
       script.onload = resolve;
       script.onerror = () => reject(new Error(`画面工坊脚本加载失败：${filename}`));

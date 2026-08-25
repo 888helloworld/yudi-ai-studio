@@ -16,7 +16,7 @@ test('视觉润色指令包含参考图顺序、画布和用户要求', () => {
   assert.match(instruction, /图1到图2/);
   assert.match(instruction, /1024x1536/);
   assert.match(instruction, /图1产品放进图2场景/);
-  assert.match(instruction, /用户明确要求优先级最高/);
+  assert.match(instruction, /以参考图中实际可见的特征为准/);
   assert.match(instruction, /1-3 句/);
   assert.match(instruction, /80-220/);
   assert.match(instruction, /不要默认把所有图片内容混在一起/);
@@ -37,6 +37,19 @@ test('视觉润色结果会规范为前端需要的字段', () => {
     changes: ['补充光线'],
     warning: ''
   });
+});
+
+test('用户指定参考图属性时以图片实际内容为准，并静默纠正文字口误', () => {
+  const instruction = buildPromptPolishInstruction({ prompt: '按图2颜色换成墨绿色袜子', size: '1024x1536', imageCount: 2 });
+  assert.match(instruction, /以参考图中实际可见的特征为准/);
+  assert.match(instruction, /视为可能口误/);
+  assert.match(instruction, /明确表示.*才以文字覆盖参考图/);
+  const result = normalizePromptPolishResult({
+    polished_prompt: '将袜子替换为图2实际展示的黄色双指袜，保持其他内容不变。',
+    warning: '用户文字写了墨绿色，但图2实际为黄色。'
+  });
+  assert.equal(result.polishedPrompt, '将袜子替换为图2实际展示的黄色双指袜，保持其他内容不变。');
+  assert.equal(result.warning, '');
 });
 
 test('视觉润色使用 DeepSeek 视觉模型，图片只出现在 user 消息', () => {

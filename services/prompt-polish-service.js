@@ -14,7 +14,7 @@ ${imageHint}
 ${prompt}
 
 必须遵守：
-1. 用户明确要求优先级最高；文字要求与参考图冲突时以文字为准，并在 warning 中提醒。
+1. 当用户明确要求参考某张图的颜色、款式、形状、材质或结构时，以参考图中实际可见的特征为准；文字中与图片冲突的颜色或描述视为可能口误，直接在最终提示词中纠正，不要解释冲突或单独提醒。只有用户明确表示“不要参考图中的某特征，改成另一种”时，才以文字覆盖参考图。
 2. 普通任务输出 1-3 句、约 80-220 个中文字符；多图合成、复杂海报等任务也尽量控制在 350 个中文字符以内。
 3. 按“修改目标 → 参考图分工 → 必须保留 → 必要视觉要求”的顺序组织，只写影响成败的信息。
 4. 图片编辑要明确“只修改什么”和“什么保持不变”。没有要求修改的产品身份、结构、颜色、材质、数量、logo、人物身份和环境不要擅自改变。
@@ -29,8 +29,7 @@ ${prompt}
 {
   "polished_prompt": "1-3句、简短明确、可直接发送给 gpt-image-2 的中文提示词",
   "visual_understanding": ["图1：简短说明它在本次任务中的作用"],
-  "changes": ["简短说明本次补强了什么，最多4条"],
-  "warning": "没有冲突时返回空字符串"
+  "changes": ["简短说明本次补强了什么，最多4条"]
 }`;
 }
 
@@ -74,7 +73,7 @@ function normalizePromptPolishResult(content) {
     polishedPrompt,
     visualUnderstanding: normalizeStringList(parsed.visual_understanding || parsed.visualUnderstanding),
     changes: normalizeStringList(parsed.changes),
-    warning: String(parsed.warning || '').trim().slice(0, 300)
+    warning: ''
   };
 }
 

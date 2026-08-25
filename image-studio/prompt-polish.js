@@ -23,12 +23,6 @@
         line.textContent = `本次优化：${changes.join('；')}`;
         promptPolishNotes.appendChild(line);
       }
-      if (data.warning) {
-        const warning = document.createElement('div');
-        warning.className = 'prompt-polish-warning';
-        warning.textContent = `提醒：${data.warning}`;
-        promptPolishNotes.appendChild(warning);
-      }
     }
 
     async function polishCurrentPrompt() {
