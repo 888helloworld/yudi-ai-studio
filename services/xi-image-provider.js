@@ -18,14 +18,26 @@ const { extractXiXuImageMetadata } = require('./xi-image-size');
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
+function getTimeoutMs(name, fallback = TEN_MINUTES_MS) {
+  const raw = process.env[name];
+  if (raw === undefined || String(raw).trim() === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  return parsed <= 0 ? 0 : Math.max(parsed, 30000);
+}
+
+function timeoutMessage(action, timeoutMs) {
+  return `gpt-image-2 ${action}超时（超过${Math.round(timeoutMs / 1000)}秒）`;
+}
+
 function boundedRetryCount(value, fallback = 1) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(0, Math.min(Math.floor(parsed), 2)) : fallback;
 }
 
 function createXiImageProvider() {
-  const generateTimeoutMs = Number(process.env.XI_XU_GENERATE_TIMEOUT_MS || TEN_MINUTES_MS);
-  const editTimeoutMs = Number(process.env.XI_XU_EDIT_TIMEOUT_MS || TEN_MINUTES_MS);
+  const generateTimeoutMs = getTimeoutMs('XI_XU_GENERATE_TIMEOUT_MS');
+  const editTimeoutMs = getTimeoutMs('XI_XU_EDIT_TIMEOUT_MS');
   const generateRetries = boundedRetryCount(process.env.XI_XU_GENERATE_RETRIES, 1);
   const editRetries = boundedRetryCount(process.env.XI_XU_EDIT_RETRIES, 1);
 
@@ -62,7 +74,7 @@ function createXiImageProvider() {
     const apiKey = getXiImageApiKey();
     if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
     const controller = new AbortController();
-    const timeoutMs = Math.max(generateTimeoutMs, 30000);
+    const timeoutMs = generateTimeoutMs;
     const startedAt = Date.now();
     try {
       const response = await withTimeout(fetch(buildXiImageUrl('/v1/images/generations'), {
@@ -77,8 +89,8 @@ function createXiImageProvider() {
           quality,
           output_format: 'png'
         })
-      }), timeoutMs, `gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
-      const text = await withTimeout(response.text(), timeoutMs, `gpt-image-2 生图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
+      }), timeoutMs, timeoutMessage('生图请求', timeoutMs), () => controller.abort());
+      const text = await withTimeout(response.text(), timeoutMs, timeoutMessage('生图结果下载', timeoutMs), () => controller.abort());
       let data = {};
       try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
       if (!response.ok) {
@@ -93,7 +105,7 @@ function createXiImageProvider() {
       };
     } catch (error) {
       const normalizedError = error.name === 'AbortError'
-        ? new Error(`gpt-image-2 生图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
+        ? new Error(timeoutMs > 0 ? timeoutMessage('生图请求', timeoutMs) : 'gpt-image-2 生图连接被中断')
         : error;
       logGenerateError(normalizedError, { attempt, size, count, quality, durationMs: Date.now() - startedAt });
       throw normalizedError;
@@ -123,7 +135,7 @@ function createXiImageProvider() {
     const apiKey = getXiImageApiKey();
     if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
     const controller = new AbortController();
-    const timeoutMs = Math.max(editTimeoutMs, 30000);
+    const timeoutMs = editTimeoutMs;
     try {
       const form = new FormData();
       const requestSourceFiles = sourceFiles;
@@ -147,8 +159,8 @@ function createXiImageProvider() {
         signal: controller.signal,
         headers: buildXiImageHeaders({ Authorization: `Bearer ${apiKey}` }),
         body: form
-      }), timeoutMs, `gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
-      const text = await withTimeout(response.text(), timeoutMs, `gpt-image-2 改图结果下载超时（超过${Math.round(timeoutMs / 1000)}秒）`, () => controller.abort());
+      }), timeoutMs, timeoutMessage('改图请求', timeoutMs), () => controller.abort());
+      const text = await withTimeout(response.text(), timeoutMs, timeoutMessage('改图结果下载', timeoutMs), () => controller.abort());
       let data = {};
       try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
       if (!response.ok) {
@@ -161,7 +173,7 @@ function createXiImageProvider() {
       return { localUrls, upstreamMeta: extractXiXuImageMetadata(data, { size, quality }) };
     } catch (error) {
       const normalizedError = error.name === 'AbortError'
-        ? new Error(`gpt-image-2 改图请求超时（超过${Math.round(timeoutMs / 1000)}秒）`)
+        ? new Error(timeoutMs > 0 ? timeoutMessage('改图请求', timeoutMs) : 'gpt-image-2 改图连接被中断')
         : error;
       logEditError(normalizedError, sourceFiles, { attempt });
       throw normalizedError;

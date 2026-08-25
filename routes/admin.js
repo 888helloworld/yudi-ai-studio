@@ -143,7 +143,7 @@ router.get('/image-service-diagnostics', async (req, res) => {
       xiXuImageModel: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
       xiXuVisionModel: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
       xiXuProxyTokenConfigured: hasEnv('XI_XU_PROXY_TOKEN'),
-      xiXuMaxActiveJobs: process.env.XI_XU_MAX_ACTIVE_JOBS || '1',
+      xiXuMaxActiveJobs: process.env.XI_XU_MAX_ACTIVE_JOBS || '0',
       xiXuRateLimitPerMin: process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || '30'
     },
     storage: {

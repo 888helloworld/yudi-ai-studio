@@ -119,6 +119,7 @@ function isTransientXiXuError(error) {
 }
 
 function withTimeout(promise, timeoutMs, message, onTimeout) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
   let timeoutId;
   const timeoutPromise = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {

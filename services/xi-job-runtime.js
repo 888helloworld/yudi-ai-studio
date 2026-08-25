@@ -13,13 +13,15 @@ const { getLocalImageDimensions, getLocalUploadPath } = require('../utils/image-
 const { parseImageCount } = require('../utils/request-utils');
 
 function getMaxActiveJobs() {
-  const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS || '2').trim();
+  const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS ?? '0').trim();
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 8) : 2;
+  if (parsed === 0) return Number.POSITIVE_INFINITY;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : Number.POSITIVE_INFINITY;
 }
 
-function getPositiveJobLimit(name, fallback, maximum) {
+function getJobLimit(name, fallback, maximum) {
   const parsed = Number(process.env[name]);
+  if (parsed === 0) return 0;
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), maximum) : fallback;
 }
 
@@ -27,8 +29,8 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
   const manager = createXiJobManager({
     db,
     maxActiveJobs: getMaxActiveJobs(),
-    maxJobsPerUser: getPositiveJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 2, 5),
-    maxQueuedJobs: getPositiveJobLimit('XI_XU_MAX_QUEUED_JOBS', 20, 100),
+    maxJobsPerUser: getJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 0, 1000),
+    maxQueuedJobs: getJobLimit('XI_XU_MAX_QUEUED_JOBS', 20, 1000),
     formatDateTime,
     runJob: (job) => runXiJob(job),
     getModel: () => process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2'
