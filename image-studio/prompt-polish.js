@@ -2,7 +2,7 @@
       state.promptPolishLoading = loading;
       if (polishPromptBtn) {
         polishPromptBtn.disabled = loading;
-        polishPromptBtn.textContent = loading ? '正在视觉润色...' : '✨ AI视觉润色';
+        polishPromptBtn.textContent = loading ? 'DeepSeek 正在润色...' : '✨ DS AI润色';
       }
       if (retryPromptPolishBtn) retryPromptPolishBtn.disabled = loading;
       if (applyPromptPolishBtn) applyPromptPolishBtn.disabled = loading;
@@ -73,7 +73,8 @@
           throw new Error(data.error || '提示词润色失败');
         }
         promptPolishResult.value = data.polishedPrompt || '';
-        promptPolishMeta.textContent = `${selectedSources.length > 0 ? `已结合 ${selectedSources.length} 张参考图` : '已完成文字润色'} · ${state.selectedSize} · 免费`;
+        const modelLabel = data.model === 'deepseek-v4-flash-vision-exp' ? 'DeepSeek V4 视觉' : (data.model || 'DeepSeek');
+        promptPolishMeta.textContent = `${selectedSources.length > 0 ? `已结合 ${selectedSources.length} 张参考图` : '已完成文字润色'} · ${modelLabel} · ${state.selectedSize} · 免费`;
         renderPromptPolishNotes(data);
         setStatus('AI 已完成视觉润色，确认后再替换原描述。', 'ok');
       } catch (error) {

@@ -5,7 +5,7 @@ function buildPromptPolishInstruction({ prompt, size, imageCount }) {
     ? `用户上传了 ${imageCount} 张参考图，顺序为图1到图${imageCount}。只按用户需要说明每张图的作用，不要默认把所有图片内容混在一起。`
     : '用户没有上传参考图，只需要整理文字要求。';
 
-  return `你是为 gpt-image-2 整理图片生成和图片编辑指令的视觉助手。你的目标是让提示词更短、更明确、更容易执行，不是把一句话扩写成长文。
+  return `你是 DeepSeek 文本与视觉提示词润色助手，负责为 gpt-image-2 整理图片生成和图片编辑指令。你的目标是先准确理解文字和参考图，再让提示词更短、更明确、更容易执行，不是把一句话扩写成长文。
 
 目标画布：${size}
 ${imageHint}
