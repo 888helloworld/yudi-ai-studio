@@ -2,10 +2,10 @@ const { parseJsonLike } = require('./reverse-prompt-service');
 
 function buildPromptPolishInstruction({ prompt, size, imageCount }) {
   const imageHint = imageCount > 0
-    ? `用户同时上传了 ${imageCount} 张参考图，图片顺序就是图1到图${imageCount}。必须逐张理解并严格按编号对应。`
-    : '用户没有上传参考图，只根据文字和目标画布润色。';
+    ? `用户上传了 ${imageCount} 张参考图，顺序为图1到图${imageCount}。只按用户需要说明每张图的作用，不要默认把所有图片内容混在一起。`
+    : '用户没有上传参考图，只需要整理文字要求。';
 
-  return `你是专门为 gpt-image-2 优化提示词的视觉导演和提示词工程师。你的任务不是反推图片，也不是单纯扩写句子，而是把用户的粗略想法整理成更准确、更容易执行、更能出好图的最终提示词。
+  return `你是为 gpt-image-2 整理图片生成和图片编辑指令的视觉助手。你的目标是让提示词更短、更明确、更容易执行，不是把一句话扩写成长文。
 
 目标画布：${size}
 ${imageHint}
@@ -14,22 +14,43 @@ ${imageHint}
 ${prompt}
 
 必须遵守：
-1. 用户明确要求优先级最高；参考图编号和顺序优先于你的审美发挥。
-2. 如果有参考图，分别识别每张图承担的角色，例如产品主体、人物姿势、背景场景、构图、光线或风格，不要只看第一张。
-3. 严格保留产品或主体的可见形状、比例、数量、颜色、材质、结构、配件和 logo 位置。用户没有要求时，不要擅自换产品、换颜色、加文字或加配件。
-4. 根据 ${size} 补充明确的横竖构图、主体完整、安全留白和画面边缘保护要求。
-5. 可以优化镜头、构图、光线、色彩、空间层次、材质表现和真实感，但不要用 masterpiece、best quality、8K 等空洞词堆砌。
-6. 最终提示词要能直接发送给 gpt-image-2，使用清楚自然的中文，复杂任务可分句说明，避免互相冲突。
-7. 如果文字要求与参考图冲突，不要自行猜测，在 warning 中简短指出；最终提示词仍以用户文字要求为准。
-8. 不要输出违法、侵权或不安全的强化建议。
+1. 用户明确要求优先级最高；文字要求与参考图冲突时以文字为准，并在 warning 中提醒。
+2. 普通任务输出 1-3 句、约 80-220 个中文字符；多图合成、复杂海报等任务也尽量控制在 350 个中文字符以内。
+3. 按“修改目标 → 参考图分工 → 必须保留 → 必要视觉要求”的顺序组织，只写影响成败的信息。
+4. 图片编辑要明确“只修改什么”和“什么保持不变”。没有要求修改的产品身份、结构、颜色、材质、数量、logo、人物身份和环境不要擅自改变。
+5. 多图任务用“图1、图2”明确各自作用；某张图只是风格或场景参考时，不要复制其中无关物体。
+6. 只在确有帮助时补充构图、视角、光线、材质或真实感，不要自动添加用户没有要求的道具、情节和装饰。
+7. 服务端会另外附加目标尺寸和通用保护规则，polished_prompt 不要重复 ${size}、安全留白、水印等固定套话。
+8. 不要堆砌 masterpiece、best quality、8K、ultra detailed 等空洞词；不要重复同一要求。
+9. 如果用户原始描述已经清楚，只做轻量整理，不要为了显得专业而扩写。
+10. 不要输出违法、侵权或不安全的强化建议。
 
 严格返回 JSON，不要使用 Markdown，不要添加前后说明：
 {
-  "polished_prompt": "可直接发送给 gpt-image-2 的最终中文提示词",
+  "polished_prompt": "1-3句、简短明确、可直接发送给 gpt-image-2 的中文提示词",
   "visual_understanding": ["图1：简短说明它在本次任务中的作用"],
   "changes": ["简短说明本次补强了什么，最多4条"],
   "warning": "没有冲突时返回空字符串"
 }`;
+}
+
+function compactPromptText(value, maximum = 500) {
+  const text = String(value || '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (text.length <= maximum) return text;
+  const sliced = text.slice(0, maximum);
+  const punctuationIndex = Math.max(
+    sliced.lastIndexOf('。'),
+    sliced.lastIndexOf('！'),
+    sliced.lastIndexOf('？'),
+    sliced.lastIndexOf(';'),
+    sliced.lastIndexOf('；')
+  );
+  return punctuationIndex >= Math.floor(maximum * 0.5)
+    ? sliced.slice(0, punctuationIndex + 1).trim()
+    : sliced.trim();
 }
 
 function normalizeStringList(value, maximum = 4) {
@@ -44,13 +65,13 @@ function normalizeStringList(value, maximum = 4) {
 function normalizePromptPolishResult(content) {
   const parsed = typeof content === 'string' ? parseJsonLike(content) : content;
   if (!parsed || typeof parsed !== 'object') {
-    const fallback = String(content || '').trim();
-    return fallback ? { polishedPrompt: fallback.slice(0, 3000), visualUnderstanding: [], changes: [], warning: '' } : null;
+    const fallback = compactPromptText(content);
+    return fallback ? { polishedPrompt: fallback, visualUnderstanding: [], changes: [], warning: '' } : null;
   }
-  const polishedPrompt = String(parsed.polished_prompt || parsed.polishedPrompt || parsed.prompt || '').trim();
+  const polishedPrompt = compactPromptText(parsed.polished_prompt || parsed.polishedPrompt || parsed.prompt);
   if (!polishedPrompt) return null;
   return {
-    polishedPrompt: polishedPrompt.slice(0, 3000),
+    polishedPrompt,
     visualUnderstanding: normalizeStringList(parsed.visual_understanding || parsed.visualUnderstanding),
     changes: normalizeStringList(parsed.changes),
     warning: String(parsed.warning || '').trim().slice(0, 300)
@@ -59,5 +80,6 @@ function normalizePromptPolishResult(content) {
 
 module.exports = {
   buildPromptPolishInstruction,
+  compactPromptText,
   normalizePromptPolishResult
 };

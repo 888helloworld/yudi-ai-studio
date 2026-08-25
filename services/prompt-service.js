@@ -32,10 +32,9 @@ function getXiCanvasLabel(size = '') {
 function buildXiGeneratePrompt(prompt, size = '') {
   if (!size) return prompt;
   return [
-    `最终图片目标画布是 ${size}，这是${getXiCanvasLabel(size)}。`,
-    `请严格按照 ${size} 的画布比例构图，不要输出其他比例，不要把横图生成竖图或把竖图生成方图。`,
-    '主体必须完整出现在画面内，四周保留安全留白；不要加边框，不要加文字，不要加水印。',
-    `用户要求：${prompt}`
+    `任务：${prompt}`,
+    `输出：${size}（${getXiCanvasLabel(size)}），按这个画布比例构图。`,
+    '除非任务明确要求，否则不要额外添加文字、水印或边框。重要主体保持完整；如果任务明确要求特写或裁切，以任务要求为准。'
   ].join('\n\n');
 }
 
@@ -87,18 +86,13 @@ function getSourceImageLabel(file, index) {
 
 function buildXiEditPrompt(prompt, sourceFiles = [], size = '') {
   const sourceList = sourceFiles
-    .map((file, index) => `${getSourceImageLabel(file, index)}：${file?.originalname || getSourceImageFilename(index)}，第 ${index + 1} 个原始参考图`)
+    .map((file, index) => `${getSourceImageLabel(file, index)}：第 ${index + 1} 张输入图片`)
     .join('\n');
   return [
-    '请严格按参考图编号理解图片，不要只参考第一张图。',
-    sourceList ? `参考图说明：\n${sourceList}` : '',
-    '如果用户提到“图1、图2、图3、图4”，必须对应上面的文件顺序和编号说明，不要按任意顺序重新解释。',
-    '需要把用户指定的各参考图元素组合到同一张最终图片里；不要遗漏用户点名的参考图元素。',
-    size ? `最终图片目标画布是 ${size}，请按这个画布比例重新构图。` : '',
-    '必须让主体完整出现在画面内，四周保留安全留白；不要裁掉脚尖、脚跟、袜口、袜身、产品边缘或用户要求保留的细节。',
-    '如果原参考图主体贴边，请主动缩小构图并补足干净背景，而不是沿用贴边裁切。',
-    '保持最终画面自然真实、构图完整，不要生成拼贴图或多宫格。',
-    `用户要求：${prompt}`
+    sourceList ? `参考图顺序：\n${sourceList}` : '',
+    `任务：${prompt}`,
+    size ? `输出：${size}，按这个画布比例完成编辑。` : '',
+    '执行原则：只修改任务明确要求的内容；未要求修改的主体身份、结构、颜色、材质、数量、人物身份和环境保持不变。每张参考图只承担任务指定的作用，不要自动混合所有图片内容。'
   ].filter(Boolean).join('\n\n');
 }
 
