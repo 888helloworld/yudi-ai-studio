@@ -75,9 +75,7 @@ function normalizeReferenceCorrections(value, maximum = 4) {
 
 function getUnresolvedReferenceCorrections(result) {
   const prompt = String(result?.polishedPrompt || '');
-  return (result?.referenceCorrections || []).filter((item) => (
-    prompt.includes(item.inputText) || !prompt.includes(item.referenceValue)
-  ));
+  return (result?.referenceCorrections || []).filter((item) => prompt.includes(item.inputText));
 }
 
 function normalizePromptPolishResult(content) {

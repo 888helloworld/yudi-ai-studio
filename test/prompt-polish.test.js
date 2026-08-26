@@ -1,7 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const { buildPromptPolishInstruction, compactPromptText, normalizePromptPolishResult } = require('../services/prompt-polish-service');
+const {
+  buildPromptPolishInstruction,
+  compactPromptText,
+  getUnresolvedReferenceCorrections,
+  normalizePromptPolishResult
+} = require('../services/prompt-polish-service');
 const {
   DEFAULT_DEEPSEEK_VISION_MODEL,
   acquirePromptPolishSlot,
@@ -38,6 +43,7 @@ test('视觉润色结果会规范为前端需要的字段', () => {
     polishedPrompt: '最终提示词',
     visualUnderstanding: ['图1：产品'],
     changes: ['补充光线'],
+    referenceCorrections: [],
     warning: ''
   });
 });
@@ -49,10 +55,39 @@ test('用户指定参考图属性时以图片实际内容为准，并静默纠�
   assert.match(instruction, /明确表示.*才以文字覆盖参考图/);
   const result = normalizePromptPolishResult({
     polished_prompt: '将袜子替换为图2实际展示的黄色双指袜，保持其他内容不变。',
-    warning: '用户文字写了墨绿色，但图2实际为黄色。'
+    warning: '用户文字写了墨绿色，但图2实际为黄色。',
+    reference_corrections: [{ input_text: '墨绿色', reference_value: '黄色' }]
   });
   assert.equal(result.polishedPrompt, '将袜子替换为图2实际展示的黄色双指袜，保持其他内容不变。');
+  assert.deepEqual(getUnresolvedReferenceCorrections(result), []);
   assert.equal(result.warning, '');
+});
+
+test('最终提示词仍保留错误图片属性时必须自动进入二次校正', () => {
+  const result = normalizePromptPolishResult({
+    polished_prompt: '将袜子替换为墨绿色双指袜。',
+    reference_corrections: [{ input_text: '墨绿色', reference_value: '黄色' }]
+  });
+  const corrections = getUnresolvedReferenceCorrections(result);
+  assert.deepEqual(corrections, [{ inputText: '墨绿色', referenceValue: '黄色' }]);
+  assert.equal(shouldRetryPromptPolish({ choices: [{ finish_reason: 'stop' }] }, result), true);
+  const retryRequest = buildDeepSeekVisionRequest({
+    prompt: '按图2颜色换袜子',
+    size: '1024x1536',
+    files: [],
+    correctionContext: corrections
+  });
+  assert.match(retryRequest.messages[1].content[0].text, /必须重新输出完整 JSON/);
+  assert.match(retryRequest.messages[1].content[0].text, /referenceValue/);
+
+  const corrected = normalizePromptPolishResult({
+    polished_prompt: '将袜子替换为图2的黄色双指袜。',
+    reference_corrections: [{
+      input_text: '图2的墨绿色双指袜',
+      reference_value: '图2中实际可见的袜子为黄色双指袜'
+    }]
+  });
+  assert.deepEqual(getUnresolvedReferenceCorrections(corrected), []);
 });
 
 test('视觉润色使用 DeepSeek 视觉模型，图片只出现在 user 消息', () => {
