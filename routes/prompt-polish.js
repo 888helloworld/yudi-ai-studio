@@ -168,6 +168,7 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
         return res.status(502).json({ error: formatPromptPolishError(upstreamError) });
       }
       let result = normalizePromptPolishResult(extractChatText(data));
+      let detectedReferenceCorrections = result?.referenceCorrections || [];
       let retried = false;
       if (shouldRetryPromptPolish(data, result)) {
         const firstMetadata = getDeepSeekChoiceMetadata(data);
@@ -193,6 +194,9 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
           return res.status(502).json({ error: formatPromptPolishError(upstreamError) });
         }
         result = normalizePromptPolishResult(extractChatText(data));
+        if ((result?.referenceCorrections || []).length > 0) {
+          detectedReferenceCorrections = result.referenceCorrections;
+        }
       }
       const finalUnresolvedCorrections = getUnresolvedReferenceCorrections(result);
       if (!result || finalUnresolvedCorrections.length > 0) {
@@ -215,6 +219,7 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
         retried,
         costPoints: cost,
         remainingPoints: typeof getRemainingPoints === 'function' ? getRemainingPoints(req.userId) : undefined,
+        referenceCorrections: detectedReferenceCorrections,
         ...publicResult
       });
     } catch (error) {

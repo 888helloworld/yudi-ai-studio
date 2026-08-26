@@ -185,7 +185,7 @@ test('视觉润色成功扣费，失败自动退款', async () => {
     ok: upstreamOk,
     status: upstreamOk ? 200 : 503,
     text: async () => JSON.stringify(upstreamOk
-      ? { choices: [{ finish_reason: 'stop', message: { content: '{"polished_prompt":"完成"}' } }] }
+      ? { choices: [{ finish_reason: 'stop', message: { content: '{"polished_prompt":"改为黄色双指袜","reference_corrections":[{"input_text":"墨绿色","reference_value":"黄色"}]}' } }] }
       : { error: { message: 'temporary failure' } })
   });
 
@@ -210,7 +210,9 @@ test('视觉润色成功扣费，失败自动退款', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: '润色它' })
     });
     assert.equal(success.status, 200);
-    assert.equal((await success.json()).remainingPoints, 995);
+    const successBody = await success.json();
+    assert.equal(successBody.remainingPoints, 995);
+    assert.deepEqual(successBody.referenceCorrections, [{ inputText: '墨绿色', referenceValue: '黄色' }]);
     assert.equal(charged, 5);
     assert.equal(refunded, 0);
 

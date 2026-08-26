@@ -13,6 +13,7 @@
       promptPolishNotes.innerHTML = '';
       const visual = Array.isArray(data.visualUnderstanding) ? data.visualUnderstanding : [];
       const changes = Array.isArray(data.changes) ? data.changes : [];
+      const corrections = Array.isArray(data.referenceCorrections) ? data.referenceCorrections : [];
       if (visual.length > 0) {
         const line = document.createElement('div');
         line.textContent = `视觉理解：${visual.join('；')}`;
@@ -23,6 +24,15 @@
         line.textContent = `本次优化：${changes.join('；')}`;
         promptPolishNotes.appendChild(line);
       }
+      corrections.forEach((item) => {
+        const inputText = String(item?.inputText || '').trim();
+        const referenceValue = String(item?.referenceValue || '').trim();
+        if (!inputText || !referenceValue) return;
+        const line = document.createElement('div');
+        line.className = 'prompt-polish-warning';
+        line.textContent = `视觉纠错：文字“${inputText}”与参考图识别“${referenceValue}”不一致，已按参考图修正。`;
+        promptPolishNotes.appendChild(line);
+      });
     }
 
     async function polishCurrentPrompt() {
