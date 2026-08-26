@@ -3,7 +3,7 @@
       const tbody = document.getElementById('auditLogsList');
       try {
         const params = new URLSearchParams({ page: String(auditPage), limit: String(auditLimit) });
-        const res = await fetch(`/api/admin/audit-logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await authFetch(`/api/admin/audit-logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '加载失败');
         const logs = data.logs || [];

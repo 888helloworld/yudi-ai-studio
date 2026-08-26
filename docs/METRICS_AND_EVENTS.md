@@ -90,7 +90,7 @@
 
 - 按请求尺寸统计：`1024x1024`、`1024x1536`、`1536x1024`、`2048x1152`、`1152x2048`
 - 按真实输出尺寸统计：从 `output_dimensions` 读取，不写死历史观测值
-- 按质量统计：快速、标准、精细
+- 按质量统计：当前固定 `medium` 标准档；若未来重新开放档位，再按 low/medium/high 拆分
 - 平均耗时
 - 排队数和运行数
 - 尺寸不匹配次数
@@ -114,3 +114,18 @@
 - 图片 URL 可以记录业务路径，但隐私图建议走鉴权或签名 URL。
 - 支付结果必须以后端验签为准，不能以前端轮询为准。
 - 对外展示统计时，不暴露单个用户的私密 Prompt 和上传图。
+
+## 当前最小实现
+
+注册页已在 `register.js` 中接入独立的 `window.XhsPrivacyAnalytics` 最小模块，当前只允许记录以下事件：
+
+- `signup_config_loaded`
+- `signup_submit`
+- `signup_success`
+- `signup_failed`
+
+事件属性采用白名单，只包含 `invite_required`、`invite_code_present`、`policy_version` 和不含原始错误文本的 `error_code`。禁止传入用户名、密码、完整邀请码、Prompt、图片内容、JWT、API Key 或支付密钥。
+
+注册页的 `<meta name="xhs-analytics-endpoint" content="">` 默认为空。未配置接收地址时，事件只在当前浏览器本地最多保留 100 条；配置地址后会优先使用 `sendBeacon`。接收端上线前必须补充鉴权、限流、保留期、删除流程和事件去重。
+
+注意：这只是注册链路的最小前端实现，不代表全站漏斗已经完成。图片任务、退款、历史复用、下载和支付事件仍需后续接入并与数据库结果对账。

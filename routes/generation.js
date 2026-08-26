@@ -40,13 +40,15 @@ function createGenerationRouter({
     const ratio = req.body.ratio || '1:1';
     const imageCount = parseImageCount(req.body.imageCount);
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
+    const operationKey = clientTaskId ? `xhs-image:${req.userId}:${clientTaskId}` : null;
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
   
     const totalCost = POINTS.image * imageCount;
     let refundablePoints = 0;
     try {
-      chargePoints(req.userId, totalCost, `图片生成 x${imageCount}`);
+      const charge = chargePoints(req.userId, totalCost, `图片生成 x${imageCount}`, operationKey ? `${operationKey}:charge` : null);
+      if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请在历史记录中查看结果，不要重复提交' });
       refundablePoints = totalCost;
     } catch (err) {
       return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
@@ -55,7 +57,7 @@ function createGenerationRouter({
     const size = SIZE_MAP[ratio];
     const API_KEY = getRequiredEnv('ARK_API_KEY');
     if (!API_KEY) {
-      refundPoints(req.userId, refundablePoints, '图片生成失败退款');
+      refundPoints(req.userId, refundablePoints, '图片生成失败退款', operationKey ? `${operationKey}:failure` : null);
       return res.status(500).json({ error: '图片服务未配置' });
     }
     try {
@@ -73,7 +75,7 @@ function createGenerationRouter({
       const remoteUrls = await generateArkImageUrls(ARK_IMAGE_BASE_URL, API_KEY, requestBody, imageCount);
       
       if (remoteUrls.length === 0) {
-        refundPoints(req.userId, refundablePoints, '图片生成失败退款');
+        refundPoints(req.userId, refundablePoints, '图片生成失败退款', operationKey ? `${operationKey}:failure` : null);
         return res.status(500).json({ error: '图片生成失败' });
       }
   
@@ -84,7 +86,7 @@ function createGenerationRouter({
       const missingCount = Math.max(imageCount - localUrls.length, 0);
       if (missingCount > 0) {
         const refundAmount = POINTS.image * missingCount;
-        refundPoints(req.userId, refundAmount, `图片生成少出${missingCount}张退款`);
+        refundPoints(req.userId, refundAmount, `图片生成少出${missingCount}张退款`, operationKey ? `${operationKey}:partial` : null);
         refundablePoints -= refundAmount;
       }
       const createdAt = formatBeijingDateTime();
@@ -95,7 +97,7 @@ function createGenerationRouter({
   
       res.json({ imageUrl: localUrls[0], imageUrls: localUrls, remainingPoints: db.getUserPoints(req.userId), createdAt });
     } catch (err) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '图片生成失败退款');
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '图片生成失败退款', operationKey ? `${operationKey}:failure` : null);
       console.error('小红书图片生成失败:', err.message || err);
       res.status(502).json({ error: formatUpstreamError(err.message || err, '图片生成失败，请稍后再试') });
     }
@@ -106,13 +108,15 @@ function createGenerationRouter({
     const topic = sanitizeInput(req.body.topic, 500);
     const type = req.body.type;
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
+    const operationKey = clientTaskId ? `xhs-copy:${req.userId}:${clientTaskId}` : null;
     if (!topic) return res.status(400).json({ error: '请输入主题' });
     const fullPrompt = buildCopyPrompt(topic, type);
     if (!fullPrompt) return res.status(400).json({ error: '无效的文案类型' });
 
     let refundablePoints = 0;
     try {
-      chargePoints(req.userId, POINTS.copy, '文案生成');
+      const charge = chargePoints(req.userId, POINTS.copy, '文案生成', operationKey ? `${operationKey}:charge` : null);
+      if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请在历史记录中查看结果，不要重复提交' });
       refundablePoints = POINTS.copy;
     } catch (err) {
       return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
@@ -120,7 +124,7 @@ function createGenerationRouter({
 
     const DEEPSEEK_API_KEY = getRequiredEnv('DEEPSEEK_API_KEY');
     if (!DEEPSEEK_API_KEY) {
-      refundPoints(req.userId, refundablePoints, '文案生成失败退款');
+      refundPoints(req.userId, refundablePoints, '文案生成失败退款', operationKey ? `${operationKey}:failure` : null);
       return res.status(500).json({ error: '文案服务未配置' });
     }
     try {
@@ -142,7 +146,7 @@ function createGenerationRouter({
       refundablePoints = 0;
       res.json({ copy: cleanText, title, remainingPoints: db.getUserPoints(req.userId), createdAt });
     } catch (err) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '文案生成失败退款');
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '文案生成失败退款', operationKey ? `${operationKey}:failure` : null);
       res.status(500).json({ error: '请求失败' });
     }
   });
@@ -152,12 +156,14 @@ function createGenerationRouter({
     const originalText = sanitizeInput(req.body.originalText, 5000);
     const style = req.body.style;
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
+    const operationKey = clientTaskId ? `xhs-rewrite:${req.userId}:${clientTaskId}` : null;
     if (!originalText) return res.status(400).json({ error: '请输入要改写的文案' });
     const rewritePrompt = buildRewritePrompt(originalText, style);
 
     let refundablePoints = 0;
     try {
-      chargePoints(req.userId, POINTS.rewrite, '文案改写');
+      const charge = chargePoints(req.userId, POINTS.rewrite, '文案改写', operationKey ? `${operationKey}:charge` : null);
+      if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请在历史记录中查看结果，不要重复提交' });
       refundablePoints = POINTS.rewrite;
     } catch (err) {
       return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
@@ -165,7 +171,7 @@ function createGenerationRouter({
 
     const DEEPSEEK_API_KEY = getRequiredEnv('DEEPSEEK_API_KEY');
     if (!DEEPSEEK_API_KEY) {
-      refundPoints(req.userId, refundablePoints, '文案改写失败退款');
+      refundPoints(req.userId, refundablePoints, '文案改写失败退款', operationKey ? `${operationKey}:failure` : null);
       return res.status(500).json({ error: '文案服务未配置' });
     }
     try {
@@ -187,7 +193,7 @@ function createGenerationRouter({
       refundablePoints = 0;
       res.json({ copy: cleanText, title, remainingPoints: db.getUserPoints(req.userId), createdAt });
     } catch (err) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '文案改写失败退款');
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '文案改写失败退款', operationKey ? `${operationKey}:failure` : null);
       res.status(500).json({ error: '请求失败' });
     }
   });
@@ -200,13 +206,15 @@ function createGenerationRouter({
     const ratio = req.body.ratio || '1:1';
     const imageCount = parseImageCount(req.body.imageCount);
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId);
+    const operationKey = clientTaskId ? `xhs-both:${req.userId}:${clientTaskId}` : null;
     if (!prompt) return res.status(400).json({ error: '请输入描述' });
     if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
   
     const totalCost = POINTS.copy + (POINTS.image * imageCount);
     let refundablePoints = 0;
     try {
-      chargePoints(req.userId, totalCost, `图文一体生成 x${imageCount}`);
+      const charge = chargePoints(req.userId, totalCost, `图文一体生成 x${imageCount}`, operationKey ? `${operationKey}:charge` : null);
+      if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请在历史记录中查看结果，不要重复提交' });
       refundablePoints = totalCost;
     } catch (err) {
       return res.status(err.statusCode || 500).json({ error: err.message || '积分扣减失败' });
@@ -215,12 +223,12 @@ function createGenerationRouter({
     const size = SIZE_MAP[ratio];
     const API_KEY = getRequiredEnv('ARK_API_KEY');
     if (!API_KEY) {
-      refundPoints(req.userId, refundablePoints, '图文一体生成失败退款');
+      refundPoints(req.userId, refundablePoints, '图文一体生成失败退款', operationKey ? `${operationKey}:failure` : null);
       return res.status(500).json({ error: '图片服务未配置' });
     }
     const DEEPSEEK_API_KEY = getRequiredEnv('DEEPSEEK_API_KEY');
     if (!DEEPSEEK_API_KEY) {
-      refundPoints(req.userId, refundablePoints, '图文一体生成失败退款');
+      refundPoints(req.userId, refundablePoints, '图文一体生成失败退款', operationKey ? `${operationKey}:failure` : null);
       return res.status(500).json({ error: '文案服务未配置' });
     }
     try {
@@ -257,7 +265,7 @@ function createGenerationRouter({
   
       // 检查结果
       if (imageResult.status === 'rejected' && copyResult.status === 'rejected') {
-        refundPoints(req.userId, refundablePoints, '图文一体生成失败退款');
+        refundPoints(req.userId, refundablePoints, '图文一体生成失败退款', operationKey ? `${operationKey}:failure` : null);
         return res.status(500).json({ error: '图片和文案生成均失败' });
       }
   
@@ -270,12 +278,12 @@ function createGenerationRouter({
       const missingImageCount = Math.max(imageCount - imageUrls.length, 0);
       if (missingImageCount > 0) {
         const refundAmount = POINTS.image * missingImageCount;
-        refundPoints(req.userId, refundAmount, `图文一体-图片少出${missingImageCount}张退款`);
+        refundPoints(req.userId, refundAmount, `图文一体-图片少出${missingImageCount}张退款`, operationKey ? `${operationKey}:image-partial` : null);
         refundablePoints -= refundAmount;
       }
       // 如果文案失败退文案部分的积分
       if (!copyText) {
-        refundPoints(req.userId, POINTS.copy, '图文一体-文案失败退款');
+        refundPoints(req.userId, POINTS.copy, '图文一体-文案失败退款', operationKey ? `${operationKey}:copy-failure` : null);
         refundablePoints -= POINTS.copy;
       }
   
@@ -312,7 +320,7 @@ function createGenerationRouter({
         createdAt
       });
     } catch (err) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '图文一体生成失败退款');
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '图文一体生成失败退款', operationKey ? `${operationKey}:failure` : null);
       res.status(500).json({ error: '请求失败' });
     }
   });

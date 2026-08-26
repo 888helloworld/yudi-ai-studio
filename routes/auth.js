@@ -3,6 +3,8 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { createUser, createUserWithInvite, verifyUser, revokeUserTokens } = require('../db');
 const { AUTH_COOKIE_NAME, generateToken, authMiddleware, optionalAuth } = require('../middleware/auth');
+const { addAnalyticsEvent } = require('../repositories/analytics-repository');
+const POLICY_VERSION = process.env.POLICY_VERSION || '2026-08-26-v1';
 
 const configuredCookieMaxAge = Number(process.env.AUTH_COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000);
 const cookieMaxAge = Number.isFinite(configuredCookieMaxAge)
@@ -103,7 +105,12 @@ function isPrivateAddress(value = '') {
 function allowRegisterWithoutInvite(req) {
   if (/^true$/i.test(process.env.LOCAL_REGISTER_WITHOUT_INVITE || '')) return true;
   if (/^false$/i.test(process.env.LOCAL_REGISTER_WITHOUT_INVITE || '')) return false;
-  return isPrivateAddress(req.ip);
+  // 生产环境必须显式决定注册策略。不能仅凭 req.ip 是内网地址就放行：
+  // nginx 反代到 127.0.0.1 时，未正确配置 trust proxy 的公网请求也会看起来来自本机。
+  if (process.env.NODE_ENV === 'production') return false;
+  const forwarded = req.get('x-forwarded-for') || req.get('x-forwarded-proto') || req.get('forwarded');
+  if (forwarded) return false;
+  return isPrivateAddress(req.socket?.remoteAddress || req.ip);
 }
 
 router.get('/register-config', (req, res) => {
@@ -116,20 +123,22 @@ router.post('/register', registerLimiter, (req, res) => {
   const password = normalizePassword(req.body.password);
   const inviteCode = typeof req.body.inviteCode === 'string' ? req.body.inviteCode.trim() : '';
   const inviteRequired = !allowRegisterWithoutInvite(req);
+  const policyAccepted = req.body.policyAccepted === true;
+  const policyVersion = String(req.body.policyVersion || '').trim();
   
   if (!username || !password) {
     return res.status(400).json({ error: '用户名和密码不能为空' });
+  }
+  if (!policyAccepted || policyVersion !== POLICY_VERSION) {
+    return res.status(400).json({ error: '请先阅读并同意当前版本的服务条款、隐私政策和内容规范' });
   }
   
   if (inviteRequired && !inviteCode) {
     return res.status(400).json({ error: '注册需要邀请码' });
   }
   
-  if (username.length < 3 || username.length > 20) {
-    return res.status(400).json({ error: '用户名长度需在3-20个字符之间' });
-  }
-  if (/[\u0000-\u001f\u007f]/.test(username)) {
-    return res.status(400).json({ error: '用户名包含无效字符' });
+  if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
+    return res.status(400).json({ error: '用户名需为3-20位字母、数字或下划线' });
   }
   
   if (password.length < 8) {
@@ -141,10 +150,13 @@ router.post('/register', registerLimiter, (req, res) => {
   }
   
   try {
+    const policy = { version: POLICY_VERSION, acceptedAt: new Date().toISOString(), ip: req.ip };
     const user = inviteRequired || inviteCode
-      ? createUserWithInvite(username, password, inviteCode)
-      : createUser(username, password);
+      ? createUserWithInvite(username, password, inviteCode, policy)
+      : createUser(username, password, policy);
     const token = generateToken(user);
+    setAuthCookie(res, token);
+    try { addAnalyticsEvent({ userId: user.id, eventName: 'signup_success', properties: { policy_version: POLICY_VERSION } }); } catch {}
     res.json(publicAuthResponse(user, token));
   } catch (e) {
     if (e.message === '用户名已存在') {
@@ -186,10 +198,15 @@ router.post('/login', (req, res) => {
     }
     return res.status(401).json({ error: '用户名或密码错误' });
   }
+  if (user.status && user.status !== 'active') {
+    const label = user.status === 'banned' ? '账号已封禁' : '账号已冻结';
+    return res.status(403).json({ error: user.status_reason ? `${label}：${user.status_reason}` : label });
+  }
 
   clearLoginFailures(username, clientIp);
   const token = generateToken(user);
   setAuthCookie(res, token);
+  try { addAnalyticsEvent({ userId: user.id, eventName: 'login_success' }); } catch {}
   res.json(publicAuthResponse(user, token));
 });
 

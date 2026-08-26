@@ -7,6 +7,7 @@ const SKIP_DIRECTORIES = new Set([
   '.git',
   '.agents',
   '.playwright-cli',
+  'backups',
   'node_modules',
   'uploads',
   'output',

@@ -29,7 +29,8 @@ ${prompt}
 {
   "polished_prompt": "1-3句、简短明确、可直接发送给 gpt-image-2 的中文提示词",
   "visual_understanding": ["图1：简短说明它在本次任务中的作用"],
-  "changes": ["简短说明本次补强了什么，最多4条"]
+  "changes": ["简短说明本次补强了什么，最多4条"],
+  "reference_corrections": [{"input_text":"用户文字中与参考图冲突的属性","reference_value":"参考图中实际可见的属性"}]
 }`;
 }
 
@@ -61,6 +62,24 @@ function normalizeStringList(value, maximum = 4) {
     .map((item) => item.slice(0, 160));
 }
 
+function normalizeReferenceCorrections(value, maximum = 4) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => ({
+      inputText: String(item?.input_text || item?.inputText || '').trim().slice(0, 80),
+      referenceValue: String(item?.reference_value || item?.referenceValue || '').trim().slice(0, 80)
+    }))
+    .filter((item) => item.inputText && item.referenceValue && item.inputText !== item.referenceValue)
+    .slice(0, maximum);
+}
+
+function getUnresolvedReferenceCorrections(result) {
+  const prompt = String(result?.polishedPrompt || '');
+  return (result?.referenceCorrections || []).filter((item) => (
+    prompt.includes(item.inputText) || !prompt.includes(item.referenceValue)
+  ));
+}
+
 function normalizePromptPolishResult(content) {
   const parsed = typeof content === 'string' ? parseJsonLike(content) : content;
   if (!parsed || typeof parsed !== 'object') {
@@ -73,6 +92,7 @@ function normalizePromptPolishResult(content) {
     polishedPrompt,
     visualUnderstanding: normalizeStringList(parsed.visual_understanding || parsed.visualUnderstanding),
     changes: normalizeStringList(parsed.changes),
+    referenceCorrections: normalizeReferenceCorrections(parsed.reference_corrections || parsed.referenceCorrections),
     warning: ''
   };
 }
@@ -80,5 +100,6 @@ function normalizePromptPolishResult(content) {
 module.exports = {
   buildPromptPolishInstruction,
   compactPromptText,
+  getUnresolvedReferenceCorrections,
   normalizePromptPolishResult
 };

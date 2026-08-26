@@ -200,6 +200,8 @@
       if (reverseHistoryPollId) return;
       reverseHistoryPollId = setTimeout(async () => {
         reverseHistoryPollId = null;
+        await loadReverseHistory();
+        syncReverseHistoryPolling();
       }, 3000);
     }
 

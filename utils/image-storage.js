@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const dns = require('dns').promises;
 const net = require('net');
+const { Agent } = require('undici');
 const { PNG } = require('pngjs');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
@@ -65,23 +66,41 @@ async function assertSafeExternalUrl(rawUrl) {
   if (!addresses.length || addresses.some((entry) => isPrivateIpAddress(entry.address))) {
     throw new Error('图片地址解析到了内网或保留地址');
   }
-  return parsed;
+  const selected = addresses[0];
+  return { parsed, address: selected.address, family: selected.family };
 }
 
 async function fetchExternalImage(url, signal) {
   let currentUrl = String(url || '');
   for (let redirects = 0; redirects <= 5; redirects += 1) {
-    await assertSafeExternalUrl(currentUrl);
-    const response = await fetch(currentUrl, { signal, redirect: 'manual' });
+    const resolved = await assertSafeExternalUrl(currentUrl);
+    const dispatcher = new Agent({
+      connect: {
+        lookup(hostname, options, callback) {
+          callback(null, resolved.address, resolved.family);
+        }
+      }
+    });
+    let response;
+    try {
+      response = await fetch(currentUrl, { signal, redirect: 'manual', dispatcher });
+    } catch (error) {
+      await dispatcher.close().catch(() => {});
+      throw error;
+    }
     if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
-      if (!location) throw new Error('图片下载跳转地址缺失');
-      if (redirects >= 5) throw new Error('图片下载跳转次数过多');
-      currentUrl = new URL(location, currentUrl).href;
-      try { await response.body?.cancel(); } catch {}
+      try {
+        const location = response.headers.get('location');
+        if (!location) throw new Error('图片下载跳转地址缺失');
+        if (redirects >= 5) throw new Error('图片下载跳转次数过多');
+        currentUrl = new URL(location, currentUrl).href;
+      } finally {
+        try { await response.body?.cancel(); } catch {}
+        await dispatcher.close().catch(() => {});
+      }
       continue;
     }
-    return { response, finalUrl: currentUrl };
+    return { response, finalUrl: currentUrl, dispatcher };
   }
   throw new Error('图片下载跳转次数过多');
 }
@@ -104,18 +123,28 @@ async function downloadAndSaveImage(url, prefix) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
   try {
-    const { response, finalUrl } = await fetchExternalImage(url, controller.signal);
-    if (!response.ok) throw new Error(`下载失败: ${response.status}`);
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.startsWith('image/')) throw new Error('下载内容不是图片');
-    const buffer = await readResponseWithLimit(response, MAX_SAVED_IMAGE_BYTES);
-    const dimensions = getImageDimensionsFromBuffer(buffer);
-    if (!dimensions) throw new Error('下载内容不是有效图片');
-    const ext = contentType.includes('jpeg') || finalUrl.includes('.jpg') || finalUrl.includes('jpeg') ? '.jpg' : '.png';
-    const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-    fs.writeFileSync(filepath, buffer);
-    return `/uploads/${filename}`;
+    const { response, dispatcher } = await fetchExternalImage(url, controller.signal);
+    try {
+      if (!response.ok) throw new Error(`下载失败: ${response.status}`);
+      const contentType = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (!contentType.startsWith('image/')) throw new Error('下载内容不是图片');
+      const buffer = await readResponseWithLimit(response, MAX_SAVED_IMAGE_BYTES);
+      const detectedMime = detectImageMime(buffer);
+      if (!detectedMime || (contentType !== 'image/jpg' && contentType !== detectedMime)) throw new Error('下载图片格式与内容不一致');
+      const dimensions = getImageDimensionsFromBuffer(buffer);
+      const maximumPixels = Math.max(1000000, Number(process.env.MAX_SAVED_IMAGE_PIXELS || 24000000) || 24000000);
+      const pixels = dimensions ? dimensions.width * dimensions.height : 0;
+      if (!dimensions || !Number.isSafeInteger(pixels) || pixels > maximumPixels || dimensions.width > 8192 || dimensions.height > 8192) {
+        throw new Error('下载图片尺寸无效或过大');
+      }
+      const ext = getImageExtension(detectedMime);
+      const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
+      const filepath = path.join(UPLOAD_DIR, filename);
+      fs.writeFileSync(filepath, buffer);
+      return `/uploads/${filename}`;
+    } finally {
+      await dispatcher.close().catch(() => {});
+    }
   } catch (err) {
     console.error('图片下载失败:', err.message);
     throw err;
@@ -132,13 +161,32 @@ function getImageExtension(mimeType, fallback = '.png') {
   return fallback;
 }
 
+function detectImageMime(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+  if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
+  return null;
+}
+
 function saveDataUrlImage(dataUrl, prefix) {
   const match = String(dataUrl || '').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/);
   if (!match) return null;
-  const mimeType = match[1];
-  const buffer = Buffer.from(match[2], 'base64');
+  const declaredMime = match[1].toLowerCase() === 'image/jpg' ? 'image/jpeg' : match[1].toLowerCase();
+  const encoded = match[2].replace(/\s+/g, '');
+  if (!encoded || encoded.length % 4 !== 0 || !/^[a-zA-Z0-9+/]+={0,2}$/.test(encoded)) return null;
+  const buffer = Buffer.from(encoded, 'base64');
   if (!buffer.length || buffer.length > MAX_SAVED_IMAGE_BYTES) return null;
-  const ext = getImageExtension(mimeType);
+  const detectedMime = detectImageMime(buffer);
+  if (!detectedMime || detectedMime !== declaredMime) return null;
+  const dimensions = getImageDimensionsFromBuffer(buffer);
+  const configuredMaximumPixels = Number(process.env.MAX_SAVED_IMAGE_PIXELS || 24000000);
+  const maximumPixels = Number.isFinite(configuredMaximumPixels)
+    ? Math.max(1000000, configuredMaximumPixels)
+    : 24000000;
+  const pixels = dimensions ? dimensions.width * dimensions.height : 0;
+  if (!dimensions || !Number.isSafeInteger(pixels) || pixels > maximumPixels || dimensions.width > 8192 || dimensions.height > 8192) return null;
+  const ext = getImageExtension(detectedMime);
   const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}${ext}`;
   const filepath = path.join(UPLOAD_DIR, filename);
   fs.writeFileSync(filepath, buffer);

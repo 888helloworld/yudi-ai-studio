@@ -8,8 +8,9 @@
         if (type) params.append('type', type);
         params.append('page', String(historyPage));
         params.append('limit', String(historyLimit));
-        const res = await fetch(`/api/admin/history?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch(`/api/admin/history?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '历史记录加载失败');
         renderHistory(data.history);
         renderPager('historyPager', {
           page: Number(data.page || historyPage),
@@ -80,7 +81,7 @@
           </div>
           <div class="content">${escapeHtml(formatHistoryContent(h))}</div>
           <div style="margin-top:10px;">
-            <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="AdminApp.deleteHistoryRecord(${Number(h.id)})">删除</button>
+            <button class="admin-btn admin-btn-danger admin-btn-sm" data-admin-action="delete-history" data-history-id="${Number(h.id)}">删除</button>
           </div>
         </div>
       `).join('');
@@ -89,7 +90,7 @@
     async function deleteHistoryRecord(id) {
       if (!confirm('确定删除这条历史记录吗？')) return;
       try {
-        const res = await fetch(`/api/admin/history/${id}`, {
+        const res = await authFetch(`/api/admin/history/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -116,7 +117,7 @@
       summary.innerHTML = '';
 
       try {
-        const res = await fetch(`/api/admin/daily-stats?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch(`/api/admin/daily-stats?days=${days}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const stats = data.stats || [];
 

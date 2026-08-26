@@ -7,7 +7,9 @@
     "check": "node scripts/check-js.js",
     "test": "node --test \"test/*.test.js\"",
     "backup": "node scripts/backup-database.js",
-    "audit:uploads": "node scripts/audit-orphan-uploads.js"
+    "audit:uploads": "node scripts/audit-orphan-uploads.js",
+    "maintenance": "node scripts/audit-orphan-uploads.js --quarantine --cleanup-quarantine",
+    "secure:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/secure-runtime-acl.ps1"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -18,6 +20,7 @@
     "express-rate-limit": "^8.6.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "undici": "^7.29.0"
   }
 }

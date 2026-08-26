@@ -47,14 +47,44 @@
     if (!copied) throw new Error('copy failed');
   }
 
+  function clearLocalAuthState() {
+    global.localStorage.removeItem('token');
+    global.localStorage.removeItem('user');
+  }
+
+  function redirectToLogin(next = '') {
+    const current = next || global.location.pathname.split('/').pop() || '';
+    const safeNext = /^[a-z0-9_-]+\.html$/i.test(current) && current !== 'login.html'
+      ? `?next=${encodeURIComponent(current)}`
+      : '';
+    global.location.href = `login.html${safeNext}`;
+  }
+
+  async function authFetch(input, options = {}) {
+    const { handleAuthExpired = true, nextPage = '', ...fetchOptions } = options;
+    const token = global.localStorage.getItem('token');
+    const headers = new Headers(fetchOptions.headers || {});
+    if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+    const response = await global.fetch(input, { ...fetchOptions, headers, credentials: 'same-origin' });
+    if (response.status === 401 && handleAuthExpired) {
+      clearLocalAuthState();
+      redirectToLogin(nextPage);
+    }
+    return response;
+  }
+
   const utilities = Object.freeze({
     copyTextToClipboard,
+    authFetch,
+    clearLocalAuthState,
     escapeHtml,
     getImageFileFromClipboard,
     isProtectedUploadUrl
   });
   global.AppUtils = utilities;
   global.copyTextToClipboard = copyTextToClipboard;
+  global.authFetch = authFetch;
+  global.clearLocalAuthState = clearLocalAuthState;
   global.escapeHtml = escapeHtml;
   global.getImageFileFromClipboard = getImageFileFromClipboard;
   global.isProtectedUploadUrl = isProtectedUploadUrl;

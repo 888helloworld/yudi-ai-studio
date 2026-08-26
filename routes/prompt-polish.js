@@ -1,12 +1,52 @@
 const express = require('express');
 const { extractChatText } = require('../services/reverse-prompt-service');
-const { buildPromptPolishInstruction, normalizePromptPolishResult } = require('../services/prompt-polish-service');
+const {
+  buildPromptPolishInstruction,
+  getUnresolvedReferenceCorrections,
+  normalizePromptPolishResult
+} = require('../services/prompt-polish-service');
 const { formatUpstreamError } = require('../services/upstream-http');
-const { getRequiredEnv, sanitizeInput } = require('../utils/request-utils');
+const { getRequiredEnv, normalizeClientTaskId, sanitizeInput } = require('../utils/request-utils');
 
 const SUPPORTED_SIZES = new Set(['1024x1024', '1024x1536', '1536x1024', '2048x1152', '1152x2048']);
 const DEFAULT_DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
 const MAX_DEEPSEEK_INLINE_IMAGE_BYTES = 34 * 1024 * 1024;
+const activePromptPolishByUser = new Map();
+let activePromptPolishTotal = 0;
+
+function getPromptPolishConcurrencyLimit(name, fallback, maximum) {
+  const configured = Number(process.env[name]);
+  return Number.isFinite(configured) && configured > 0
+    ? Math.min(Math.floor(configured), maximum)
+    : fallback;
+}
+
+function acquirePromptPolishSlot(userId) {
+  const globalLimit = getPromptPolishConcurrencyLimit('PROMPT_POLISH_MAX_CONCURRENT', 6, 50);
+  const userLimit = getPromptPolishConcurrencyLimit('PROMPT_POLISH_MAX_CONCURRENT_PER_USER', 2, 10);
+  if (activePromptPolishTotal >= globalLimit) {
+    const error = new Error('提示词润色当前任务较多，请稍后再试');
+    error.statusCode = 503;
+    throw error;
+  }
+  const activeForUser = activePromptPolishByUser.get(userId) || 0;
+  if (activeForUser >= userLimit) {
+    const error = new Error(`每个账号最多同时润色 ${userLimit} 个任务`);
+    error.statusCode = 429;
+    throw error;
+  }
+  activePromptPolishTotal += 1;
+  activePromptPolishByUser.set(userId, activeForUser + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    activePromptPolishTotal = Math.max(0, activePromptPolishTotal - 1);
+    const remaining = Math.max(0, (activePromptPolishByUser.get(userId) || 1) - 1);
+    if (remaining === 0) activePromptPolishByUser.delete(userId);
+    else activePromptPolishByUser.set(userId, remaining);
+  };
+}
 
 function getPromptPolishTimeoutMs() {
   const configured = Number(process.env.DEEPSEEK_VISION_TIMEOUT_MS || process.env.DEEPSEEK_TIMEOUT_MS || 180000);
@@ -27,10 +67,13 @@ function formatPromptPolishError(message, fallback = 'DeepSeek 视觉润色暂�
     .trim();
 }
 
-function buildDeepSeekVisionRequest({ prompt, size, files, maxTokens = 4096 }) {
+function buildDeepSeekVisionRequest({ prompt, size, files, maxTokens = 4096, correctionContext = null }) {
   const model = process.env.DEEPSEEK_VISION_MODEL || DEFAULT_DEEPSEEK_VISION_MODEL;
+  const requestText = correctionContext
+    ? `上一次结果没有正确应用参考图事实。必须重新输出完整 JSON，逐项使用 referenceValue，删除 inputText 对应的错误属性，不要解释冲突。校正信息：${JSON.stringify(correctionContext)}`
+    : '请结合用户原始要求、目标画布和所有参考图，输出最终润色结果。';
   const userContent = [
-    { type: 'text', text: '请结合用户原始要求、目标画布和所有参考图，输出最终润色结果。' },
+    { type: 'text', text: requestText },
     ...files.map((file) => ({
       type: 'image_url',
       image_url: {
@@ -62,13 +105,15 @@ function getDeepSeekChoiceMetadata(data) {
 
 function shouldRetryPromptPolish(data, result) {
   const { finishReason } = getDeepSeekChoiceMetadata(data);
-  return finishReason === 'length' || !result;
+  return finishReason === 'length' || !result || getUnresolvedReferenceCorrections(result).length > 0;
 }
 
-function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validateUploadedImageFiles }) {
+function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validateUploadedImageFiles, chargePoints, refundPoints, getRemainingPoints, pointCost }) {
   const router = express.Router();
   router.post('/api/xi-image/polish-prompt', copyLimiter, authMiddleware, upload.array('image', 3), validateUploadedImageFiles, async (req, res) => {
     const prompt = sanitizeInput(req.body.prompt, 3000);
+    const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
+    const operationKey = clientTaskId ? `prompt-polish:${req.userId}:${clientTaskId}` : null;
     const size = SUPPORTED_SIZES.has(req.body.size) ? req.body.size : '1024x1536';
     const files = Array.isArray(req.files) ? req.files : [];
     if (!prompt) return res.status(400).json({ error: '请先输入要润色的图片描述' });
@@ -79,6 +124,26 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
 
     const apiKey = getRequiredEnv('DEEPSEEK_API_KEY');
     if (!apiKey) return res.status(500).json({ error: 'DeepSeek 视觉润色服务未配置' });
+
+    let releaseSlot;
+    try {
+      releaseSlot = acquirePromptPolishSlot(req.userId);
+    } catch (error) {
+      return res.status(error.statusCode || 429).json({ error: error.message });
+    }
+    const cost = Math.max(1, Number(pointCost) || 1);
+    let shouldRefund = false;
+    try {
+      const charge = chargePoints(req.userId, cost, '提示词视觉润色', operationKey ? `${operationKey}:charge` : null);
+      if (charge?.alreadyApplied) {
+        releaseSlot();
+        return res.status(409).json({ error: '该润色任务已提交，请不要重复提交' });
+      }
+      shouldRefund = true;
+    } catch (error) {
+      releaseSlot();
+      return res.status(error.statusCode || 500).json({ error: error.message || '积分扣减失败' });
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), getPromptPolishTimeoutMs());
@@ -106,14 +171,22 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
       let retried = false;
       if (shouldRetryPromptPolish(data, result)) {
         const firstMetadata = getDeepSeekChoiceMetadata(data);
+        const unresolvedCorrections = getUnresolvedReferenceCorrections(result);
         console.warn('DeepSeek 视觉润色首次输出被截断或无效，准备重试:', JSON.stringify({
           userId: req.userId,
           imageCount: files.length,
           size,
+          correctionCount: unresolvedCorrections.length,
           ...firstMetadata
         }));
         retried = true;
-        requestBody = buildDeepSeekVisionRequest({ prompt, size, files, maxTokens: 8192 });
+        requestBody = buildDeepSeekVisionRequest({
+          prompt,
+          size,
+          files,
+          maxTokens: 8192,
+          correctionContext: unresolvedCorrections.length > 0 ? unresolvedCorrections : null
+        });
         ({ response, text, data } = await sendRequest());
         if (!response.ok) {
           const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
@@ -121,17 +194,29 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
         }
         result = normalizePromptPolishResult(extractChatText(data));
       }
-      if (!result) {
+      const finalUnresolvedCorrections = getUnresolvedReferenceCorrections(result);
+      if (!result || finalUnresolvedCorrections.length > 0) {
         console.error('DeepSeek 视觉润色没有有效最终结果:', JSON.stringify({
           userId: req.userId,
           imageCount: files.length,
           size,
           retried,
+          correctionCount: finalUnresolvedCorrections.length,
           ...getDeepSeekChoiceMetadata(data)
         }));
-        return res.status(502).json({ error: 'DeepSeek 输出被截断，自动重试后仍未完成，请减少要求或参考图后重试' });
+        return res.status(502).json({ error: 'DeepSeek 视觉校正未完成，请重新润色后再出图' });
       }
-      return res.json({ success: true, model: requestBody.model, imageCount: files.length, retried, ...result });
+      shouldRefund = false;
+      const { referenceCorrections, ...publicResult } = result;
+      return res.json({
+        success: true,
+        model: requestBody.model,
+        imageCount: files.length,
+        retried,
+        costPoints: cost,
+        remainingPoints: typeof getRemainingPoints === 'function' ? getRemainingPoints(req.userId) : undefined,
+        ...publicResult
+      });
     } catch (error) {
       const message = error.name === 'AbortError'
         ? '视觉润色请求超时，请稍后再试'
@@ -139,6 +224,11 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
       return res.status(502).json({ error: message });
     } finally {
       clearTimeout(timeout);
+      if (shouldRefund) {
+        try { refundPoints(req.userId, cost, '提示词视觉润色失败退款', operationKey ? `${operationKey}:failure` : null); }
+        catch (refundError) { console.error('提示词视觉润色退款失败:', refundError.message || refundError); }
+      }
+      releaseSlot();
     }
   });
   return router;
@@ -148,6 +238,7 @@ module.exports = {
   DEFAULT_DEEPSEEK_VISION_MODEL,
   MAX_DEEPSEEK_INLINE_IMAGE_BYTES,
   buildDeepSeekVisionRequest,
+  acquirePromptPolishSlot,
   createPromptPolishRouter,
   formatPromptPolishError,
   getDeepSeekChoiceMetadata,

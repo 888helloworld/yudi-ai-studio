@@ -51,6 +51,9 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
   try {
     const home = await fetch(`${baseUrl}/`);
     assert.equal(home.status, 200);
+    const csp = home.headers.get('content-security-policy') || '';
+    assert.match(csp, /script-src 'self'/);
+    assert.doesNotMatch(csp, /script-src[^;]*unsafe-inline/);
     assert.match(await home.text(), /御弟哥哥/);
 
     const loader = await fetch(`${baseUrl}/script.js`);
@@ -123,13 +126,38 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     const paymentRoute = await fetch(`${baseUrl}/api/payment/create`, { method: 'POST' });
     assert.equal(paymentRoute.status, 401);
 
+    const originalNodeEnv = process.env.NODE_ENV;
+    const policyConsent = { policyAccepted: true, policyVersion: '2026-08-26-v1' };
+    process.env.NODE_ENV = 'production';
+    const productionRegister = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'production_policy_user', password: 'ProductionPolicy123', ...policyConsent })
+    });
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    assert.equal(productionRegister.status, 400);
+    assert.match((await productionRegister.json()).error, /邀请码/);
+
+    const proxiedRegister = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' },
+      body: JSON.stringify({ username: 'proxy_bypass_user', password: 'ProxyBypass123', ...policyConsent })
+    });
+    assert.equal(proxiedRegister.status, 400);
+    assert.match((await proxiedRegister.json()).error, /邀请码/);
+
     const register = await fetch(`${baseUrl}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'http_template_user', password: 'HttpTemplate123' })
+      body: JSON.stringify({ username: 'http_template_user', password: 'HttpTemplate123', ...policyConsent })
     });
     assert.equal(register.status, 200);
+    assert.match(register.headers.get('set-cookie') || '', /xhs_session=.*HttpOnly.*SameSite=Strict/i);
     const registerBody = await register.json();
+    const policyRecord = db.prepare('SELECT policy_version, policy_accepted_at FROM users WHERE id = ?').get(registerBody.user.id);
+    assert.equal(policyRecord.policy_version, '2026-08-26-v1');
+    assert.ok(policyRecord.policy_accepted_at);
     const authHeaders = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${registerBody.token}`
@@ -145,6 +173,13 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     const loginBody = await login.json();
     assert.equal(typeof loginBody.token, 'string');
 
+    const inviteTooEarly = await fetch(`${baseUrl}/api/user/invites/generate`, {
+      method: 'POST',
+      headers: authHeaders
+    });
+    assert.equal(inviteTooEarly.status, 403);
+    assert.match((await inviteTooEarly.json()).error, /注册满 1 天/);
+
     const beforeCopyFailureResponse = await fetch(`${baseUrl}/api/user/me`, {
       headers: { Authorization: `Bearer ${registerBody.token}` }
     });
@@ -152,13 +187,19 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     const failedCopy = await fetch(`${baseUrl}/generate-copy`, {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({ topic: '验证文案服务未配置时退款', type: '种草' })
+      body: JSON.stringify({ topic: '验证文案服务未配置时退款', type: '种草', clientTaskId: 'smoke-copy-idempotent' })
     });
     assert.equal(failedCopy.status, 500);
     const afterCopyFailureResponse = await fetch(`${baseUrl}/api/user/me`, {
       headers: { Authorization: `Bearer ${registerBody.token}` }
     });
     assert.equal((await afterCopyFailureResponse.json()).points, beforeCopyFailurePoints);
+    const duplicateCopy = await fetch(`${baseUrl}/generate-copy`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ topic: '验证文案服务未配置时退款', type: '种草', clientTaskId: 'smoke-copy-idempotent' })
+    });
+    assert.equal(duplicateCopy.status, 409);
 
     const savedTemplate = await fetch(`${baseUrl}/api/templates`, {
       method: 'POST',

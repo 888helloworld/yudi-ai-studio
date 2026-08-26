@@ -2,6 +2,24 @@
     const token = localStorage.getItem('token');
     const protectedImageUrlCache = new Map();
     const protectedImagePromiseCache = new Map();
+    const MAX_PROTECTED_IMAGE_CACHE = 80;
+
+    function cacheProtectedImageUrl(cacheKey, objectUrl) {
+      protectedImageUrlCache.set(cacheKey, objectUrl);
+      while (protectedImageUrlCache.size > MAX_PROTECTED_IMAGE_CACHE) {
+        const oldestKey = protectedImageUrlCache.keys().next().value;
+        const oldestUrl = protectedImageUrlCache.get(oldestKey);
+        protectedImageUrlCache.delete(oldestKey);
+        if (oldestUrl) URL.revokeObjectURL(oldestUrl);
+      }
+    }
+
+    function releaseProtectedImageUrls() {
+      protectedImageUrlCache.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+      protectedImageUrlCache.clear();
+      protectedImagePromiseCache.clear();
+    }
+    window.addEventListener('pagehide', releaseProtectedImageUrls, { once: true });
 
     function getThumbnailImageUrl(url) {
       if (!isProtectedUploadUrl(url)) return url;
@@ -32,7 +50,7 @@
       const pending = fetchAssetBlob(url)
         .then((blob) => {
           const objectUrl = URL.createObjectURL(blob);
-          protectedImageUrlCache.set(cacheKey, objectUrl);
+          cacheProtectedImageUrl(cacheKey, objectUrl);
           return objectUrl;
         })
         .finally(() => {

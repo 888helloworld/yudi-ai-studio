@@ -66,12 +66,11 @@ function getPaymentStats() {
   const paidOrders = db.prepare("SELECT COUNT(*) as count FROM payment_orders WHERE status = 'paid'").get().count;
   const totalRevenue = db.prepare("SELECT COALESCE(SUM(amount), 0) as sum FROM payment_orders WHERE status = 'paid'").get().sum;
   const totalPoints = db.prepare("SELECT COALESCE(SUM(points), 0) as sum FROM payment_orders WHERE status = 'paid'").get().sum;
-  const today = new Date().toISOString().split('T')[0];
   const todayPaid = db.prepare(`
     SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as revenue, COALESCE(SUM(points), 0) as points
     FROM payment_orders
-    WHERE status = 'paid' AND date(paid_at) = ?
-  `).get(today);
+    WHERE status = 'paid' AND date(datetime(paid_at, '+8 hours')) = date('now', '+8 hours')
+  `).get();
   return {
     totalOrders,
     paidOrders,

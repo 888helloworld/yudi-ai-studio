@@ -18,6 +18,24 @@ function initDatabase(db) {
   if (!userColumns.some((column) => column.name === 'token_version')) {
     db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
   }
+  if (!userColumns.some((column) => column.name === 'status')) {
+    db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+  }
+  if (!userColumns.some((column) => column.name === 'status_reason')) {
+    db.exec("ALTER TABLE users ADD COLUMN status_reason TEXT NOT NULL DEFAULT ''");
+  }
+  if (!userColumns.some((column) => column.name === 'status_until')) {
+    db.exec('ALTER TABLE users ADD COLUMN status_until DATETIME');
+  }
+  if (!userColumns.some((column) => column.name === 'policy_version')) {
+    db.exec("ALTER TABLE users ADD COLUMN policy_version TEXT NOT NULL DEFAULT ''");
+  }
+  if (!userColumns.some((column) => column.name === 'policy_accepted_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN policy_accepted_at DATETIME');
+  }
+  if (!userColumns.some((column) => column.name === 'policy_ip')) {
+    db.exec("ALTER TABLE users ADD COLUMN policy_ip TEXT NOT NULL DEFAULT ''");
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS point_logs (
@@ -119,6 +137,18 @@ function initDatabase(db) {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      event_name TEXT NOT NULL,
+      request_id TEXT,
+      properties TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_history_client_task ON history(user_id, client_task_id)');
@@ -130,6 +160,8 @@ function initDatabase(db) {
   db.exec('CREATE INDEX IF NOT EXISTS idx_templates_user_type ON templates(user_id, type)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit_logs(created_at)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_admin_audit_admin ON admin_audit_logs(admin_user_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_analytics_event_created ON analytics_events(event_name, created_at)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)');
 
   const adminExists = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
   if (!adminExists) {

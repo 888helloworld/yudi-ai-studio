@@ -39,7 +39,7 @@
 - **多种上传方式**：点击上传、拖拽上传、甚至直接粘贴剪贴板里的图片。
 - **批量生成**：你只需要选“要生成几张”，一次最多 5 张，系统自动安排。
 - **后台排队**：页面不用让用户理解并发，服务端会按配置控制任务运行。
-- **质量档位**：快速、标准、精细，分别对应上游的 `low`、`medium`、`high`。
+- **固定标准质量**：当前画面工坊统一使用上游 `medium` 标准档，页面暂不提供质量切换。
 - **生成记录**：每个任务都能查看进度、预览结果、单张下载、提示词重新生图。
 - **参考图复用**：可以把已生成的图直接拖回参考图区域，继续改。
 - **历史编号**：列表中优先展示数据库历史 ID，比如 `#539`，而不是一串看不懂的时间戳。
@@ -72,51 +72,11 @@
 
 ---
 
-## gpt-image-2 的价格怎么算的？
+## gpt-image-2 的质量和价格怎么算？
 
-画面工坊页面里，“快速/标准/精细”后面显示的美元价格，是根据 new-api / 官方计算方式在前端实时估算的，目的是让你心里有个谱：上游大概要花多少钱。
+当前画面工坊统一使用上游 `medium` 标准质量，页面没有“快速/标准/精细”切换。即使客户端自行传入 `quality`，任务路由也会以服务端固定档位为准。
 
-质量档位和上游参数的对应关系：
-
-| 页面文案 | API `quality` | 基准 grid (qualityBase) |
-| --- | --- | --- |
-| 快速 | `low` | 16 |
-| 标准 | `medium` | 48 |
-| 精细 | `high` | 96 |
-
-计算公式大致是这个思路（主要是为了计算 tokens 数）：
-
-```text
-short = min(width, height)
-long = max(width, height)
-pixels = width * height
-scaledShort = round(qualityBase * short / long)
-grid = qualityBase * scaledShort
-tokens = ceil(grid * (2000000 + pixels) / 4000000)
-priceUsd = tokens * 30 / 1000000
-```
-
-用不着死记，看一眼下面的典型例子就行：
-
-| 质量 | 尺寸 | tokens | 约 USD |
-| --- | --- | ---: | ---: |
-| 快速 | `1024x1024` | 196 | `$0.00588` |
-| 标准 | `1024x1024` | 1756 | `$0.05268` |
-| 精细 | `1024x1024` | 7024 | `$0.21072` |
-| 快速 | `1024x1536` | 158 | `$0.00474` |
-| 标准 | `1024x1536` | 1372 | `$0.04116` |
-| 精细 | `1024x1536` | 5488 | `$0.16464` |
-| 快速 | `1536x1024` | 158 | `$0.00474` |
-| 标准 | `1536x1024` | 1372 | `$0.04116` |
-| 精细 | `1536x1024` | 5488 | `$0.16464` |
-| 快速 | `2048x1152` | 157 | `$0.00471` |
-| 标准 | `2048x1152` | 1413 | `$0.04239` |
-| 精细 | `2048x1152` | 5650 | `$0.16950` |
-| 快速 | `1152x2048` | 157 | `$0.00471` |
-| 标准 | `1152x2048` | 1413 | `$0.04239` |
-| 精细 | `1152x2048` | 5650 | `$0.16950` |
-
-**重要提醒**：这只是在页面展示的**上游美元成本估算**。咱们自己系统扣的是**积分**，目前图片生成固定扣 `10 积分/张`（在 `server.js` 里写死的 `POINTS.image = 10`）。生成失败或者实际出图数量少于请求数量时，系统会按缺少的张数自动退积分，和美元成本没有直接关系。
+用户侧按站内积分计费：图片生成固定 `10 积分/张`。生成失败或实际出图少于请求数量时，系统按失败或缺少的张数退回积分。上游美元成本只用于运营核算，不作为用户结算依据，也不应在页面上承诺固定美元价格。
 
 ---
 
@@ -153,14 +113,14 @@ priceUsd = tokens * 30 / 1000000
 环境变量示例：
 
 ```env
-XI_XU_MAX_ACTIVE_JOBS=0
-XI_XU_MAX_ACTIVE_JOBS_PER_USER=0
+XI_XU_MAX_ACTIVE_JOBS=6
+XI_XU_MAX_ACTIVE_JOBS_PER_USER=2
 XI_XU_MAX_QUEUED_JOBS=20
 XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 ```
 
-- 全局并发默认不限制；`XI_XU_MAX_ACTIVE_JOBS=0` 表示不限并发，也可以填正整数手动设上限。
-- 每个用户默认不限制未完成任务数；`XI_XU_MAX_ACTIVE_JOBS_PER_USER=0` 表示不限，也可以填正整数手动设上限。
+- 全局并发安全默认值为 6；缺失、非法或小于等于 0 的配置都会回退为安全值。
+- 每个用户默认最多同时保留 2 个未完成任务，避免单账号占满服务。
 - `XI_XU_IMAGE_RATE_LIMIT_PER_MIN` 限制了图片相关接口每分钟请求数，默认 30。
 - 实际生成速度还会受上游 API 限流、网络、服务器带宽等因素影响，并不是开得越大越快。
 
@@ -216,8 +176,7 @@ curl -X POST http://localhost:3001/api/xi-image/jobs/generate \
   -d '{
     "prompt": "a clean editorial product photo, soft directional light",
     "size": "1024x1536",
-    "count": 1,
-    "quality": "high"
+    "count": 1
   }'
 ```
 
@@ -229,7 +188,6 @@ curl -X POST http://localhost:3001/api/xi-image/jobs/edit \
   -F "prompt=keep the subject, improve lighting and composition" \
   -F "size=1024x1536" \
   -F "count=1" \
-  -F "quality=high" \
   -F "image=@reference.png"
 ```
 
@@ -267,10 +225,10 @@ curl -X POST http://localhost:3001/api/amazon-image/generate \
 
 ## 注册和邀请码
 
-系统会根据访问 IP 自动判断是否需要邀请码：
+注册策略以服务端显式配置为准：
 
-- 本地或内网访问（`localhost`、`127.0.0.1`、`10.x.x.x`、`192.168.x.x`、`172.16-31.x.x`）默认**不需要**邀请码。
-- 公网访问默认**需要**邀请码。
+- 生产环境默认必须邀请码，不能根据反向代理看到的内网 IP 自动放行。
+- 非生产环境只有无 Forwarded 请求头的本机/内网直连请求才可默认免邀请码。
 
 你也可以通过环境变量强制控制：
 
@@ -308,8 +266,8 @@ XI_XU_GENERATE_TIMEOUT_MS=0
 XI_XU_GENERATE_RETRIES=1
 XI_XU_EDIT_TIMEOUT_MS=0
 XI_XU_EDIT_RETRIES=1
-XI_XU_MAX_ACTIVE_JOBS=0
-XI_XU_MAX_ACTIVE_JOBS_PER_USER=0
+XI_XU_MAX_ACTIVE_JOBS=6
+XI_XU_MAX_ACTIVE_JOBS_PER_USER=2
 XI_XU_MAX_QUEUED_JOBS=20
 XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
 XI_XU_NORMALIZE_OUTPUT_SIZE=false
@@ -404,10 +362,10 @@ Windows 下如果想让服务在后台保活，可以用我们准备好的脚本
 
 ## 支付那点事儿
 
-目前支付流程还是“模拟订单 + 人工确认”模式，主要方便内部测试：
+当前在线支付未开放。现阶段可用的是卡密兑换，以及管理员根据线下凭证人工处理已有订单；支付订单和模拟回调代码只用于内部联调：
 
 - `/api/payment/create` 当前固定返回 `503`，在线充值尚未开放；现阶段使用卡密兑换或管理员人工核对到账。
-- 管理员在后台手动把订单标记为已支付。
+- 管理员只能对数据库中已经存在的待处理订单进行人工确认，前台当前不能创建新的在线支付订单。
 - 真实的支付宝/微信回调接口已经留好了位置，但在完成验签逻辑之前不会自动入账。
 
 如果你准备进入正式收费阶段，务必完成下面这些事：
@@ -550,6 +508,7 @@ git push
 - [部署说明](docs/DEPLOYMENT.md)
 - [产品框架](docs/PRODUCT_FRAMEWORK.md)
 - [指标和埋点](docs/METRICS_AND_EVENTS.md)
+- [隐私与运营配置清单](docs/PRIVACY_OPERATIONS.md)
 - [迭代路线](docs/ROADMAP.md)
 - [发布验收清单](docs/RELEASE_CHECKLIST.md)
 

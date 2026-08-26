@@ -69,7 +69,7 @@ function reconcilePendingTasks() {
 function startPendingTaskPolling() {
   if (pendingTaskPollTimer) return;
   pendingTaskPollTimer = window.setInterval(() => {
-    if (getPendingTasks().length) loadServerHistory();
+    if (getPendingTasks().length) loadServerHistory({ force: true });
   }, 4000);
 }
 

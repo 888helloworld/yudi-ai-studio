@@ -3,7 +3,7 @@ const { updateXiJobHistory: persistXiJobHistory } = require('../repositories/xi-
 
 const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
 
-function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJobsPerUser = 0, maxQueuedJobs = 20, formatDateTime, runJob, getModel }) {
+function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJobsPerUser = 0, maxQueuedJobs = 20, formatDateTime, runJob, getModel, createHistory }) {
   const jobs = new Map();
   const queue = [];
   const cleanupTimers = new Map();
@@ -65,14 +65,22 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
   }
 
   function createJobHistory(job) {
-    job.historyId = db.addHistory(job.userId, 'image', {
+    const data = {
       sub_type: getHistorySubType(job),
       image_url: null,
       content: buildJobHistoryContent(job, 'queued'),
       prompt: job.prompt,
       ratio: job.size,
-      cost_points: job.costPoints || 0
-    });
+      cost_points: job.costPoints || 0,
+      client_task_id: job.clientTaskId || null
+    };
+    if (typeof createHistory === 'function') {
+      const result = createHistory(job, data);
+      job.historyId = result.historyId;
+      return result;
+    }
+    job.historyId = db.addHistory(job.userId, 'image', data);
+    return { historyId: job.historyId, alreadyExists: false, row: null };
   }
 
   function updateJobHistory(job, status, imageUrls, costPoints, extra = {}) {
@@ -152,6 +160,12 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
   }
 
   function createJob(userId, payload) {
+    if (payload.clientTaskId) {
+      const existingJob = Array.from(jobs.values()).find((item) => (
+        item.userId === userId && item.clientTaskId === payload.clientTaskId
+      ));
+      if (existingJob) return existingJob;
+    }
     const now = Date.now();
     const job = {
       id: `xijob_${now}_${crypto.randomBytes(4).toString('hex')}`,
@@ -165,7 +179,23 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       historyId: null,
       ...payload
     };
-    createJobHistory(job);
+    const historyResult = createJobHistory(job);
+    if (historyResult.alreadyExists && historyResult.row) {
+      const row = historyResult.row;
+      let meta = {};
+      try { meta = JSON.parse(row.content || '{}'); } catch {}
+      job.status = meta.status || 'failed';
+      job.imageUrls = row.image_url ? (() => {
+        try { const parsed = JSON.parse(row.image_url); return Array.isArray(parsed) ? parsed : [row.image_url]; } catch { return [row.image_url]; }
+      })() : [];
+      job.refundedPoints = Number(meta.refunded_points) || 0;
+      job.error = meta.error || '';
+      job.finishedAtMs = ['done', 'failed', 'cancelled'].includes(job.status) ? now : 0;
+      jobs.set(job.id, job);
+      if (job.finishedAtMs) scheduleCleanup(job);
+      else enqueueJob(job);
+      return job;
+    }
     jobs.set(job.id, job);
     enqueueJob(job);
     return job;

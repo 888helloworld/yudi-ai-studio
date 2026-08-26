@@ -133,7 +133,9 @@
           prompt: task.prompt,
           size: task.size,
           count: task.count,
-          quality: task.quality
+          quality: task.quality,
+          clientTaskId: task.id,
+          clientRequestId: task.id
         })
         : await submitEditJob(task);
 
@@ -153,6 +155,8 @@
       form.append('size', task.size);
       form.append('count', String(task.count));
       form.append('quality', task.quality);
+      form.append('clientTaskId', task.id);
+      form.append('clientRequestId', task.id);
       (task.sourceFiles || []).forEach((file, index) => {
         form.append('image', file, task.sourceFileNames?.[index] || getSourceImageName(index));
       });
@@ -197,6 +201,7 @@
           throw new Error(data.error || '结果还没取到');
         }
         const job = data.job;
+        task.pollErrorCount = 0;
         const previousStatus = task.status;
         const previousImageCount = (task.imageUrls || []).length;
         const previousSourceSignature = (task.sourcePreviewUrls || []).join('|');
@@ -249,6 +254,18 @@
         }
         setTimeout(() => pollServerJob(task, resolve, reject), 1500);
       } catch (err) {
+        task.pollErrorCount = Number(task.pollErrorCount || 0) + 1;
+        const message = String(err?.message || '').toLowerCase();
+        const transient = message.includes('failed to fetch')
+          || message.includes('fetch failed')
+          || message.includes('network')
+          || message.includes('timeout')
+          || message.includes('连接');
+        if (transient && task.pollErrorCount <= 5) {
+          setStatus(`#${task.index} 网络有波动，正在继续确认任务状态（${task.pollErrorCount}/5）…`, '');
+          setTimeout(() => pollServerJob(task, resolve, reject), 2000);
+          return;
+        }
         if (reject) reject(err);
       }
     }

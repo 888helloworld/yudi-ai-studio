@@ -6,7 +6,7 @@ const {
 } = require('../services/prompt-service');
 const { formatUpstreamError, generateArkImageUrls } = require('../services/upstream-http');
 const { downloadAndSaveImage } = require('../utils/image-storage');
-const { formatBeijingDateTime, getRequiredEnv, parseImageCount, sanitizeInput } = require('../utils/request-utils');
+const { formatBeijingDateTime, getRequiredEnv, normalizeClientTaskId, parseImageCount, sanitizeInput } = require('../utils/request-utils');
 
 const SIZE_MAP = {
   '1:1': { width: 1920, height: 1920 },
@@ -20,13 +20,16 @@ function createAmazonImageRouter({ authMiddleware, imageLimiter, upload, validat
     const prompt = sanitizeInput(req.body.prompt, 2000);
     const ratio = req.body.ratio || '1:1';
     const imageCount = parseImageCount(req.body.imageCount ?? req.body.count);
+    const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
+    const operationKey = clientTaskId ? `amazon-image:${req.userId}:${clientTaskId}` : null;
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     if (!SIZE_MAP[ratio]) return res.status(400).json({ error: '无效的图片比例' });
 
     const totalCost = POINTS.image * imageCount;
     let refundablePoints = 0;
     try {
-      chargePoints(req.userId, totalCost, `亚马逊主图生成 x${imageCount}`);
+      const charge = chargePoints(req.userId, totalCost, `亚马逊主图生成 x${imageCount}`, operationKey ? `${operationKey}:charge` : null);
+      if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请不要重复提交' });
       refundablePoints = totalCost;
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message || '积分扣减失败' });
@@ -34,7 +37,7 @@ function createAmazonImageRouter({ authMiddleware, imageLimiter, upload, validat
 
     const apiKey = getRequiredEnv('ARK_API_KEY');
     if (!apiKey) {
-      refundPoints(req.userId, refundablePoints, '亚马逊主图生成失败退款');
+      refundPoints(req.userId, refundablePoints, '亚马逊主图生成失败退款', operationKey ? `${operationKey}:failure` : null);
       return res.status(500).json({ error: '图片服务未配置' });
     }
 
@@ -54,7 +57,7 @@ function createAmazonImageRouter({ authMiddleware, imageLimiter, upload, validat
       const missingCount = Math.max(imageCount - localUrls.length, 0);
       if (missingCount > 0) {
         const refundAmount = POINTS.image * missingCount;
-        refundPoints(req.userId, refundAmount, `亚马逊主图少出${missingCount}张退款`);
+        refundPoints(req.userId, refundAmount, `亚马逊主图少出${missingCount}张退款`, operationKey ? `${operationKey}:partial` : null);
         refundablePoints -= refundAmount;
       }
       const historyIds = localUrls.map((localUrl) => db.addHistory(req.userId, 'image', {
@@ -62,7 +65,8 @@ function createAmazonImageRouter({ authMiddleware, imageLimiter, upload, validat
         image_url: localUrl,
         prompt,
         ratio,
-        cost_points: POINTS.image
+        cost_points: POINTS.image,
+        client_task_id: clientTaskId || null
       }));
       refundablePoints = 0;
       res.json({
@@ -73,7 +77,7 @@ function createAmazonImageRouter({ authMiddleware, imageLimiter, upload, validat
         createdAt: formatBeijingDateTime()
       });
     } catch (error) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '亚马逊主图生成失败退款');
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, '亚马逊主图生成失败退款', operationKey ? `${operationKey}:failure` : null);
       console.error('亚马逊主图生成失败:', error.message || error);
       res.status(502).json({ error: formatUpstreamError(error.message || error, '图片生成失败，请稍后再试') });
     }

@@ -1,11 +1,15 @@
 const token = localStorage.getItem('token');
 const isXhsLanding = /(?:^|\/)xhs\.html$/i.test(window.location.pathname);
 const loginUrl = isXhsLanding ? 'login.html?next=xhs.html' : 'login.html';
+let currentBalance = 0;
+let activePaymentPoll = null;
+let activePaymentOrderNo = '';
+let lastModalTrigger = null;
 
 async function initNav() {
   if (!token) return;
   try {
-    const r = await fetch('/api/user/me', { headers: { Authorization: `Bearer ${token}` } });
+    const r = await authFetch('/api/user/me', { handleAuthExpired: false });
     if (!r.ok) throw new Error();
     const d = await r.json();
     const u = d.user || d;
@@ -13,15 +17,21 @@ async function initNav() {
     document.getElementById('guestBar').style.display = 'none';
     document.getElementById('navUsername').textContent = u.username;
     document.getElementById('navPoints').textContent = `${u.points ?? 0} 积分`;
+    currentBalance = Number(u.points || 0);
     if (u.role === 'admin') document.getElementById('navAdmin').style.display = 'inline';
   } catch {
-    localStorage.removeItem('token');
+    clearLocalAuthState();
   }
 }
 
-async function logout() {
-  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
-  localStorage.removeItem('token');
+function logout(event) {
+  event?.preventDefault();
+  (async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', keepalive: true }); } catch {}
+    clearLocalAuthState();
+    window.location.href = 'login.html';
+  })();
+  return false;
 }
 
 async function loadStats() {
@@ -52,7 +62,7 @@ async function loadShop() {
       '<span class="points-num">' + escapeHtml(p.points) + '</span>' +
       '<div class="points-label">积分</div>' +
       '<div class="price">&#165;' + escapeHtml(p.price) + ' <small>' + escapeHtml((p.price / p.points * 100).toFixed(1)) + '元/百积分</small></div>' +
-      '<button class="shop-btn buy" ' + (d.paymentAvailable ? 'onclick="startPay(' + Number(p.points) + ',' + Number(p.price) + ')"' : 'disabled') + '>' +
+      '<button class="shop-btn buy" data-shell-action="start-pay" data-points="' + Number(p.points) + '" data-price="' + Number(p.price) + '" ' + (d.paymentAvailable ? '' : 'disabled') + '>' +
       (d.paymentAvailable ? '立即购买' : '在线充值未开放') + '</button></div>'
     ).join('');
   } catch {}
@@ -63,6 +73,7 @@ function showRedeemModal() {
     window.location.href = loginUrl;
     return;
   }
+  lastModalTrigger = document.activeElement;
   document.getElementById('redeemModal').classList.add('show');
   document.getElementById('cdkeyInput').value = '';
   document.getElementById('redeemError').style.display = 'none';
@@ -73,6 +84,7 @@ function showRedeemModal() {
 
 function hideRedeemModal() {
   document.getElementById('redeemModal').classList.remove('show');
+  lastModalTrigger?.focus?.();
 }
 
 async function redeemCdkey() {
@@ -88,7 +100,7 @@ async function redeemCdkey() {
   document.getElementById('redeemError').style.display = 'none';
   document.getElementById('redeemSuccess').style.display = 'none';
   try {
-    const r = await fetch('/api/cdkey/redeem', {
+    const r = await authFetch('/api/cdkey/redeem', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ code })
@@ -98,6 +110,7 @@ async function redeemCdkey() {
     document.getElementById('redeemSuccess').textContent = `兑换成功！获得 ${d.points} 积分，当前余额：${d.balance} 积分`;
     document.getElementById('redeemSuccess').style.display = 'block';
     document.getElementById('navPoints').textContent = `${d.balance} 积分`;
+    currentBalance = Number(d.balance || 0);
     document.getElementById('cdkeyInput').value = '';
   } catch (err) {
     document.getElementById('redeemError').textContent = err.message;
@@ -112,24 +125,36 @@ let selectedChannel = 'alipay';
 let selectedPoints = 0;
 let selectedPrice = 0;
 
+function cancelPaymentPoll() {
+  if (activePaymentPoll) clearInterval(activePaymentPoll);
+  activePaymentPoll = null;
+  activePaymentOrderNo = '';
+}
+
 function showPayModal() {
   if (!localStorage.getItem('token')) {
     window.location.href = loginUrl;
     return;
   }
+  lastModalTrigger = document.activeElement;
   document.getElementById('payModal').classList.add('show');
   document.getElementById('payStatusBar').style.display = 'none';
   document.getElementById('payQrArea').innerHTML = '<p style="color:var(--text-muted);font-size:14px;">请先选择积分套餐</p>';
 }
 
 function hidePayModal() {
+  cancelPaymentPoll();
   document.getElementById('payModal').classList.remove('show');
+  lastModalTrigger?.focus?.();
 }
 
 function selectChannel(channel) {
   selectedChannel = channel;
-  document.querySelectorAll('.pay-channel-btn').forEach((button) => button.classList.remove('active'));
-  document.querySelector(`[data-channel="${channel}"]`).classList.add('active');
+  document.querySelectorAll('.pay-channel-btn').forEach((button) => {
+    const active = button.dataset.channel === channel;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
 }
 
 function startPay(points, price) {
@@ -142,43 +167,50 @@ function startPay(points, price) {
 }
 
 async function createPayment() {
+  cancelPaymentPoll();
   document.getElementById('payStatusBar').style.display = 'flex';
-  document.getElementById('payQrArea').innerHTML = '<p style="color:var(--text-muted);font-size:14px;">正在创建订单...</p>';
+  document.getElementById('payQrArea').innerHTML = `<p style="color:var(--text-muted);font-size:14px;">正在创建 ¥${escapeHtml(selectedPrice)} / ${escapeHtml(selectedPoints)} 积分订单…</p><p class="hint">当前余额：${escapeHtml(currentBalance)} 积分</p>`;
   try {
-    const r = await fetch('/api/payment/create', {
+    const r = await authFetch('/api/payment/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ points: selectedPoints, channel: selectedChannel })
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error);
+    activePaymentOrderNo = String(d.orderNo || '');
+    const orderNo = activePaymentOrderNo;
     document.getElementById('payQrArea').innerHTML =
       '<img src="' + escapeHtml(d.qrCode) + '" alt="支付二维码">' +
       '<div class="hint">请使用' + (selectedChannel === 'alipay' ? '支付宝' : '微信') + '扫码支付</div>' +
-      '<div class="hint" style="font-size:12px;color:var(--text-dim);margin-top:4px;">订单号：' + escapeHtml(d.orderNo) + '</div>';
+      '<div class="hint" style="font-weight:700;">应付 ¥' + escapeHtml(selectedPrice) + '，到账 ' + escapeHtml(selectedPoints) + ' 积分</div>' +
+      '<div class="hint" style="font-size:12px;color:var(--text-dim);margin-top:4px;">当前余额：' + escapeHtml(currentBalance) + ' 积分 · 订单号：' + escapeHtml(orderNo) + '</div>';
     let attempts = 0;
-    const poll = setInterval(async () => {
+    activePaymentPoll = setInterval(async () => {
       attempts += 1;
       try {
-        const sr = await fetch(`/api/payment/status/${d.orderNo}`, { headers: { Authorization: `Bearer ${token}` } });
+        const sr = await authFetch(`/api/payment/status/${encodeURIComponent(orderNo)}`);
         const sd = await sr.json();
+        if (activePaymentOrderNo !== orderNo) return;
         if (sd.order && sd.order.status === 'paid') {
-          clearInterval(poll);
+          cancelPaymentPoll();
           document.getElementById('payStatusBar').style.display = 'none';
           document.getElementById('payQrArea').innerHTML =
             '<div style="color:var(--neon-green);font-size:48px;margin-bottom:12px;">&#x2705;</div>' +
             '<div style="color:var(--text-primary);font-weight:800;font-size:18px;margin-bottom:4px;">支付成功！</div>' +
-            '<div style="color:var(--neon-cyan);font-weight:700;">获得 ' + escapeHtml(sd.order.points) + ' 积分</div>';
-          document.getElementById('navPoints').textContent = `${Number(sd.balance || 0)} 积分`;
+            '<div style="color:var(--neon-cyan);font-weight:700;">支付 ¥' + escapeHtml(sd.order.amount || selectedPrice) + '，获得 ' + escapeHtml(sd.order.points) + ' 积分</div>' +
+            '<div class="hint">当前余额：' + escapeHtml(sd.balance || 0) + ' 积分</div>';
+          currentBalance = Number(sd.balance || 0);
+          document.getElementById('navPoints').textContent = `${currentBalance} 积分`;
           return;
         }
       } catch {}
       if (attempts >= 30) {
-        clearInterval(poll);
+        cancelPaymentPoll();
         document.getElementById('payStatusBar').style.display = 'none';
         document.getElementById('payQrArea').innerHTML =
           '<p style="color:var(--text-muted);font-size:14px;">支付超时，请重试</p>' +
-          '<button class="shop-btn buy" style="margin-top:12px;width:auto;padding:10px 24px;" onclick="createPayment()">重新支付</button>';
+          '<button class="shop-btn buy" style="margin-top:12px;width:auto;padding:10px 24px;" data-shell-action="payment-retry">重新支付</button>';
       }
     }, 3000);
   } catch (err) {
@@ -186,6 +218,32 @@ async function createPayment() {
     document.getElementById('payQrArea').innerHTML = '<p style="color:var(--neon-red);font-size:14px;">创建订单失败：' + escapeHtml(err.message) + '</p>';
   }
 }
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (document.getElementById('payModal')?.classList.contains('show')) hidePayModal();
+  else if (document.getElementById('redeemModal')?.classList.contains('show')) hideRedeemModal();
+});
+document.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-shell-action]');
+  if (!trigger) return;
+  const action = trigger.dataset.shellAction;
+  event.preventDefault();
+  if (action === 'redeem-open') showRedeemModal();
+  else if (action === 'redeem-close') hideRedeemModal();
+  else if (action === 'redeem-submit') redeemCdkey();
+  else if (action === 'pay-open') showPayModal();
+  else if (action === 'pay-close') hidePayModal();
+  else if (action === 'select-channel') selectChannel(trigger.dataset.channel);
+  else if (action === 'payment-retry') createPayment();
+  else if (action === 'start-pay') startPay(Number(trigger.dataset.points), Number(trigger.dataset.price));
+  else if (action === 'start-creating') startCreating();
+  else if (action === 'logout') logout(event);
+  else if (action === 'clear-history' && typeof window.clearAllHistory === 'function') {
+    window.clearAllHistory(trigger.dataset.historyType);
+  }
+});
+window.addEventListener('pagehide', cancelPaymentPoll);
 
 function startCreating() {
   if (!isXhsLanding) {

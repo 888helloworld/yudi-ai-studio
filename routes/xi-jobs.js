@@ -1,9 +1,10 @@
 const express = require('express');
+const fs = require('fs');
 const { POINTS } = require('../config/points');
 const { getSourceImageFilename, normalizeSourceImageFilename } = require('../services/prompt-service');
 const { assertXiImageSizeSupported, parseXiImageSize } = require('../services/xi-image-size');
-const { getUploadedImageDimensions, saveUploadedSourceImages } = require('../utils/image-storage');
-const { parseImageCount, sanitizeInput } = require('../utils/request-utils');
+const { getLocalUploadPath, getUploadedImageDimensions, saveUploadedSourceImages } = require('../utils/image-storage');
+const { normalizeClientTaskId, parseImageCount, sanitizeInput } = require('../utils/request-utils');
 
 function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUploadedImageFiles, manager, chargePoints, refundPoints, fixedQuality }) {
   const router = express.Router();
@@ -22,6 +23,7 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     const prompt = sanitizeInput(req.body.prompt, 3000);
     const size = parseXiImageSize(req.body.size);
     const count = parseImageCount(req.body.count, 5);
+    const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     try { assertXiImageSizeSupported(size); } catch (error) {
       return res.status(error.statusCode || 400).json({ error: error.message });
@@ -30,14 +32,10 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
       return res.status(error.statusCode || 429).json({ error: error.message });
     }
     const costPoints = POINTS.image * count;
-    let charged = false;
     try {
-      chargePoints(req.userId, costPoints, `gpt-image-2 生图 x${count}`);
-      charged = true;
-      const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality: fixedQuality, costPoints });
+      const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality: fixedQuality, costPoints, clientTaskId });
       return res.json({ success: true, job: manager.serializeJob(job) });
     } catch (error) {
-      if (charged) refundPoints(req.userId, costPoints, 'gpt-image-2 创建任务失败退款');
       return res.status(error.statusCode || 500).json({ error: error.message || '任务创建失败' });
     }
   });
@@ -46,6 +44,7 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     const prompt = sanitizeInput(req.body.prompt, 3000);
     const size = parseXiImageSize(req.body.size);
     const count = parseImageCount(req.body.count, 5);
+    const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const sourceFiles = Array.isArray(req.files) ? req.files : [];
     sourceFiles.forEach((file, index) => { file.originalname = normalizeSourceImageFilename(file.originalname, index); });
     if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
@@ -63,11 +62,9 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
       return res.status(error.statusCode || 429).json({ error: error.message });
     }
     const costPoints = POINTS.image * count;
-    let charged = false;
+    let sourcePreviewUrls = [];
     try {
-      chargePoints(req.userId, costPoints, `gpt-image-2 改图 x${count}`);
-      charged = true;
-      const sourcePreviewUrls = saveUploadedSourceImages(sourceFiles);
+      sourcePreviewUrls = saveUploadedSourceImages(sourceFiles);
       const job = manager.createJob(req.userId, {
         mode: 'edit',
         prompt,
@@ -82,11 +79,15 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
         sourceFileNames: sourceFiles.map((file, index) => file.originalname || getSourceImageFilename(index)),
         sourcePreviewUrls,
         sourceDimensions: getUploadedImageDimensions(sourceFiles),
-        costPoints
+        costPoints,
+        clientTaskId
       });
       return res.json({ success: true, job: manager.serializeJob(job) });
     } catch (error) {
-      if (charged) refundPoints(req.userId, costPoints, 'gpt-image-2 创建改图任务失败退款');
+      sourcePreviewUrls.forEach((url) => {
+        const filepath = getLocalUploadPath(url);
+        try { if (filepath && fs.existsSync(filepath)) fs.unlinkSync(filepath); } catch {}
+      });
       return res.status(error.statusCode || 500).json({ error: error.message || '任务创建失败' });
     }
   });

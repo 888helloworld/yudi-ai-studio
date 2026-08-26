@@ -60,6 +60,10 @@ function authMiddleware(req, res, next) {
     if (Number(decoded.tv || 0) !== Number(user.token_version || 0)) {
       return res.status(401).json({ error: '登录状态已失效，请重新登录' });
     }
+    if (user.status && user.status !== 'active') {
+      const label = user.status === 'banned' ? '账号已封禁' : '账号已冻结';
+      return res.status(403).json({ error: user.status_reason ? `${label}：${user.status_reason}` : label });
+    }
     
     req.user = user;
     req.userId = user.id;

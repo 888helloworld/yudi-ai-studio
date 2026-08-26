@@ -14,6 +14,11 @@ function isAllowedUploadMime(mimeType) {
   return ALLOWED_UPLOAD_MIME_TYPES.has(normalizeMimeType(mimeType));
 }
 
+function readPositiveEnvNumber(name, fallback, minimum) {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.max(parsed, minimum) : fallback;
+}
+
 function sniffImageMime(buffer) {
   if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
   if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
@@ -38,9 +43,9 @@ function collectUploadedFiles(req) {
 
 function validateUploadedImageFiles(req, res, next) {
   const files = collectUploadedFiles(req);
-  const maxTotalBytes = Math.max(1, Number(process.env.MAX_UPLOAD_TOTAL_MB || 40)) * 1024 * 1024;
-  const maxPixelsPerImage = Math.max(1000000, Number(process.env.MAX_UPLOAD_PIXELS || 16000000));
-  const maxTotalPixels = Math.max(maxPixelsPerImage, Number(process.env.MAX_UPLOAD_TOTAL_PIXELS || 24000000));
+  const maxTotalBytes = readPositiveEnvNumber('MAX_UPLOAD_TOTAL_MB', 40, 1) * 1024 * 1024;
+  const maxPixelsPerImage = readPositiveEnvNumber('MAX_UPLOAD_PIXELS', 16000000, 1000000);
+  const maxTotalPixels = Math.max(maxPixelsPerImage, readPositiveEnvNumber('MAX_UPLOAD_TOTAL_PIXELS', 24000000, maxPixelsPerImage));
   const totalBytes = files.reduce((sum, file) => sum + (file.buffer?.length || 0), 0);
   if (totalBytes > maxTotalBytes) return res.status(400).json({ error: '本次上传图片总大小过大，请减少图片数量或压缩后重试' });
 

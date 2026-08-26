@@ -14,10 +14,10 @@ async function main() {
   const integrity = backupDb.prepare('PRAGMA integrity_check').get();
   backupDb.close();
   if (integrity.integrity_check !== 'ok') throw new Error(`备份数据库完整性检查失败：${integrity.integrity_check}`);
-  const configuredRetentionDays = Number(process.env.BACKUP_RETENTION_DAYS || 0);
+  const configuredRetentionDays = Number(process.env.BACKUP_RETENTION_DAYS || 30);
   const retentionDays = Number.isFinite(configuredRetentionDays)
     ? Math.min(Math.max(Math.floor(configuredRetentionDays), 0), 3650)
-    : 0;
+    : 30;
   const removed = [];
   if (retentionDays > 0) {
     const cutoff = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);

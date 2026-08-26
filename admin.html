@@ -182,25 +182,34 @@
       <div class="admin-stat-card"><div class="admin-stat-label">今日生成</div><div class="admin-stat-value" id="todayCount">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日消耗积分</div><div class="admin-stat-value" id="todayCost">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日充值积分</div><div class="admin-stat-value" id="todayRecharge">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日退款积分</div><div class="admin-stat-value" id="todayRefundPoints">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日赠送积分</div><div class="admin-stat-value" id="todayBonusPoints">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日人工调整</div><div class="admin-stat-value" id="todayAdminAdjustments">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日支付金额</div><div class="admin-stat-value" id="todayPaidRevenue">-</div></div>
     </section>
 
-    <nav class="admin-tabs">
-      <button class="admin-tab active" data-tab="users">用户管理</button>
-      <button class="admin-tab" data-tab="history">历史记录</button>
-      <button class="admin-tab" data-tab="charts">数据图表</button>
-      <button class="admin-tab" data-tab="pointlogs">积分流水</button>
-      <button class="admin-tab" data-tab="cdkeys">卡密管理</button>
-      <button class="admin-tab" data-tab="payment">支付订单</button>
-      <button class="admin-tab" data-tab="audit">操作审计</button>
+    <nav class="admin-tabs" role="tablist" aria-label="管理功能">
+      <button class="admin-tab active" type="button" role="tab" aria-selected="true" aria-controls="usersPanel" data-tab="users">用户管理</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="historyPanel" tabindex="-1" data-tab="history">历史记录</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="chartsPanel" tabindex="-1" data-tab="charts">数据图表</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="pointlogsPanel" tabindex="-1" data-tab="pointlogs">积分流水</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="cdkeysPanel" tabindex="-1" data-tab="cdkeys">卡密管理</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="paymentPanel" tabindex="-1" data-tab="payment">支付订单</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="auditPanel" tabindex="-1" data-tab="audit">操作审计</button>
     </nav>
 
-    <section class="admin-panel active" id="usersPanel">
+    <section class="admin-panel active" id="usersPanel" role="tabpanel">
       <div class="admin-panel-title">
         <div><h2>用户管理</h2><p>查看余额、给用户充值、重置密码或删除普通用户。</p></div>
       </div>
       <div class="admin-toolbar">
-        <input type="text" id="searchUser" placeholder="搜索用户名...">
+        <input type="text" id="searchUser" aria-label="搜索用户名" placeholder="搜索用户名...">
+        <select id="filterUserStatus" aria-label="筛选用户状态">
+          <option value="">全部状态</option>
+          <option value="active">正常</option>
+          <option value="frozen">冻结</option>
+          <option value="banned">封禁</option>
+        </select>
       </div>
       <div class="admin-table-wrap">
         <table>
@@ -210,6 +219,7 @@
               <th>用户名</th>
               <th>积分</th>
               <th>角色</th>
+              <th>状态</th>
               <th>注册时间</th>
               <th>操作</th>
             </tr>
@@ -217,15 +227,16 @@
           <tbody id="usersList"></tbody>
         </table>
       </div>
+      <div id="usersPager"></div>
     </section>
 
-    <section class="admin-panel" id="historyPanel">
+    <section class="admin-panel" id="historyPanel" role="tabpanel" hidden>
       <div class="admin-panel-title">
         <div><h2>历史记录</h2><p>支持按用户名、内容、提示词搜索，并可删除无效记录。</p></div>
       </div>
       <div class="admin-toolbar">
-        <input type="text" id="searchHistory" placeholder="搜索内容...">
-        <select id="filterType">
+        <input type="text" id="searchHistory" aria-label="搜索历史内容" placeholder="搜索内容...">
+        <select id="filterType" aria-label="筛选历史类型">
           <option value="">全部类型</option>
           <option value="image">图片</option>
           <option value="copy">文案</option>
@@ -235,16 +246,16 @@
       <div id="historyPager"></div>
     </section>
 
-    <section class="admin-panel" id="chartsPanel">
+    <section class="admin-panel" id="chartsPanel" role="tabpanel" hidden>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <div>
           <h3 style="font-size:15px;font-weight:700;">数据统计</h3>
           <p style="color:var(--text-muted);font-size:12px;margin-top:2px;">包含图片、文案、图文一体的生成记录和积分消耗</p>
         </div>
         <div style="display:flex;gap:8px;">
-                    <button class="admin-btn admin-btn-sm" onclick="AdminApp.loadChartData(7)" style="background:var(--neon-pink);color:#fff;border:none;">7天</button>
-                    <button class="admin-btn admin-btn-sm" onclick="AdminApp.loadChartData(14)">14天</button>
-                    <button class="admin-btn admin-btn-sm" onclick="AdminApp.loadChartData(30)">30天</button>
+                    <button class="admin-btn admin-btn-sm" data-admin-action="chart" data-days="7" style="background:var(--neon-pink);color:#fff;border:none;">7天</button>
+                    <button class="admin-btn admin-btn-sm" data-admin-action="chart" data-days="14">14天</button>
+                    <button class="admin-btn admin-btn-sm" data-admin-action="chart" data-days="30">30天</button>
         </div>
       </div>
       <div id="chartContainer" style="background:var(--bg-surface);border-radius:var(--radius-md);padding:20px;min-height:300px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">
@@ -253,7 +264,7 @@
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px;" id="chartSummary"></div>
     </section>
 
-    <section class="admin-panel" id="pointlogsPanel">
+    <section class="admin-panel" id="pointlogsPanel" role="tabpanel" hidden>
       <div class="admin-panel-title">
         <div><h2>积分流水</h2><p>查看全平台充值、消费与变更后余额。</p></div>
       </div>
@@ -276,7 +287,7 @@
     </section>
 
     <!-- 卡密管理面板 -->
-    <section class="admin-panel" id="cdkeysPanel">
+    <section class="admin-panel" id="cdkeysPanel" role="tabpanel" hidden>
       <div class="admin-panel-title">
         <div><h2>卡密管理</h2><p>批量生成兑换码，跟踪使用状态和总积分池。</p></div>
       </div>
@@ -297,7 +308,7 @@
             <option value="1">已使用</option>
           </select>
         </div>
-                    <button class="admin-btn admin-btn-primary" onclick="AdminApp.generateCdkeys()" style="height:42px;">生成卡密</button>
+                    <button class="admin-btn admin-btn-primary" data-admin-action="generate-cdkeys" style="height:42px;">生成卡密</button>
       </div>
 
       <div class="cdkey-stats" id="cdkeyStats">
@@ -326,7 +337,7 @@
     </section>
 
     <!-- 支付订单面板 -->
-    <section class="admin-panel" id="paymentPanel">
+    <section class="admin-panel" id="paymentPanel" role="tabpanel" hidden>
       <div class="admin-panel-title">
         <div><h2>支付订单</h2><p>查看支付订单、支付成功金额与到账积分。</p></div>
       </div>
@@ -366,7 +377,7 @@
       <div id="paymentOrdersPager"></div>
     </section>
 
-    <section class="admin-panel" id="auditPanel">
+    <section class="admin-panel" id="auditPanel" role="tabpanel" hidden>
       <div class="admin-panel-title">
         <div><h2>管理员操作审计</h2><p>记录充值、删用户、删历史、重置密码、卡密和订单操作。</p></div>
       </div>
@@ -380,31 +391,31 @@
     </section>
   </main>
 
-  <div class="admin-modal" id="rechargeModal" style="display:none;">
-    <form class="admin-modal-content" id="rechargeForm" onsubmit="event.preventDefault(); AdminApp.confirmRecharge()">
-      <h3>积分充值</h3>
+  <div class="admin-modal" id="rechargeModal" role="dialog" aria-modal="true" aria-labelledby="rechargeModalTitle" style="display:none;">
+    <form class="admin-modal-content" id="rechargeForm">
+      <h3 id="rechargeModalTitle">积分充值</h3>
       <div class="admin-error" id="rechargeError"></div>
       <p id="rechargeUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
-      <input type="number" id="rechargeAmount" placeholder="充值积分数量">
-      <input type="text" id="rechargeDesc" placeholder="备注（可选）">
+      <input type="number" id="rechargeAmount" aria-label="充值积分数量" placeholder="充值积分数量">
+      <input type="text" id="rechargeDesc" aria-label="充值备注" placeholder="备注（可选）">
       <div class="admin-modal-actions">
-                <button class="admin-btn" type="button" onclick="AdminApp.closeRechargeModal()">取消</button>
+                <button class="admin-btn" type="button" data-admin-action="close-recharge">取消</button>
                 <button class="admin-btn admin-btn-primary" type="submit">确认充值</button>
       </div>
     </form>
   </div>
 
   <!-- 改密码弹窗 -->
-  <div class="admin-modal" id="resetPasswordModal" style="display:none;">
-    <form class="admin-modal-content" id="resetPasswordForm" onsubmit="event.preventDefault(); AdminApp.confirmResetPassword()">
-      <h3>重置用户密码</h3>
+  <div class="admin-modal" id="resetPasswordModal" role="dialog" aria-modal="true" aria-labelledby="resetPasswordModalTitle" style="display:none;">
+    <form class="admin-modal-content" id="resetPasswordForm">
+      <h3 id="resetPasswordModalTitle">重置用户密码</h3>
       <div class="admin-error" id="resetPwdError"></div>
       <p id="resetPwdUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
       <input type="text" id="resetPasswordUsername" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;opacity:0;">
-      <input type="password" id="newPassword" placeholder="新密码（至少8位，需含大小写字母+数字）" minlength="8" maxlength="128" autocomplete="new-password" style="margin-bottom:8px;">
-      <input type="password" id="confirmPassword" placeholder="确认新密码" maxlength="128" autocomplete="new-password">
+      <input type="password" id="newPassword" aria-label="新密码" placeholder="新密码（至少8位，需含大小写字母+数字）" minlength="8" maxlength="128" autocomplete="new-password" style="margin-bottom:8px;">
+      <input type="password" id="confirmPassword" aria-label="确认新密码" placeholder="确认新密码" maxlength="128" autocomplete="new-password">
       <div class="admin-modal-actions">
-                <button class="admin-btn" type="button" onclick="AdminApp.closeResetPasswordModal()">取消</button>
+                <button class="admin-btn" type="button" data-admin-action="close-reset-password">取消</button>
                 <button class="admin-btn admin-btn-primary" type="submit">确认重置</button>
       </div>
     </form>

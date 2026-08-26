@@ -212,11 +212,11 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
     <span class="user-points" id="navPoints">0 积分</span>
     <div class="user-actions">
         <a href="image-studio.html">画面工坊</a>
-      <a href="#" onclick="showRedeemModal()">兑换</a>
-      <a href="#" class="payment-entry" style="display:none" onclick="showPayModal()">充值</a>
+      <a href="#" data-shell-action="redeem-open">兑换</a>
+      <a href="#" class="payment-entry" style="display:none" data-shell-action="pay-open">充值</a>
       <a href="profile.html">个人中心</a>
       <a href="admin.html" class="admin-link" id="navAdmin" style="display:none;">管理后台</a>
-      <a href="login.html" onclick="logout()">退出</a>
+      <a href="login.html" data-shell-action="logout">退出</a>
     </div>
   </div>
 </nav>
@@ -238,10 +238,10 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
     <h1>御弟哥哥，你的 AI 图文工作台</h1>
     <p class="subtitle">写文案、做配图、批量试画面、反推 Prompt，把灵感变成可发布的素材。</p>
     <div class="hero-actions">
-      <a href="#" class="hero-btn hero-btn-primary" id="heroStartBtn" onclick="startCreating()">开始创作</a>
+      <a href="#" class="hero-btn hero-btn-primary" id="heroStartBtn" data-shell-action="start-creating">开始创作</a>
         <a href="image-studio.html" class="hero-btn hero-btn-secondary">画面工坊</a>
-      <a href="#" class="hero-btn hero-btn-secondary" onclick="showRedeemModal()">卡密兑换</a>
-      <a href="#" class="hero-btn hero-btn-secondary payment-entry" style="display:none" onclick="showPayModal()">充值积分</a>
+      <a href="#" class="hero-btn hero-btn-secondary" data-shell-action="redeem-open">卡密兑换</a>
+      <a href="#" class="hero-btn hero-btn-secondary payment-entry" style="display:none" data-shell-action="pay-open">充值积分</a>
     </div>
     <div class="hero-stats-row">
       <div class="hero-stat-item"><span class="num" id="statUsers">-</span><span class="label">注册用户</span></div>
@@ -257,7 +257,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         <p>选题、文案、配图、改图、反推、管理，都在一个工作台里，内容从想法到素材不脱节。</p>
         <div class="business-list">
           <div class="business-item"><span class="business-dot"></span><div><strong>小红书笔记生产</strong><span>从一个主题扩成标题、正文和配图思路，种草、探店、穿搭、美食、旅行、知识都能接住。</span></div></div>
-          <div class="business-item"><span class="business-dot"></span><div><strong>通用 AI 生图</strong><span>进入画面工坊，提示词原样发送，批量试图、参考图改图、质量档位、下载记录一条龙。</span></div></div>
+          <div class="business-item"><span class="business-dot"></span><div><strong>通用 AI 生图</strong><span>进入画面工坊，提示词原样发送，批量试图、参考图改图、标准质量、下载记录一条龙。</span></div></div>
           <div class="business-item"><span class="business-dot"></span><div><strong>图片反推提示词</strong><span>看到好图不用干瞪眼，上传后拆出中文和英文 Prompt，再改成你的产品、你的风格。</span></div></div>
         </div>
       </div>
@@ -323,7 +323,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
     <div class="section-header"><h2>积分商城</h2><p>给连续创作备点弹药，写文、出图、改稿都能继续跑</p></div>
     <div class="shop-grid" id="shopGrid"></div>
     <div style="text-align:center;margin-top:24px;">
-      <button class="hero-btn hero-btn-secondary" onclick="showRedeemModal()">我有卡密，点击兑换</button>
+      <button class="hero-btn hero-btn-secondary" data-shell-action="redeem-open">我有卡密，点击兑换</button>
     </div>
   </section>
 
@@ -362,17 +362,17 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
 
     <div class="xhs-workspace-layout">
       <div class="xhs-tools-column">
-        <div class="xhs-tool-switcher" id="xhsToolSwitcher" aria-label="工具切换">
-          <button class="xhs-tool-tab active" type="button" data-xhs-tool="image">AI 图片生成</button>
-          <button class="xhs-tool-tab" type="button" data-xhs-tool="reverse">看图写 Prompt</button>
-          <button class="xhs-tool-tab" type="button" data-xhs-tool="copy">AI 文案生成</button>
-          <button class="xhs-tool-tab" type="button" data-xhs-tool="both">图文一体生成</button>
-          <button class="xhs-tool-tab" type="button" data-xhs-tool="rewrite">智能文案改写</button>
+        <div class="xhs-tool-switcher" id="xhsToolSwitcher" role="tablist" aria-label="工具切换">
+          <button class="xhs-tool-tab active" type="button" role="tab" aria-selected="true" aria-controls="xhsImagePanel" data-xhs-tool="image">AI 图片生成</button>
+          <button class="xhs-tool-tab" type="button" role="tab" aria-selected="false" aria-controls="xhsReversePanel" tabindex="-1" data-xhs-tool="reverse">看图写 Prompt</button>
+          <button class="xhs-tool-tab" type="button" role="tab" aria-selected="false" aria-controls="xhsCopyPanel" tabindex="-1" data-xhs-tool="copy">AI 文案生成</button>
+          <button class="xhs-tool-tab" type="button" role="tab" aria-selected="false" aria-controls="xhsBothPanel" tabindex="-1" data-xhs-tool="both">图文一体生成</button>
+          <button class="xhs-tool-tab" type="button" role="tab" aria-selected="false" aria-controls="xhsRewritePanel" tabindex="-1" data-xhs-tool="rewrite">智能文案改写</button>
         </div>
         <!-- 双面板：图片生成 + 文案生成 -->
         <div class="dual-panel">
           <!-- 图片生成面板 -->
-          <div class="panel xhs-tool-panel" data-xhs-panel="image">
+          <div class="panel xhs-tool-panel" id="xhsImagePanel" role="tabpanel" data-xhs-panel="image">
         <div class="panel-header">
           <div class="header-icon">🖼</div>
           <div>
@@ -381,7 +381,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           </div>
         </div>
         <div class="form-group">
-          <label>图片描述</label>
+          <label for="imgPrompt">图片描述</label>
           <textarea id="imgPrompt" placeholder="比如：日系厨房里的清洁用品，纯白背景，柔和棚拍光..." rows="4"></textarea>
         </div>
         <div class="form-group">
@@ -409,7 +409,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           </div>
         </div>
         <div class="form-group">
-          <label>参考图（可选）</label>
+          <label for="referenceImage">参考图（可选）</label>
           <div class="drop-zone" id="dropZone">
             <input type="file" id="referenceImage" accept="image/*">
             <div class="drop-hint" id="dropHint">
@@ -422,7 +422,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         <button class="generate-btn" id="generateBtn"><span>立即生成图片</span></button>
           </div>
 
-          <div class="panel xhs-tool-panel" data-xhs-panel="reverse" hidden>
+          <div class="panel xhs-tool-panel" id="xhsReversePanel" role="tabpanel" data-xhs-panel="reverse" hidden>
         <div class="panel-header">
           <div class="header-icon">🔎</div>
           <div>
@@ -431,7 +431,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           </div>
         </div>
         <div class="form-group">
-          <label>参考图片</label>
+          <label for="xhsReverseImage">参考图片</label>
           <div class="drop-zone" id="xhsReverseDropZone">
             <input type="file" id="xhsReverseImage" accept="image/*">
             <div class="drop-hint" id="xhsReverseDropHint">
@@ -451,13 +451,14 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
             <button class="xhs-reverse-btn" type="button" data-reverse-mode="structured">精准拆图</button>
           </div>
           <div class="field-hint" id="xhsReverseHint">按主体、场景、构图、光线、色彩、材质、镜头、风格和负面词完整拆解。</div>
+          <div class="field-hint">本次消耗 5 积分，当前余额见顶部。</div>
         </div>
         <button class="generate-btn" id="xhsReverseBtn" type="button" disabled><span>反推提示词</span></button>
         <div class="xhs-reverse-status" id="xhsReverseStatus"></div>
           </div>
 
           <!-- 文案生成面板 -->
-          <div class="panel xhs-tool-panel" data-xhs-panel="copy" hidden>
+          <div class="panel xhs-tool-panel" id="xhsCopyPanel" role="tabpanel" data-xhs-panel="copy" hidden>
         <div class="panel-header purple">
           <div class="header-icon">✍</div>
           <div>
@@ -466,7 +467,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           </div>
         </div>
         <div class="form-group">
-          <label>内容主题</label>
+          <label for="copyTopic">内容主题</label>
           <textarea id="copyTopic" placeholder="比如：家居清洁卖点、服饰搭配、周末探店清单..." rows="4"></textarea>
         </div>
         <div class="form-group">
@@ -480,12 +481,13 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
             <div class="copy-type-btn" data-type="知识">知识</div>
           </div>
         </div>
+        <div class="field-hint">每次生成文案消耗 5 积分，当前余额见顶部。</div>
         <button class="generate-btn purple" id="generateCopyBtn"><span>生成文案</span></button>
           </div>
         </div>
 
         <!-- 图文一体面板 -->
-        <div class="both-panel xhs-tool-panel" data-xhs-panel="both" hidden>
+      <div class="both-panel xhs-tool-panel" id="xhsBothPanel" role="tabpanel" data-xhs-panel="both" hidden>
       <div class="panel-header both">
         <div class="header-icon">🎯</div>
         <div>
@@ -494,7 +496,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         </div>
       </div>
       <div class="form-group">
-        <label>内容描述</label>
+        <label for="bothPrompt">内容描述</label>
         <textarea id="bothPrompt" placeholder="描述产品、场景、卖点或选题，系统会同时生成图片和文案..." rows="4"></textarea>
       </div>
       <div class="form-group">
@@ -514,7 +516,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         </div>
 
         <!-- 文案改写面板 -->
-        <div class="rewrite-panel xhs-tool-panel" data-xhs-panel="rewrite" hidden>
+      <div class="rewrite-panel xhs-tool-panel" id="xhsRewritePanel" role="tabpanel" data-xhs-panel="rewrite" hidden>
       <div class="panel-header rewrite">
         <div class="header-icon">🔄</div>
         <div>
@@ -523,7 +525,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
         </div>
       </div>
       <div class="form-group">
-        <label>输入要改写的文案</label>
+        <label for="rewriteInput">输入要改写的文案</label>
         <textarea id="rewriteInput" placeholder="粘贴一段想抢救的文案..." rows="4"></textarea>
       </div>
       <div class="form-group">
@@ -533,6 +535,7 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
           <div class="rewrite-style-btn" data-style="创新升级">创新升级</div>
         </div>
       </div>
+      <div class="field-hint">每次智能改写消耗 3 积分，当前余额见顶部。</div>
       <button class="generate-btn rewrite" id="rewriteBtn"><span>智能改写</span></button>
         </div>
       </div>
@@ -614,38 +617,38 @@ body .user-actions a{padding:4px 8px;border-radius:6px;font-size:12px;line-heigh
     <h2>有想法了？让它先跑起来</h2>
     <p>先从一条主题、一张参考图或一段旧文案开始，御弟哥哥会把过程和结果都替你收好。</p>
     <a href="register.html?next=xhs.html" class="hero-btn hero-btn-primary">注册账号</a>
-    <a href="#" class="hero-btn hero-btn-secondary" onclick="startCreating()">进入创作工作台</a>
+    <a href="#" class="hero-btn hero-btn-secondary" data-shell-action="start-creating">进入创作工作台</a>
   </section>
 </div>
 
-<div class="redeem-modal" id="redeemModal">
+<div class="redeem-modal" id="redeemModal" role="dialog" aria-modal="true" aria-labelledby="redeemModalTitle">
   <div class="redeem-modal-inner">
-    <h3>卡密兑换</h3>
+    <h3 id="redeemModalTitle">卡密兑换</h3>
     <p>输入卡密即可兑换积分，每个卡密只能使用一次</p>
     <div class="error" id="redeemError"></div>
     <div class="success-msg" id="redeemSuccess"></div>
-    <div class="form-group"><input type="text" id="cdkeyInput" placeholder="请输入卡密" maxlength="20" autocomplete="off"></div>
+    <div class="form-group"><input type="text" id="cdkeyInput" aria-label="卡密" placeholder="请输入卡密" maxlength="20" autocomplete="off"></div>
     <div class="redeem-modal-actions">
-      <button class="btn-cancel" onclick="hideRedeemModal()">取消</button>
-      <button class="btn-confirm" id="redeemBtn" onclick="redeemCdkey()">兑换积分</button>
+      <button class="btn-cancel" data-shell-action="redeem-close">取消</button>
+      <button class="btn-confirm" id="redeemBtn" data-shell-action="redeem-submit">兑换积分</button>
     </div>
   </div>
 </div>
 
-<div class="pay-modal" id="payModal">
+<div class="pay-modal" id="payModal" role="dialog" aria-modal="true" aria-labelledby="payModalTitle">
   <div class="pay-modal-inner">
     <div class="pay-header">
-      <h3>充值积分</h3>
+      <h3 id="payModalTitle">充值积分</h3>
       <div class="amount">&#165;<span id="payAmount">0</span></div>
       <div class="points-got">获得 <span id="payPoints">0</span> 积分</div>
     </div>
-    <div class="pay-channel-select">
-      <div class="pay-channel-btn active" data-channel="alipay" onclick="selectChannel('alipay')"><span class="icon">&#x1F4B3;</span><span class="name">支付宝</span></div>
-      <div class="pay-channel-btn" data-channel="wxpay" onclick="selectChannel('wxpay')"><span class="icon">&#x1F49A;</span><span class="name">微信支付</span></div>
+    <div class="pay-channel-select" role="radiogroup" aria-label="支付渠道">
+      <button type="button" class="pay-channel-btn active" role="radio" aria-checked="true" data-channel="alipay" data-shell-action="select-channel"><span class="icon">&#x1F4B3;</span><span class="name">支付宝</span></button>
+      <button type="button" class="pay-channel-btn" role="radio" aria-checked="false" data-channel="wxpay" data-shell-action="select-channel"><span class="icon">&#x1F49A;</span><span class="name">微信支付</span></button>
     </div>
-    <div class="pay-qr-area" id="payQrArea"><p style="color:var(--text-muted);font-size:14px;">请先选择积分套餐</p></div>
+    <div class="pay-qr-area" id="payQrArea" aria-live="polite"><p style="color:var(--text-muted);font-size:14px;">请先选择积分套餐</p></div>
     <div class="pay-status-bar" id="payStatusBar" style="display:none;"><div class="spinner"></div><span class="text">等待支付...</span></div>
-    <button class="pay-close-btn" onclick="hidePayModal()">关闭</button>
+    <button class="pay-close-btn" data-shell-action="pay-close">关闭</button>
   </div>
 </div>
 

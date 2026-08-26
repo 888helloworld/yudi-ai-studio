@@ -7,7 +7,7 @@ const dbPath = process.env.DATABASE_PATH
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
+db.pragma('busy_timeout = 15000');
 
 module.exports = {
   db,

@@ -20,6 +20,7 @@ function collectReferencedFiles() {
 
 function main() {
   const quarantine = process.argv.includes('--quarantine');
+  const cleanupQuarantine = process.argv.includes('--cleanup-quarantine');
   const referenced = collectReferencedFiles();
   const files = fs.existsSync(UPLOAD_DIR)
     ? fs.readdirSync(UPLOAD_DIR, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name)
@@ -38,6 +39,23 @@ function main() {
       if (fs.existsSync(thumbnail)) fs.renameSync(thumbnail, path.join(quarantineDir, `${name}.thumb.png`));
     }
   }
+  const removedQuarantineDirs = [];
+  if (cleanupQuarantine) {
+    const quarantineRoot = path.join(UPLOAD_DIR, '_quarantine');
+    const configuredDays = Number(process.env.UPLOAD_QUARANTINE_RETENTION_DAYS || 30);
+    const retentionDays = Number.isFinite(configuredDays) ? Math.min(Math.max(Math.floor(configuredDays), 1), 3650) : 30;
+    const cutoff = Date.now() - retentionDays * 86400000;
+    if (fs.existsSync(quarantineRoot)) {
+      for (const entry of fs.readdirSync(quarantineRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const candidate = path.resolve(quarantineRoot, entry.name);
+        if (path.dirname(candidate) !== path.resolve(quarantineRoot)) continue;
+        if (fs.statSync(candidate).mtimeMs >= cutoff) continue;
+        fs.rmSync(candidate, { recursive: true, force: true });
+        removedQuarantineDirs.push(candidate);
+      }
+    }
+  }
   console.log(JSON.stringify({
     mode: quarantine ? 'quarantine' : 'report-only',
     uploadFiles: originals.length,
@@ -45,6 +63,7 @@ function main() {
     orphanFiles: orphans.length,
     orphanBytes: bytes,
     quarantineDir,
+    removedQuarantineDirs,
     sample: orphans.slice(0, 50)
   }, null, 2));
 }

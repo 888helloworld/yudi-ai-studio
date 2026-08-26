@@ -25,6 +25,7 @@ XhsTool.switchTool = function(tool) {
       const active = tab.dataset.xhsTool === nextTool;
       tab.classList.toggle('active', active);
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      tab.tabIndex = active ? 0 : -1;
     });
     panels.forEach(panel => {
       panel.hidden = panel.dataset.xhsPanel !== nextTool;
@@ -36,6 +37,12 @@ XhsTool.switchTool = function(tool) {
   tabs.forEach(tab => {
     tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
     tab.addEventListener('click', () => XhsTool.switchTool(tab.dataset.xhsTool));
+    tab.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      tabs[(tabs.indexOf(tab) + direction + tabs.length) % tabs.length].focus();
+    });
   });
   XhsTool.switchTool(sessionStorage.getItem(XHS_ACTIVE_TOOL_KEY) || 'image');
 }
@@ -247,7 +254,7 @@ function initDropZone() {
     if (referencePreviewUrl) URL.revokeObjectURL(referencePreviewUrl);
     const url = URL.createObjectURL(file);
     referencePreviewUrl = url;
-  previewRef.innerHTML = `<img src="${url}" alt="参考图"><button class="remove-ref" onclick="XhsTool.removeReference()">×</button>`;
+    previewRef.innerHTML = `<img src="${url}" alt="参考图"><button class="remove-ref" data-xhs-action="remove-reference" aria-label="移除参考图">×</button>`;
     dropHint.style.display = 'none';
   }
 }
@@ -262,6 +269,10 @@ XhsTool.removeReference = function() {
   dropHint.style.display = 'flex';
   referenceInput.value = '';
 };
+
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-xhs-action="remove-reference"]')) XhsTool.removeReference();
+});
 
 function initXhsReversePrompt() {
   const dropZone = document.getElementById('xhsReverseDropZone');

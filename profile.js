@@ -11,16 +11,15 @@
     let ordersLoaded = false;
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', keepalive: true }); } catch {}
+      clearLocalAuthState();
       window.location.href = 'login.html';
     });
 
     // 加载用户统计
     async function loadStats() {
       try {
-        const res = await fetch('/api/user/stats', { headers: authHeaders });
+        const res = await authFetch('/api/user/stats', { headers: authHeaders });
         const data = await res.json();
         if (!res.ok) {
           document.getElementById('statsContainer').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--neon-red);padding:20px;">加载失败：${escapeHtml(data.error || '未知错误')}</div>`;
@@ -42,7 +41,7 @@
       try {
         logPage = page;
         const params = new URLSearchParams({ page: String(logPage), limit: String(logPageSize) });
-        const res = await fetch(`/api/user/points/logs?${params}`, { headers: authHeaders });
+        const res = await authFetch(`/api/user/points/logs?${params}`, { headers: authHeaders });
         const data = await res.json();
         pointLogs = data.logs || [];
         logTotal = Number(data.total || pointLogs.length);
@@ -111,18 +110,36 @@
     document.querySelectorAll('.profile-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
-        document.querySelectorAll('.profile-tab').forEach(item => item.classList.remove('active'));
-        document.querySelectorAll('.profile-tab-content').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.profile-tab').forEach(item => {
+          item.classList.remove('active');
+          item.setAttribute('aria-selected', 'false');
+          item.tabIndex = -1;
+        });
+        document.querySelectorAll('.profile-tab-content').forEach(item => {
+          item.classList.remove('active');
+          item.hidden = true;
+        });
         tab.classList.add('active');
-        document.getElementById(`${tabName}Tab`)?.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        tab.tabIndex = 0;
+        const target = document.getElementById(`${tabName}Tab`);
+        target?.classList.add('active');
+        if (target) target.hidden = false;
         if (tabName === 'invite' && !invitesLoaded) loadInvites();
         if (tabName === 'orders' && !ordersLoaded) loadOrders();
+      });
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const tabs = Array.from(document.querySelectorAll('.profile-tab'));
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        tabs[(tabs.indexOf(tab) + direction + tabs.length) % tabs.length].focus();
       });
     });
 
     async function loadMe() {
       try {
-        const res = await fetch('/api/user/me', { headers: authHeaders });
+        const res = await authFetch('/api/user/me', { headers: authHeaders });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '加载失败');
         const user = data.user || data;
@@ -139,7 +156,7 @@
     async function loadOrders() {
       const listEl = document.getElementById('ordersList');
       try {
-        const res = await fetch('/api/payment/orders', { headers: authHeaders });
+        const res = await authFetch('/api/payment/orders', { headers: authHeaders });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '加载失败');
         ordersLoaded = true;
@@ -181,7 +198,7 @@
     async function loadInvites() {
       const listEl = document.getElementById('inviteList');
       try {
-        const res = await fetch('/api/user/invites', { headers: authHeaders });
+        const res = await authFetch('/api/user/invites', { headers: authHeaders });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '加载失败');
         invitesLoaded = true;
@@ -244,7 +261,7 @@
       btn.disabled = true;
       btn.textContent = '生成中...';
       try {
-        const res = await fetch('/api/user/invites/generate', {
+        const res = await authFetch('/api/user/invites/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders }
         });
@@ -276,7 +293,7 @@
       btn.disabled = true;
       btn.textContent = '兑换中...';
       try {
-        const res = await fetch('/api/cdkey/redeem', {
+        const res = await authFetch('/api/cdkey/redeem', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ code })
@@ -313,18 +330,20 @@
       if (newPw !== confirmPw) { msgEl.textContent = '两次密码不一致'; msgEl.className = 'profile-msg error'; return; }
 
       try {
-        const res = await fetch('/api/user/change-password', {
+        const res = await authFetch('/api/user/change-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        msgEl.textContent = '密码修改成功！';
+        msgEl.textContent = '密码修改成功，登录状态已更新，请重新登录。';
         msgEl.className = 'profile-msg success';
         document.getElementById('oldPassword').value = '';
         document.getElementById('newPassword').value = '';
         document.getElementById('confirmPassword').value = '';
+        clearLocalAuthState();
+        setTimeout(() => { window.location.href = 'login.html'; }, 900);
       } catch (err) {
         msgEl.textContent = err.message;
         msgEl.className = 'profile-msg error';

@@ -14,6 +14,7 @@ const api = require('../db');
 const { db } = require('../database');
 const { refundPoints } = require('../services/point-service');
 const { createXiJobRuntime } = require('../services/xi-job-runtime');
+const { createChargedXiJobHistory, settleXiJobHistory } = require('../repositories/xi-history-repository');
 
 function removeTestDatabase() {
   for (const suffix of ['', '-shm', '-wal']) {
@@ -56,6 +57,42 @@ test('重启任务无法恢复时退款一次，并保持失败状态', () => {
   assert.match(meta.error, /积分已自动退回/);
   assert.equal(row.cost_points, 0);
   const refundLogs = db.prepare('SELECT COUNT(*) AS count FROM point_logs WHERE reference_key = ?')
-    .get(`xi-job-recovery-failure:${historyId}`);
+    .get(`xi-job-settlement:${historyId}`);
   assert.equal(refundLogs.count, 1);
+  const refundLog = db.prepare('SELECT type, amount FROM point_logs WHERE reference_key = ?')
+    .get(`xi-job-settlement:${historyId}`);
+  assert.deepEqual(refundLog, { type: 'refund', amount: 20 });
+});
+
+test('画面工坊请求号保证只扣费一次，终态退款与历史更新原子且幂等', () => {
+  const user = api.createUser('xi_atomic_user', 'XiAtomicPass123');
+  const job = {
+    id: 'job_atomic_1',
+    userId: user.id,
+    clientTaskId: 'client_atomic_1',
+    mode: 'generate',
+    count: 2,
+    costPoints: 20,
+    prompt: '原子任务',
+    size: '1024x1024'
+  };
+  const first = createChargedXiJobHistory({ job, content: JSON.stringify({ status: 'queued', count: 2 }) });
+  const duplicate = createChargedXiJobHistory({ job, content: JSON.stringify({ status: 'queued', count: 2 }) });
+  assert.equal(duplicate.alreadyExists, true);
+  assert.equal(duplicate.historyId, first.historyId);
+  assert.equal(api.getUserPoints(user.id), 980);
+
+  const settlement = {
+    historyId: first.historyId,
+    userId: user.id,
+    content: JSON.stringify({ status: 'failed', refunded_points: 20 }),
+    imageUrls: [],
+    costPoints: 0,
+    refundAmount: 20,
+    refundDescription: '测试退款'
+  };
+  settleXiJobHistory(settlement);
+  settleXiJobHistory(settlement);
+  assert.equal(api.getUserPoints(user.id), 1000);
+  assert.equal(db.prepare('SELECT COUNT(*) count FROM point_logs WHERE reference_key = ?').get(`xi-job-settlement:${first.historyId}`).count, 1);
 });

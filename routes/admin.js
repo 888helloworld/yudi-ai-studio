@@ -3,10 +3,11 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { POINT_PACKAGES } = require('../config/points');
-const { getAllUsers, deleteUser, rechargePoints, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats, paySuccess, closePaymentOrder } = require('../db');
+const { adjustUserPoints, getAllUsers, setUserStatus, deleteUser, getAllHistory, getAllHistoryCount, deleteHistoryAdmin, getStats, getDailyStats, getAllPointLogs, getAllPointLogsCount, adminResetPassword, generateCdkeys, getAllCdkeys, getCdkeyStats, getAllPaymentOrders, getPaymentStats, paySuccess, closePaymentOrder } = require('../db');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { parsePositiveInt } = require('../utils/pagination');
 const { addAdminAuditLog, getAdminAuditLogs, getAdminAuditLogCount } = require('../repositories/admin-audit-repository');
+const { deleteUnreferencedUploads, extractUploadFilenames } = require('../utils/upload-cleanup');
 
 function auditAdminAction(req, action, targetType, targetId, details = {}) {
   try {
@@ -157,8 +158,13 @@ router.get('/image-service-diagnostics', async (req, res) => {
 
 // 获取所有用户
 router.get('/users', (req, res) => {
-  const users = getAllUsers();
-  res.json({ users });
+  const result = getAllUsers({
+    page: parsePositiveInt(req.query.page, 1, 100000),
+    limit: parsePositiveInt(req.query.limit, 50, 200),
+    keyword: String(req.query.keyword || '').trim(),
+    status: String(req.query.status || '').trim()
+  });
+  res.json({ users: result.list, total: result.total, page: result.page, limit: result.limit, totalPages: Math.ceil(result.total / result.limit) });
 });
 
 // 充值积分
@@ -179,10 +185,15 @@ router.post('/users/recharge', (req, res) => {
     return res.status(400).json({ error: `单次充值不能超过${MAX_RECHARGE}` });
   }
   
-  const result = rechargePoints(parseInt(userId), numAmount, description || '管理员充值');
+  const result = adjustUserPoints(
+    parseInt(userId),
+    numAmount,
+    description || '管理员充值',
+    `admin-adjust:${req.userId}:${Date.now()}`
+  );
   
-  if (!result) {
-    return res.status(400).json({ error: '用户不存在' });
+  if (!result.success) {
+    return res.status(400).json({ error: result.error || '用户不存在' });
   }
   auditAdminAction(req, 'user.recharge', 'user', userId, { amount: numAmount, description: description || '管理员充值' });
   res.json({ success: true, balance: result.balance });
@@ -205,6 +216,27 @@ router.delete('/users/:id', (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message || '删除用户失败' });
   }
+});
+
+router.post('/users/adjust-points', (req, res) => {
+  const userId = parseInt(req.body.userId);
+  const amount = Math.trunc(Number(req.body.amount));
+  if (!userId || !amount) return res.status(400).json({ error: '用户和调整积分不能为空' });
+  const description = String(req.body.description || '管理员调整积分').slice(0, 200);
+  const result = adjustUserPoints(userId, amount, description, `admin-adjust:${req.userId}:${Date.now()}`);
+  if (!result.success) return res.status(400).json({ error: result.error });
+  auditAdminAction(req, 'user.adjust_points', 'user', userId, { amount, description, balance: result.balance });
+  return res.json({ success: true, balance: result.balance });
+});
+
+router.post('/users/status', (req, res) => {
+  const userId = parseInt(req.body.userId);
+  const status = String(req.body.status || '').trim();
+  if (!userId) return res.status(400).json({ error: '用户参数错误' });
+  const result = setUserStatus(userId, status, req.body.reason, req.body.statusUntil);
+  if (!result.success) return res.status(400).json({ error: result.error });
+  auditAdminAction(req, 'user.status', 'user', userId, { status, reason: String(req.body.reason || '').slice(0, 500), statusUntil: req.body.statusUntil || null });
+  return res.json({ success: true });
 });
 
 // 获取所有历史记录
@@ -234,7 +266,10 @@ router.get('/history', (req, res) => {
 // 删除历史记录
 router.delete('/history/:id', (req, res) => {
   const { id } = req.params;
-  deleteHistoryAdmin(parseInt(id));
+  const result = deleteHistoryAdmin(parseInt(id));
+  if (!result.success && result.reason === 'active') return res.status(409).json({ error: '任务仍在生成中，完成或失败后才能删除' });
+  if (!result.success) return res.status(404).json({ error: '记录不存在' });
+  deleteUnreferencedUploads(extractUploadFilenames(result.row.image_url, result.row.content));
   auditAdminAction(req, 'history.delete', 'history', id);
   res.json({ success: true });
 });

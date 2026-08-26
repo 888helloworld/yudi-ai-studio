@@ -15,6 +15,8 @@ process.env.JWT_SECRET = 'test-jwt-secret-at-least-16-characters';
 const api = require('../db');
 const { db } = require('../database');
 const templateRepository = require('../repositories/template-repository');
+const { UPLOAD_DIR } = require('../utils/image-storage');
+const { deleteUnreferencedUploads, extractUploadFilenames } = require('../utils/upload-cleanup');
 
 function removeTestDatabase() {
   for (const suffix of ['', '-shm', '-wal']) {
@@ -165,4 +167,56 @@ test('积分、卡密、支付和历史记录保持原子与幂等', async () =>
   assert.equal(stats.currentPoints, 1080);
   assert.equal(stats.totalImages, 2);
   assert.equal(stats.totalRecords, 1);
+});
+
+test('账号状态、政策同意、分页和正负积分调整可审计', () => {
+  const user = api.createUser('governance_user', 'GovernancePass123', {
+    version: '2026-08-26-v1',
+    acceptedAt: '2026-08-26T00:00:00.000Z',
+    ip: '127.0.0.1'
+  });
+  const persisted = db.prepare('SELECT policy_version, policy_accepted_at, policy_ip, status FROM users WHERE id = ?').get(user.id);
+  assert.equal(persisted.policy_version, '2026-08-26-v1');
+  assert.equal(persisted.policy_ip, '127.0.0.1');
+  assert.equal(persisted.status, 'active');
+
+  assert.deepEqual(api.setUserStatus(user.id, 'frozen', '异常行为待核查'), { success: true });
+  assert.equal(api.getUserAuthById(user.id).status, 'frozen');
+  assert.deepEqual(api.setUserStatus(user.id, 'active', ''), { success: true });
+  db.prepare("UPDATE users SET status = 'frozen', status_until = datetime('now', '-1 minute') WHERE id = ?").run(user.id);
+  assert.equal(api.getUserAuthById(user.id).status, 'active');
+
+  const deducted = api.adjustUserPoints(user.id, -100, '异常积分扣回', 'admin-adjust-test');
+  assert.equal(deducted.success, true);
+  assert.equal(deducted.balance, 900);
+  const rejected = api.adjustUserPoints(user.id, -901, '不得扣成负数', 'admin-adjust-rejected');
+  assert.equal(rejected.success, false);
+  assert.equal(api.getUserPoints(user.id), 900);
+
+  const page = api.getAllUsers({ page: 1, limit: 2, keyword: 'governance', status: 'active' });
+  assert.equal(page.total, 1);
+  assert.equal(page.list[0].id, user.id);
+  const log = db.prepare('SELECT type, amount FROM point_logs WHERE reference_key = ?').get('admin-adjust-test');
+  assert.deepEqual(log, { type: 'admin_adjust', amount: -100 });
+});
+
+test('删除历史后会清理不再被引用的本地图片，并拒绝删除运行中任务', () => {
+  const user = api.createUser('cleanup_user', 'CleanupPass123');
+  const filename = `cleanup-test-${crypto.randomUUID()}.png`;
+  const filepath = path.join(UPLOAD_DIR, filename);
+  fs.writeFileSync(filepath, Buffer.from('temporary-test-image'));
+  const historyId = api.addHistory(user.id, 'image', { image_url: `/uploads/${filename}`, prompt: '清理测试' });
+  const deleted = api.deleteHistory(historyId, user.id);
+  assert.equal(deleted.success, true);
+  deleteUnreferencedUploads(extractUploadFilenames(deleted.row.image_url, deleted.row.content));
+  assert.equal(fs.existsSync(filepath), false);
+
+  const activeId = api.addHistory(user.id, 'image', {
+    sub_type: 'xi-generate',
+    content: JSON.stringify({ status: 'running' }),
+    prompt: '运行中任务'
+  });
+  const blocked = api.deleteHistory(activeId, user.id);
+  assert.deepEqual(blocked, { success: false, reason: 'active' });
+  assert.deepEqual(api.deleteHistoryAdmin(activeId), { success: false, reason: 'active' });
 });

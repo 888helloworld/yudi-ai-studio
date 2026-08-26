@@ -82,8 +82,15 @@ function getUserHistoryCount(userId, options = {}) {
 }
 
 function deleteHistory(id, userId) {
-  db.prepare('DELETE FROM history WHERE id = ? AND user_id = ?').run(id, userId);
-  return true;
+  const row = db.prepare('SELECT * FROM history WHERE id = ? AND user_id = ?').get(id, userId);
+  if (!row) return { success: false, reason: 'not_found' };
+  if (row.sub_type === 'xi-edit' || row.sub_type === 'xi-generate') {
+    let meta = {};
+    try { meta = JSON.parse(row.content || '{}'); } catch {}
+    if (['queued', 'running'].includes(meta.status)) return { success: false, reason: 'active' };
+  }
+  const result = db.prepare('DELETE FROM history WHERE id = ? AND user_id = ?').run(id, userId);
+  return { success: result.changes > 0, row };
 }
 
 function appendAdminHistoryFilters(sql, params, options) {
@@ -123,8 +130,15 @@ function getAllHistoryCount(options = {}) {
 }
 
 function deleteHistoryAdmin(id) {
-  db.prepare('DELETE FROM history WHERE id = ?').run(id);
-  return true;
+  const row = db.prepare('SELECT * FROM history WHERE id = ?').get(id);
+  if (!row) return { success: false, reason: 'not_found' };
+  if (row.sub_type === 'xi-edit' || row.sub_type === 'xi-generate') {
+    let meta = {};
+    try { meta = JSON.parse(row.content || '{}'); } catch {}
+    if (['queued', 'running'].includes(meta.status)) return { success: false, reason: 'active' };
+  }
+  const result = db.prepare('DELETE FROM history WHERE id = ?').run(id);
+  return { success: result.changes > 0, row };
 }
 
 function userOwnsUpload(userId, filename) {

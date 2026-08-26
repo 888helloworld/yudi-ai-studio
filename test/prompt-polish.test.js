@@ -1,9 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const express = require('express');
 const { buildPromptPolishInstruction, compactPromptText, normalizePromptPolishResult } = require('../services/prompt-polish-service');
 const {
   DEFAULT_DEEPSEEK_VISION_MODEL,
+  acquirePromptPolishSlot,
   buildDeepSeekVisionRequest,
+  createPromptPolishRouter,
   formatPromptPolishError,
   getDeepSeekChoiceMetadata,
   getDeepSeekChatUrl,
@@ -117,5 +120,76 @@ test('视觉润色超时使用 DeepSeek 配置并限制范围', () => {
     else process.env.DEEPSEEK_VISION_TIMEOUT_MS = originalVision;
     if (originalText === undefined) delete process.env.DEEPSEEK_TIMEOUT_MS;
     else process.env.DEEPSEEK_TIMEOUT_MS = originalText;
+  }
+});
+
+test('视觉润色限制单用户并发，并且释放函数幂等', () => {
+  const original = process.env.PROMPT_POLISH_MAX_CONCURRENT_PER_USER;
+  try {
+    process.env.PROMPT_POLISH_MAX_CONCURRENT_PER_USER = '1';
+    const release = acquirePromptPolishSlot(9001);
+    assert.throws(() => acquirePromptPolishSlot(9001), /最多同时润色/);
+    release();
+    release();
+    const releaseAgain = acquirePromptPolishSlot(9001);
+    releaseAgain();
+  } finally {
+    if (original === undefined) delete process.env.PROMPT_POLISH_MAX_CONCURRENT_PER_USER;
+    else process.env.PROMPT_POLISH_MAX_CONCURRENT_PER_USER = original;
+  }
+});
+
+test('视觉润色成功扣费，失败自动退款', async () => {
+  const originalApiKey = process.env.DEEPSEEK_API_KEY;
+  const originalFetch = global.fetch;
+  process.env.DEEPSEEK_API_KEY = 'test-key';
+  let charged = 0;
+  let refunded = 0;
+  let upstreamOk = true;
+  global.fetch = async () => ({
+    ok: upstreamOk,
+    status: upstreamOk ? 200 : 503,
+    text: async () => JSON.stringify(upstreamOk
+      ? { choices: [{ finish_reason: 'stop', message: { content: '{"polished_prompt":"完成"}' } }] }
+      : { error: { message: 'temporary failure' } })
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.use(createPromptPolishRouter({
+    authMiddleware: (req, res, next) => { req.userId = 42; next(); },
+    copyLimiter: (req, res, next) => next(),
+    upload: { array: () => (req, res, next) => { req.files = []; next(); } },
+    validateUploadedImageFiles: (req, res, next) => next(),
+    chargePoints: (userId, amount) => { charged += amount; },
+    refundPoints: (userId, amount) => { refunded += amount; },
+    getRemainingPoints: () => 995,
+    pointCost: 5
+  }));
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+  });
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const success = await originalFetch(`${baseUrl}/api/xi-image/polish-prompt`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: '润色它' })
+    });
+    assert.equal(success.status, 200);
+    assert.equal((await success.json()).remainingPoints, 995);
+    assert.equal(charged, 5);
+    assert.equal(refunded, 0);
+
+    upstreamOk = false;
+    const failed = await originalFetch(`${baseUrl}/api/xi-image/polish-prompt`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: '再润色一次' })
+    });
+    assert.equal(failed.status, 502);
+    assert.equal(charged, 10);
+    assert.equal(refunded, 5);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    global.fetch = originalFetch;
+    if (originalApiKey === undefined) delete process.env.DEEPSEEK_API_KEY;
+    else process.env.DEEPSEEK_API_KEY = originalApiKey;
   }
 });

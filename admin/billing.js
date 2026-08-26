@@ -2,7 +2,7 @@
       try {
         pointLogsPage = page;
         const params = new URLSearchParams({ page: String(pointLogsPage), limit: String(pointLogsLimit) });
-        const res = await fetch(`/api/admin/point-logs?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch(`/api/admin/point-logs?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const tbody = document.getElementById('pointLogsList');
         if (!data.logs || data.logs.length === 0) {
@@ -45,7 +45,7 @@
       if (!count || count < 1 || count > 100) { alert('数量范围 1-100'); return; }
       if (!points || points < 10 || points > 100000) { alert('积分范围 10-100000'); return; }
       try {
-        const res = await fetch('/api/admin/cdkeys/generate', {
+        const res = await authFetch('/api/admin/cdkeys/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ count, points })
@@ -61,7 +61,7 @@
 
     async function loadCdkeyStats() {
       try {
-        const res = await fetch('/api/admin/cdkeys/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch('/api/admin/cdkeys/stats', { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         document.getElementById('cdkeyTotal').textContent = data.total || 0;
         document.getElementById('cdkeyUnused').textContent = data.unused || 0;
@@ -78,7 +78,7 @@
         if (used) params.append('used', used);
         params.append('page', String(cdkeysPage));
         params.append('limit', String(cdkeysLimit));
-        const res = await fetch(`/api/admin/cdkeys?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch(`/api/admin/cdkeys?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const tbody = document.getElementById('cdkeysList');
         const list = data.list || [];
@@ -91,7 +91,7 @@
           const statusClass = c.used ? 'used' : 'unused';
           const statusLabel = c.used ? '已使用' : '未使用';
           return `<tr>
-            <td data-label="卡密"><span class="cdkey-code">${escapeHtml(c.code)}</span><span class="cdkey-copy-btn" onclick="AdminApp.copyCdkey('${escapeJsString(c.code)}')">复制</span></td>
+            <td data-label="卡密"><span class="cdkey-code">${escapeHtml(c.code)}</span><button type="button" class="cdkey-copy-btn" data-admin-action="copy-cdkey" data-code="${escapeHtml(c.code)}">复制</button></td>
             <td data-label="积分">${escapeHtml(c.points)}</td>
             <td data-label="状态"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
             <td data-label="使用者">${escapeHtml(c.used_by_name || '-')}</td>
@@ -132,7 +132,7 @@
     // 支付订单管理
     async function loadPaymentConfig() {
       try {
-        const res = await fetch('/api/admin/payment-config', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch('/api/admin/payment-config', { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '加载失败');
         const configuredCount = (data.channels || []).filter(c => c.configured).length;
@@ -162,7 +162,7 @@
 
     async function loadPaymentStats() {
       try {
-        const res = await fetch('/api/admin/payment-orders/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch('/api/admin/payment-orders/stats', { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         document.getElementById('paymentStats').innerHTML = `
           <div class="cdkey-stat"><div class="num">${escapeHtml(data.paidOrders || 0)}</div><div class="lbl">已支付订单</div></div>
@@ -179,7 +179,7 @@
       try {
         paymentPage = page;
         const params = new URLSearchParams({ page: String(paymentPage), limit: String(paymentLimit) });
-        const res = await fetch(`/api/admin/payment-orders?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await authFetch(`/api/admin/payment-orders?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         const tbody = document.getElementById('paymentOrdersList');
         if (!data.orders || data.orders.length === 0) {
@@ -204,8 +204,8 @@
             <td data-label="操作">
               <div class="admin-row-actions">
                 ${o.status === 'pending' ? `
-                  <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="AdminApp.markPaymentPaid('${escapeJsString(o.order_no)}')">确认到账</button>
-                  <button class="admin-btn admin-btn-danger admin-btn-sm" onclick="AdminApp.closePaymentOrder('${escapeJsString(o.order_no)}')">关闭</button>
+                  <button class="admin-btn admin-btn-primary admin-btn-sm" data-admin-action="mark-payment-paid" data-order-no="${escapeHtml(o.order_no)}">确认到账</button>
+                  <button class="admin-btn admin-btn-danger admin-btn-sm" data-admin-action="close-payment-order" data-order-no="${escapeHtml(o.order_no)}">关闭</button>
                 ` : '<span style="color:var(--text-muted);font-size:12px;">-</span>'}
               </div>
             </td>
@@ -228,7 +228,7 @@
       if (tradeNo === null) return;
       if (!confirm(`确认订单 ${orderNo} 已到账并给用户充值积分？`)) return;
       try {
-        const res = await fetch(`/api/admin/payment-orders/${encodeURIComponent(orderNo)}/mark-paid`, {
+        const res = await authFetch(`/api/admin/payment-orders/${encodeURIComponent(orderNo)}/mark-paid`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ tradeNo })
@@ -249,7 +249,7 @@
     async function closePaymentOrder(orderNo) {
       if (!confirm(`确定关闭订单 ${orderNo}？`)) return;
       try {
-        const res = await fetch(`/api/admin/payment-orders/${encodeURIComponent(orderNo)}/close`, {
+        const res = await authFetch(`/api/admin/payment-orders/${encodeURIComponent(orderNo)}/close`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });

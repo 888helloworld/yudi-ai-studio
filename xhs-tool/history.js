@@ -342,6 +342,10 @@ function renderHistory() {
   updateXhsHistoryView(document.querySelector('.xhs-tool-tab.active')?.dataset.xhsTool || 'image');
 }
 
+function escapePaginationAttr(value) {
+  return String(value || '').replace(/[&"<>]/g, (char) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[char]));
+}
+
 function renderPagination(containerId, currentPage, totalPages, totalItems, onPageChange) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -354,7 +358,7 @@ function renderPagination(containerId, currentPage, totalPages, totalItems, onPa
   let html = '';
   
   // 涓婁竴椤?
-  html += `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="XhsTool.paginate('${containerId}', ${currentPage - 1})">上一页</button>`;
+  html += `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} data-pagination-container="${escapePaginationAttr(containerId)}" data-page="${currentPage - 1}">上一页</button>`;
   
   // 椤电爜
   html += '<div class="pagination-pages">';
@@ -367,22 +371,22 @@ function renderPagination(containerId, currentPage, totalPages, totalItems, onPa
   }
   
   if (startPage > 1) {
-    html += `<button class="pagination-btn" onclick="XhsTool.paginate('${containerId}', 1)">1</button>`;
+    html += `<button class="pagination-btn" data-pagination-container="${escapePaginationAttr(containerId)}" data-page="1">1</button>`;
     if (startPage > 2) html += '<span class="pagination-info">...</span>';
   }
   
   for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="XhsTool.paginate('${containerId}', ${i})">${i}</button>`;
+    html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-pagination-container="${escapePaginationAttr(containerId)}" data-page="${i}">${i}</button>`;
   }
   
   if (endPage < totalPages) {
     if (endPage < totalPages - 1) html += '<span class="pagination-info">...</span>';
-    html += `<button class="pagination-btn" onclick="XhsTool.paginate('${containerId}', ${totalPages})">${totalPages}</button>`;
+    html += `<button class="pagination-btn" data-pagination-container="${escapePaginationAttr(containerId)}" data-page="${totalPages}">${totalPages}</button>`;
   }
   html += '</div>';
   
   // 涓嬩竴椤?
-  html += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="XhsTool.paginate('${containerId}', ${currentPage + 1})">下一页</button>`;
+  html += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} data-pagination-container="${escapePaginationAttr(containerId)}" data-page="${currentPage + 1}">下一页</button>`;
   
   // 淇℃伅
   const start = (currentPage - 1) * pageSize + 1;
@@ -393,6 +397,12 @@ function renderPagination(containerId, currentPage, totalPages, totalItems, onPa
   
   paginationHandlers.set(containerId, onPageChange);
 }
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-pagination-container][data-page]');
+  if (!button) return;
+  XhsTool.paginate(button.dataset.paginationContainer, Number(button.dataset.page));
+});
 
 function initPagination() {
   const select = document.getElementById('pageSizeSelect');

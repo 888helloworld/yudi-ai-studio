@@ -36,9 +36,14 @@
 
       const selectedSources = getSelectedSourceImages();
       const requestSeq = ++state.promptPolishSeq;
+      const requestId = window.crypto?.randomUUID
+        ? `polish_${window.crypto.randomUUID()}`
+        : `polish_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const form = new FormData();
       form.append('prompt', prompt);
       form.append('size', state.selectedSize);
+      form.append('clientTaskId', requestId);
+      form.append('clientRequestId', requestId);
       selectedSources.forEach((source) => {
         form.append('image', source.file, getSourceImageName(source.slotIndex ?? 0));
       });

@@ -5,24 +5,34 @@ function addPointLog(userId, type, amount, balance, description, referenceKey = 
     .run(userId, type, amount, balance, description, referenceKey || null);
 }
 
-function deductPoints(userId, amount, description) {
+function deductPoints(userId, amount, description, referenceKey = null) {
   if (amount <= 0) {
     return { success: false, message: '无效的扣减数量' };
   }
 
   const transaction = db.transaction(() => {
+    if (referenceKey) {
+      const existing = db.prepare('SELECT id, user_id, amount FROM point_logs WHERE reference_key = ?').get(referenceKey);
+      if (existing) {
+        if (Number(existing.user_id) !== Number(userId) || Number(existing.amount) !== -Number(amount)) {
+          throw new Error('积分业务号冲突');
+        }
+        const current = db.prepare('SELECT points FROM users WHERE id = ?').get(userId);
+        return current ? { success: true, balance: current.points, alreadyApplied: true } : { success: false, message: '用户不存在' };
+      }
+    }
     const result = db.prepare('UPDATE users SET points = points - ? WHERE id = ? AND points >= ?')
       .run(amount, userId, amount);
     if (result.changes === 0) return { success: false, message: '积分不足' };
 
     const user = db.prepare('SELECT points FROM users WHERE id = ?').get(userId);
-    addPointLog(userId, 'consume', -amount, user.points, description);
-    return { success: true, balance: user.points };
+    addPointLog(userId, 'consume', -amount, user.points, description, referenceKey);
+    return { success: true, balance: user.points, alreadyApplied: false };
   });
   return transaction();
 }
 
-function rechargePoints(userId, amount, description = '管理员充值', referenceKey = null) {
+function rechargePoints(userId, amount, description = '管理员充值', referenceKey = null, logType = 'recharge') {
   if (amount <= 0) return null;
 
   const transaction = db.transaction(() => {
@@ -39,7 +49,7 @@ function rechargePoints(userId, amount, description = '管理员充值', referen
     const result = db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(amount, userId);
     if (result.changes === 0) return null;
     const user = db.prepare('SELECT points FROM users WHERE id = ?').get(userId);
-    addPointLog(userId, 'recharge', amount, user.points, description, referenceKey);
+    addPointLog(userId, logType, amount, user.points, description, referenceKey);
     return { balance: user.points, alreadyApplied: false };
   });
   return transaction();

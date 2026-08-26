@@ -6,11 +6,13 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const db = require('./db');
+const { POINTS } = require('./config/points');
 const { isAllowedUploadMime, validateUploadedImageFiles } = require('./middleware/image-upload');
 const { authMiddleware, optionalAuth } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const adminRoutes = require('./routes/admin');
+const { createAnalyticsRouter } = require('./routes/analytics');
 const { createAmazonImageRouter, SIZE_MAP } = require('./routes/amazon-image');
 const { createGenerationRouter } = require('./routes/generation');
 const { createPaymentRouter } = require('./routes/payment');
@@ -53,9 +55,10 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: http: https:",
     "connect-src 'self'",
@@ -131,6 +134,12 @@ app.get('/admin/:filename', (req, res, next) => {
 const limiterMessage = { error: '请求过于频繁，请稍后再试' };
 const imageLimiter = rateLimit({ windowMs: 60000, max: 60, message: limiterMessage });
 const copyLimiter = rateLimit({ windowMs: 60000, max: 60, message: limiterMessage });
+const configuredPromptPolishRate = Number(process.env.PROMPT_POLISH_RATE_LIMIT_PER_MIN || 10);
+const promptPolishLimiter = rateLimit({
+  windowMs: 60000,
+  max: Number.isFinite(configuredPromptPolishRate) ? Math.min(Math.max(Math.floor(configuredPromptPolishRate), 1), 60) : 10,
+  message: { error: '提示词润色请求过于频繁，请稍后再试' }
+});
 const authLimiter = rateLimit({ windowMs: 60000, max: 20, message: limiterMessage });
 const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: limiterMessage });
 const xiImageLimiter = rateLimit({
@@ -139,7 +148,11 @@ const xiImageLimiter = rateLimit({
   message: { error: 'gpt-image-2 生图请求过于频繁，请降低并发或稍后再试' }
 });
 const configuredUploadImageMb = Number(process.env.MAX_UPLOAD_IMAGE_MB || 20);
-const maxUploadImageMb = Number.isFinite(configuredUploadImageMb) ? Math.max(configuredUploadImageMb, 1) : 20;
+const configuredUploadTotalMb = Number(process.env.MAX_UPLOAD_TOTAL_MB || 40);
+const maxUploadTotalMb = Number.isFinite(configuredUploadTotalMb) ? Math.max(configuredUploadTotalMb, 1) : 40;
+const requestedUploadImageMb = Number.isFinite(configuredUploadImageMb) ? Math.max(configuredUploadImageMb, 1) : 20;
+// memoryStorage 会在后置校验前把全部文件放进内存，因此限制最坏情况下的总缓冲量。
+const maxUploadImageMb = Math.min(requestedUploadImageMb, maxUploadTotalMb / 4);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -156,12 +169,21 @@ const upload = multer({
   }
 });
 
+function enforceSafeJobLimit(name, fallback) {
+  const configured = Number(process.env[name]);
+  if (!Number.isFinite(configured) || configured <= 0) process.env[name] = String(fallback);
+}
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 6);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 2);
+enforceSafeJobLimit('XI_XU_MAX_QUEUED_JOBS', 20);
+
 const provider = createXiImageProvider();
 const xiRuntime = createXiJobRuntime({ db, provider, refundPoints, formatDateTime: formatBeijingDateTime });
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminLimiter, adminRoutes);
+app.use(createAnalyticsRouter({ optionalAuth }));
 app.use(createUploadRouter({
   authMiddleware,
   canUserAccessUpload: (userId, filename) => xiRuntime.manager.canUserAccessUpload(userId, filename)
@@ -225,9 +247,13 @@ app.use(createReversePromptRouter({
 }));
 app.use(createPromptPolishRouter({
   authMiddleware,
-  copyLimiter,
+  copyLimiter: promptPolishLimiter,
   upload,
-  validateUploadedImageFiles
+  validateUploadedImageFiles,
+  chargePoints,
+  refundPoints,
+  getRemainingPoints: (userId) => db.getUserPoints(userId),
+  pointCost: POINTS.copy
 }));
 app.use(createPaymentRouter({ authMiddleware, safeCompareSecret }));
 

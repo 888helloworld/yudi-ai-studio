@@ -156,14 +156,14 @@
           </div>
         </div>
         <div class="account-workspace">
-          <div class="profile-tabs">
-            <button class="profile-tab active" data-tab="password">修改密码</button>
-            <button class="profile-tab" data-tab="redeem">卡密兑换</button>
-            <button class="profile-tab" data-tab="orders">支付订单</button>
-            <button class="profile-tab" data-tab="invite">邀请注册</button>
+      <div class="profile-tabs" role="tablist" aria-label="账户功能">
+        <button class="profile-tab active" type="button" role="tab" aria-selected="true" aria-controls="passwordTab" data-tab="password">修改密码</button>
+        <button class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="redeemTab" tabindex="-1" data-tab="redeem">卡密兑换</button>
+        <button class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="ordersTab" tabindex="-1" data-tab="orders">支付订单</button>
+        <button class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="inviteTab" tabindex="-1" data-tab="invite">邀请注册</button>
           </div>
           <div class="account-content">
-            <form class="profile-tab-content active" id="passwordTab">
+      <form class="profile-tab-content active" id="passwordTab" role="tabpanel">
               <div class="profile-msg" id="pwMsg"></div>
               <input type="text" id="passwordUsername" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;opacity:0;">
               <div class="profile-form-group">
@@ -180,7 +180,7 @@
               </div>
               <button class="profile-btn" id="changePwBtn" type="submit">修改密码</button>
             </form>
-            <div class="profile-tab-content" id="redeemTab">
+      <div class="profile-tab-content" id="redeemTab" role="tabpanel" hidden>
               <div class="profile-msg" id="redeemMsg"></div>
               <div class="redeem-row">
                 <div class="profile-form-group" style="margin-bottom:0;">
@@ -191,12 +191,12 @@
               </div>
               <p class="invite-note" style="margin-top:12px;">卡密只能使用一次，兑换成功后积分会立即进入余额，并写入积分明细。</p>
             </div>
-            <div class="profile-tab-content" id="ordersTab">
+      <div class="profile-tab-content" id="ordersTab" role="tabpanel" hidden>
               <div class="order-list" id="ordersList">
                 <div class="log-empty">加载中...</div>
               </div>
             </div>
-            <div class="profile-tab-content" id="inviteTab">
+      <div class="profile-tab-content" id="inviteTab" role="tabpanel" hidden>
               <div class="profile-msg" id="inviteMsg"></div>
               <div class="invite-panel">
                 <div class="invite-actions">

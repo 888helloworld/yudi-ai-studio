@@ -16,6 +16,48 @@ const {
   getUserUnusedInviteCount
 } = require('../db');
 const { authMiddleware } = require('../middleware/auth');
+const { deleteUnreferencedUploads, extractUploadFilenames } = require('../utils/upload-cleanup');
+
+function readBoundedEnvInteger(name, fallback, minimum, maximum) {
+  const parsed = Number(process.env[name]);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.floor(parsed), minimum), maximum);
+}
+
+function isInviteGenerationEnabled() {
+  const configured = String(process.env.USER_INVITE_ENABLED || '').trim();
+  if (/^true$/i.test(configured)) return true;
+  if (/^false$/i.test(configured)) return false;
+  return process.env.NODE_ENV !== 'production';
+}
+
+function getInviteGenerationPolicy(user, invites) {
+  if (!isInviteGenerationEnabled()) return { allowed: false, error: '邀请码生成功能暂未开放' };
+
+  const dailyLimit = readBoundedEnvInteger('USER_INVITE_DAILY_LIMIT', 3, 0, 100);
+  const lifetimeLimit = readBoundedEnvInteger('USER_INVITE_LIFETIME_LIMIT', 20, 0, 1000);
+  const minimumAgeDays = readBoundedEnvInteger('USER_INVITE_MIN_ACCOUNT_AGE_DAYS', 1, 0, 3650);
+  const minimumPoints = readBoundedEnvInteger('USER_INVITE_MIN_POINTS_BALANCE', 0, 0, 100000000);
+  if (dailyLimit === 0 || lifetimeLimit === 0) return { allowed: false, error: '邀请码生成功能暂未开放' };
+
+  const createdAtMs = Date.parse(`${String(user?.created_at || '').replace(' ', 'T')}Z`);
+  if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs < minimumAgeDays * 86400000) {
+    return { allowed: false, error: `账号注册满 ${minimumAgeDays} 天后才能生成邀请码` };
+  }
+  if (Number(user?.points || 0) < minimumPoints) {
+    return { allowed: false, error: `积分余额达到 ${minimumPoints} 后才能生成邀请码` };
+  }
+  if (invites.length >= lifetimeLimit) return { allowed: false, error: `每个账号最多生成 ${lifetimeLimit} 个邀请码` };
+
+  const beijingToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date());
+  const generatedToday = invites.filter((invite) => {
+    const parsed = Date.parse(`${String(invite.created_at || '').replace(' ', 'T')}Z`);
+    return Number.isFinite(parsed)
+      && new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date(parsed)) === beijingToday;
+  }).length;
+  if (generatedToday >= dailyLimit) return { allowed: false, error: `每天最多生成 ${dailyLimit} 个邀请码` };
+  return { allowed: true };
+}
 
 // 获取积分余额
 router.get('/points', authMiddleware, (req, res) => {
@@ -73,7 +115,10 @@ router.get('/history', authMiddleware, (req, res) => {
 // 删除单条历史
 router.delete('/history/:id', authMiddleware, (req, res) => {
   const { id } = req.params;
-  deleteHistory(parseInt(id), req.userId);
+  const result = deleteHistory(parseInt(id), req.userId);
+  if (!result.success && result.reason === 'active') return res.status(409).json({ error: '任务仍在生成中，完成或失败后才能删除' });
+  if (!result.success) return res.status(404).json({ error: '记录不存在' });
+  deleteUnreferencedUploads(extractUploadFilenames(result.row.image_url, result.row.content));
   res.json({ success: true });
 });
 
@@ -99,11 +144,16 @@ router.get('/invites', authMiddleware, (req, res) => {
 
 // 生成我的邀请码
 router.post('/invites/generate', authMiddleware, (req, res) => {
-  const maxUnused = Number(process.env.USER_INVITE_MAX_UNUSED || 10);
+  const maxUnused = readBoundedEnvInteger('USER_INVITE_MAX_UNUSED', 5, 1, 100);
   const unusedCount = getUserUnusedInviteCount(req.userId);
   if (unusedCount >= maxUnused) {
     return res.status(400).json({ error: `未使用的邀请码最多保留 ${maxUnused} 个` });
   }
+
+  const lifetimeLimit = readBoundedEnvInteger('USER_INVITE_LIFETIME_LIMIT', 20, 0, 1000);
+  const invites = getUserInviteCodes(req.userId, { limit: Math.max(lifetimeLimit + 1, 100) });
+  const policy = getInviteGenerationPolicy(req.user, invites);
+  if (!policy.allowed) return res.status(403).json({ error: policy.error });
 
   const invite = generateUserInviteCode(req.userId);
   res.json({ success: true, invite });
@@ -120,3 +170,5 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.getInviteGenerationPolicy = getInviteGenerationPolicy;
+module.exports.isInviteGenerationEnabled = isInviteGenerationEnabled;

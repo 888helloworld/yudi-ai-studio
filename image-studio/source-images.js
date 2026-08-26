@@ -30,7 +30,7 @@
       const batchCount = clamp(Number(batchCountEl.value || 1), 1, MAX_BATCH_COUNT);
       const parallelism = getParallelism();
       const totalImages = count * batchCount;
-      if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 同时生成 ${parallelism} 张`;
+      if (estimateTotalEl) estimateTotalEl.textContent = `这次生成 ${totalImages} 张图 · 预计消耗 ${totalImages * 10} 积分 · 同时生成 ${parallelism} 张 · 当前余额见顶部`;
     }
 
     function updateBatchCountButtons() {

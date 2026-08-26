@@ -15,7 +15,7 @@ CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,        -- 用户名（唯一）
   password_hash TEXT NOT NULL,          -- 密码（bcrypt加密）
-  points INTEGER DEFAULT 100,            -- 积分余额，默认100
+  points INTEGER DEFAULT 1000,           -- 积分余额，默认1000（可由 NEW_USER_BONUS_POINTS 配置）
   role TEXT DEFAULT 'user',             -- 角色：user/admin
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -107,8 +107,8 @@ CREATE INDEX idx_point_logs_user_id ON point_logs(user_id);
 
 | 操作 | 积分变化 | 说明 |
 |------|----------|------|
-| 注册 | +100 | 新用户赠送 |
-| 图片生成 | -10/张 | 最多一次生成4张 |
+| 注册 | +1000 | 默认新用户赠送，可通过 `NEW_USER_BONUS_POINTS` 调整 |
+| 图片生成 | -10/张 | 小红书工作台最多一次4张，画面工坊最多一次5张 |
 | 文案生成 | -5 | 每次生成 |
 | 文案改写 | -3 | 每次改写 |
 | 图文一体 | -5 + 10/张 | 文案5积分，图片每张10积分 |
