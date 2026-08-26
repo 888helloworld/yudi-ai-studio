@@ -200,7 +200,8 @@
 
     <section class="admin-panel active" id="usersPanel" role="tabpanel">
       <div class="admin-panel-title">
-        <div><h2>用户管理</h2><p>查看余额、给用户充值、重置密码或删除普通用户。</p></div>
+        <div><h2>用户管理</h2><p>查看余额、给用户充值、重置密码、冻结或封禁普通用户。</p></div>
+        <button class="admin-btn admin-btn-sm" type="button" data-admin-action="refresh-users">刷新列表</button>
       </div>
       <div class="admin-toolbar">
         <input type="text" id="searchUser" aria-label="搜索用户名" placeholder="搜索用户名...">
@@ -224,7 +225,7 @@
               <th>操作</th>
             </tr>
           </thead>
-          <tbody id="usersList"></tbody>
+      <tbody id="usersList"><tr><td class="admin-table-empty" colspan="7">正在加载用户列表...</td></tr></tbody>
         </table>
       </div>
       <div id="usersPager"></div>
@@ -421,8 +422,8 @@
     </form>
   </div>
 
-    <script src="frontend/shared-utils.js?v=20260826"></script>
-    <script src="admin.js?v=20260826"></script>
+    <script src="frontend/shared-utils.js?v=20260826-2"></script>
+    <script src="admin.js?v=20260826-2"></script>
 </body>
 </html>
 

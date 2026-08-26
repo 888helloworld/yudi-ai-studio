@@ -41,6 +41,7 @@
       if (!trigger) return;
       const action = trigger.dataset.adminAction;
       if (action === 'chart') loadChartData(Number(trigger.dataset.days) || 7);
+      else if (action === 'refresh-users') loadUsers(usersPage);
       else if (action === 'generate-cdkeys') generateCdkeys();
       else if (action === 'close-recharge') closeRechargeModal();
       else if (action === 'close-reset-password') closeResetPasswordModal();
