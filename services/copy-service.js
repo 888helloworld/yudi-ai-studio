@@ -126,7 +126,8 @@ async function requestDeepSeekText({ apiKey, model, systemPrompt, userPrompt }) 
   const timeoutMs = Number.isFinite(configuredTimeout) ? Math.min(300000, Math.max(30000, configuredTimeout)) : 120000;
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const baseUrl = String(process.env.TEXT_API_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       signal: controller.signal,
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },

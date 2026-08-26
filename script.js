@@ -15,7 +15,7 @@
   function loadScript(filename) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `xhs-tool/${filename}?v=20260818`;
+      script.src = `xhs-tool/${filename}?v=20260826`;
       script.async = false;
       script.onload = resolve;
       script.onerror = () => reject(new Error(`工作台脚本加载失败：${filename}`));

@@ -295,6 +295,8 @@ tr:hover td{background:rgba(7,193,96,0.03)}
   .page-size-label{margin-left:0}
   .stats{grid-template-columns:1fr}
   .admin-header-inner{align-items:flex-start;flex-direction:column;padding:14px 0}
+  .user-bar{justify-content:center}
+  .user-info,.user-actions{flex-wrap:wrap;justify-content:center;gap:8px}
 }
 
 /* 微信暗色风统一规则 */

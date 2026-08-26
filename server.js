@@ -5,6 +5,8 @@ const multer = require('multer');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const crypto = require('crypto');
+const zlib = require('zlib');
 const db = require('./db');
 const { POINTS } = require('./config/points');
 const { isAllowedUploadMime, validateUploadedImageFiles } = require('./middleware/image-upload');
@@ -51,6 +53,61 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.headers['accept-encoding']?.includes('gzip') !== true) return next();
+
+  const chunks = [];
+  const originalEnd = res.end.bind(res);
+  res.write = (chunk, encoding, callback) => {
+    if (typeof chunk === 'function') {
+      callback = chunk;
+      chunk = null;
+      encoding = undefined;
+    } else if (typeof encoding === 'function') {
+      callback = encoding;
+      encoding = undefined;
+    }
+    if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding));
+    if (typeof callback === 'function') callback();
+    return true;
+  };
+  res.end = (chunk, encoding, callback) => {
+    if (typeof chunk === 'function') {
+      callback = chunk;
+      chunk = null;
+      encoding = undefined;
+    } else if (typeof encoding === 'function') {
+      callback = encoding;
+      encoding = undefined;
+    }
+    if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding));
+    const body = Buffer.concat(chunks);
+    const contentType = String(res.getHeader('Content-Type') || '').toLowerCase();
+    const compressible = /(?:text\/|javascript|json|xml|svg)/.test(contentType);
+    const alreadyEncoded = Boolean(res.getHeader('Content-Encoding'));
+    const noTransform = /no-transform/i.test(String(res.getHeader('Cache-Control') || ''));
+    const etag = res.getHeader('ETag') || `W/\"${crypto.createHash('sha1').update(body).digest('hex')}\"`;
+    if (body.length >= 256 && compressible && !alreadyEncoded && !noTransform && res.statusCode !== 204 && res.statusCode !== 304) {
+      const compressed = zlib.gzipSync(body);
+      res.setHeader('Vary', 'Accept-Encoding');
+      res.setHeader('ETag', etag);
+      if (req.headers['if-none-match'] === etag) {
+        res.statusCode = 304;
+        res.removeHeader('Content-Length');
+        return originalEnd(null, encoding, callback);
+      }
+      res.setHeader('Content-Encoding', 'gzip');
+      res.setHeader('Content-Length', compressed.length);
+      return originalEnd(compressed, encoding, callback);
+    }
+    if (compressible && body.length >= 256) {
+      res.setHeader('Vary', 'Accept-Encoding');
+      res.setHeader('ETag', etag);
+    }
+    return originalEnd(body.length ? body : null, encoding, callback);
+  };
+  next();
+});
+app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -93,7 +150,7 @@ const IMAGE_STUDIO_FILES = new Set([
 const FRONTEND_FILES = new Set(['shared-utils.js']);
 const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js']);
 const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
-const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
+const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=604800, immutable';
 
 function sendPublicFile(res, filename, next) {
   res.setHeader('Cache-Control', PUBLIC_STATIC_FILES.has(filename) ? PUBLIC_STATIC_CACHE_CONTROL : PUBLIC_HTML_CACHE_CONTROL);

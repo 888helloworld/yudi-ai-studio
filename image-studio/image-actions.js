@@ -154,7 +154,7 @@
       const imageLabel = `第${imageIndex + 1}张`;
       const parts = task.detailSuite
         ? [
-          '御弟哥哥',
+          '雨滴AI',
           '详情套图',
           task.detailSuite.productName,
           `${String(task.detailSuite.moduleIndex).padStart(2, '0')}-${task.detailSuite.moduleTitle}`,
@@ -163,7 +163,7 @@
           dateLabel
         ]
         : [
-          '御弟哥哥',
+          '雨滴AI',
           'gpt-image2',
           task.index ? `#${task.index}` : '',
           task.mode === 'edit' ? '参考改图' : '文生图',
@@ -182,7 +182,7 @@
     }
 
     function sanitizeDownloadFilename(name) {
-      return String(name || '御弟哥哥 · gpt-image-2 生图')
+      return String(name || '雨滴AI · gpt-image-2 生图')
         .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
         .replace(/\s+/g, ' ')
         .replace(/[. ]+$/g, '')

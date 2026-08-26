@@ -4,7 +4,7 @@
   function loadScript(filename) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `admin/${filename}?v=20260818`;
+      script.src = `admin/${filename}?v=20260826`;
       script.async = false;
       script.onload = resolve;
       script.onerror = () => reject(new Error(`管理后台脚本加载失败：${filename}`));

@@ -54,11 +54,11 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     const csp = home.headers.get('content-security-policy') || '';
     assert.match(csp, /script-src 'self'/);
     assert.doesNotMatch(csp, /script-src[^;]*unsafe-inline/);
-    assert.match(await home.text(), /御弟哥哥/);
+    assert.match(await home.text(), /雨滴AI/);
 
     const loader = await fetch(`${baseUrl}/script.js`);
     assert.equal(loader.status, 200);
-    assert.equal(loader.headers.get('cache-control'), 'public, max-age=0, must-revalidate');
+    assert.equal(loader.headers.get('cache-control'), 'public, max-age=604800, immutable');
     assert.match(await loader.text(), /xhs-tool/);
 
     const loginPage = await fetch(`${baseUrl}/login.html`);
@@ -71,7 +71,7 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
 
     const sharedUtils = await fetch(`${baseUrl}/frontend/shared-utils.js`);
     assert.equal(sharedUtils.status, 200);
-    assert.equal(sharedUtils.headers.get('cache-control'), 'public, max-age=0, must-revalidate');
+    assert.equal(sharedUtils.headers.get('cache-control'), 'public, max-age=604800, immutable');
     assert.match(await sharedUtils.text(), /AppUtils/);
 
     const toolScript = await fetch(`${baseUrl}/xhs-tool/bootstrap.js`);

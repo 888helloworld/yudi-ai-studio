@@ -142,7 +142,7 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
       return res.status(400).json({ error: '参考图总大小过大，请压缩到 34MB 以内再润色' });
     }
 
-    const apiKey = getRequiredEnv('DEEPSEEK_API_KEY');
+    const apiKey = getRequiredEnv('DEEPSEEK_VISION_API_KEY') || getRequiredEnv('DEEPSEEK_API_KEY');
     if (!apiKey) return res.status(500).json({ error: 'DeepSeek 视觉润色服务未配置' });
 
     let releaseSlot;

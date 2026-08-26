@@ -16,13 +16,16 @@ const { parseImageCount } = require('../utils/request-utils');
 
 function getMaxActiveJobs() {
   const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS ?? '0').trim();
+  if (/^(unlimited|无限)$/i.test(raw)) return Number.POSITIVE_INFINITY;
   const parsed = Number(raw);
   if (parsed === 0) return Number.POSITIVE_INFINITY;
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : Number.POSITIVE_INFINITY;
 }
 
 function getJobLimit(name, fallback, maximum) {
-  const parsed = Number(process.env[name]);
+  const raw = String(process.env[name] ?? '').trim();
+  if (/^(unlimited|无限)$/i.test(raw)) return 0;
+  const parsed = Number(raw);
   if (parsed === 0) return 0;
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), maximum) : fallback;
 }
