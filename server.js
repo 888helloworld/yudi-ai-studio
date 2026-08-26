@@ -227,11 +227,17 @@ const upload = multer({
 });
 
 function enforceSafeJobLimit(name, fallback) {
-  const configured = Number(process.env[name]);
-  if (!Number.isFinite(configured) || configured <= 0) process.env[name] = String(fallback);
+  const raw = String(process.env[name] ?? '').trim();
+  if (/^(unlimited|无限)$/i.test(raw)) {
+    process.env[name] = '0';
+    return;
+  }
+  const configured = Number(raw);
+  // 0 是明确的“不限并发”，不能被安全默认值覆盖。
+  if (!Number.isFinite(configured) || configured < 0) process.env[name] = String(fallback);
 }
-enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 6);
-enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 2);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 0);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 0);
 enforceSafeJobLimit('XI_XU_MAX_QUEUED_JOBS', 20);
 
 const provider = createXiImageProvider();
