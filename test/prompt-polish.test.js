@@ -10,6 +10,7 @@ const {
 const {
   DEFAULT_DEEPSEEK_VISION_MODEL,
   acquirePromptPolishSlot,
+  buildDeepSeekCorrectionRequest,
   buildDeepSeekVisionRequest,
   createPromptPolishRouter,
   formatPromptPolishError,
@@ -71,14 +72,13 @@ test('最终提示词仍保留错误图片属性时必须自动进入二次校�
   const corrections = getUnresolvedReferenceCorrections(result);
   assert.deepEqual(corrections, [{ inputText: '墨绿色', referenceValue: '黄色' }]);
   assert.equal(shouldRetryPromptPolish({ choices: [{ finish_reason: 'stop' }] }, result), true);
-  const retryRequest = buildDeepSeekVisionRequest({
-    prompt: '按图2颜色换袜子',
-    size: '1024x1536',
-    files: [],
-    correctionContext: corrections
+  const retryRequest = buildDeepSeekCorrectionRequest({
+    draftPrompt: result.polishedPrompt,
+    corrections
   });
-  assert.match(retryRequest.messages[1].content[0].text, /必须重新输出完整 JSON/);
-  assert.match(retryRequest.messages[1].content[0].text, /referenceValue/);
+  assert.match(retryRequest.messages[0].content, /确定性的图片提示词纠错器/);
+  assert.doesNotMatch(retryRequest.messages[0].content, /按图2颜色换袜子/);
+  assert.match(retryRequest.messages[1].content, /referenceValue/);
 
   const corrected = normalizePromptPolishResult({
     polished_prompt: '将袜子替换为图2的黄色双指袜。',
@@ -181,13 +181,20 @@ test('视觉润色成功扣费，失败自动退款', async () => {
   let charged = 0;
   let refunded = 0;
   let upstreamOk = true;
-  global.fetch = async () => ({
-    ok: upstreamOk,
-    status: upstreamOk ? 200 : 503,
-    text: async () => JSON.stringify(upstreamOk
-      ? { choices: [{ finish_reason: 'stop', message: { content: '{"polished_prompt":"改为黄色双指袜","reference_corrections":[{"input_text":"墨绿色","reference_value":"黄色"}]}' } }] }
-      : { error: { message: 'temporary failure' } })
-  });
+  let upstreamCallCount = 0;
+  global.fetch = async () => {
+    upstreamCallCount += 1;
+    const content = upstreamCallCount === 1
+      ? '{"polished_prompt":"改为墨绿色双指袜","reference_corrections":[{"input_text":"墨绿色","reference_value":"黄色"}]}'
+      : '{"polished_prompt":"改为黄色双指袜"}';
+    return {
+      ok: upstreamOk,
+      status: upstreamOk ? 200 : 503,
+      text: async () => JSON.stringify(upstreamOk
+        ? { choices: [{ finish_reason: 'stop', message: { content } }] }
+        : { error: { message: 'temporary failure' } })
+    };
+  };
 
   const app = express();
   app.use(express.json());
@@ -212,6 +219,8 @@ test('视觉润色成功扣费，失败自动退款', async () => {
     assert.equal(success.status, 200);
     const successBody = await success.json();
     assert.equal(successBody.remainingPoints, 995);
+    assert.equal(successBody.retried, true);
+    assert.equal(successBody.polishedPrompt, '改为黄色双指袜');
     assert.deepEqual(successBody.referenceCorrections, [{ inputText: '墨绿色', referenceValue: '黄色' }]);
     assert.equal(charged, 5);
     assert.equal(refunded, 0);

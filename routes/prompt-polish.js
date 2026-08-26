@@ -94,6 +94,26 @@ function buildDeepSeekVisionRequest({ prompt, size, files, maxTokens = 4096, cor
   };
 }
 
+function buildDeepSeekCorrectionRequest({ draftPrompt, corrections, maxTokens = 2048 }) {
+  const model = process.env.DEEPSEEK_VISION_MODEL || DEFAULT_DEEPSEEK_VISION_MODEL;
+  return {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: `你是确定性的图片提示词纠错器。只根据纠错清单修改现有草稿，把每个 inputText 对应的错误属性替换成 referenceValue 表达的参考图真实属性。不要保留错误属性，不要解释冲突，不要增加无关内容。严格返回 JSON：{"polished_prompt":"纠正后的完整提示词","visual_understanding":[],"changes":["已按参考图纠正属性"]}`
+      },
+      {
+        role: 'user',
+        content: `现有草稿：${draftPrompt}\n纠错清单：${JSON.stringify(corrections)}`
+      }
+    ],
+    thinking: { type: 'disabled' },
+    temperature: 0,
+    max_tokens: maxTokens
+  };
+}
+
 function getDeepSeekChoiceMetadata(data) {
   const choice = data?.choices?.[0] || {};
   return {
@@ -181,13 +201,12 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
           ...firstMetadata
         }));
         retried = true;
-        requestBody = buildDeepSeekVisionRequest({
-          prompt,
-          size,
-          files,
-          maxTokens: 8192,
-          correctionContext: unresolvedCorrections.length > 0 ? unresolvedCorrections : null
-        });
+        requestBody = unresolvedCorrections.length > 0
+          ? buildDeepSeekCorrectionRequest({
+            draftPrompt: result.polishedPrompt,
+            corrections: unresolvedCorrections
+          })
+          : buildDeepSeekVisionRequest({ prompt, size, files, maxTokens: 8192 });
         ({ response, text, data } = await sendRequest());
         if (!response.ok) {
           const upstreamError = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
@@ -198,7 +217,10 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
           detectedReferenceCorrections = result.referenceCorrections;
         }
       }
-      const finalUnresolvedCorrections = getUnresolvedReferenceCorrections(result);
+      const finalUnresolvedCorrections = getUnresolvedReferenceCorrections(result ? {
+        ...result,
+        referenceCorrections: detectedReferenceCorrections
+      } : result);
       if (!result || finalUnresolvedCorrections.length > 0) {
         console.error('DeepSeek 视觉润色没有有效最终结果:', JSON.stringify({
           userId: req.userId,
@@ -242,6 +264,7 @@ function createPromptPolishRouter({ authMiddleware, copyLimiter, upload, validat
 module.exports = {
   DEFAULT_DEEPSEEK_VISION_MODEL,
   MAX_DEEPSEEK_INLINE_IMAGE_BYTES,
+  buildDeepSeekCorrectionRequest,
   buildDeepSeekVisionRequest,
   acquirePromptPolishSlot,
   createPromptPolishRouter,
