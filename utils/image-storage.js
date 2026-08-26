@@ -302,7 +302,14 @@ function getLocalImageDimensions(localUrls) {
   return (localUrls || []).map((url) => {
     const filepath = getLocalUploadPath(url);
     if (!filepath || !fs.existsSync(filepath)) return null;
-    return getImageDimensionsFromBuffer(fs.readFileSync(filepath));
+    // Windows Defender/索引服务可能在刚写入时短暂占用文件。尺寸只是展示元数据，
+    // 不能因为读取失败把已经成功保存的图片任务标记为失败。
+    try {
+      return getImageDimensionsFromBuffer(fs.readFileSync(filepath));
+    } catch (error) {
+      console.warn('读取已保存图片尺寸失败，跳过尺寸记录:', error.code || error.message || error);
+      return null;
+    }
   });
 }
 

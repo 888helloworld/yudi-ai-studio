@@ -73,11 +73,16 @@ function assertSavedImageDimensions(localUrls, expectedSize) {
   for (const url of localUrls) {
     const filepath = getLocalUploadPath(url);
     if (!filepath || !fs.existsSync(filepath)) continue;
-    const dimensions = getImageDimensionsFromBuffer(fs.readFileSync(filepath));
-    if (dimensions && (dimensions.width !== expectedWidth || dimensions.height !== expectedHeight)) {
-      console.warn('上游返回图片尺寸不匹配，已保留原图继续返回:', JSON.stringify({
-        url, expectedSize, actualSize: dimensions.size
-      }));
+    try {
+      const dimensions = getImageDimensionsFromBuffer(fs.readFileSync(filepath));
+      if (dimensions && (dimensions.width !== expectedWidth || dimensions.height !== expectedHeight)) {
+        console.warn('上游返回图片尺寸不匹配，已保留原图继续返回:', JSON.stringify({
+          url, expectedSize, actualSize: dimensions.size
+        }));
+      }
+    } catch (error) {
+      // 图片已写入成功时，尺寸校验失败不应影响结果交付。
+      console.warn('读取已保存图片进行尺寸校验失败，已保留原图继续返回:', error.code || error.message || error);
     }
   }
 }
