@@ -293,6 +293,15 @@
       promptPolishSeq: 0
     };
     ImageStudio.state = state;
+
+    function createTaskId() {
+      const randomPart = globalThis.crypto?.randomUUID
+        ? globalThis.crypto.randomUUID().replace(/-/g, '')
+        : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      return `xi-task-${randomPart}`;
+    }
+
+    ImageStudio.createTaskId = createTaskId;
     ImageStudio.assets = Object.freeze({
       buildAssetFetchOptions,
       fetchAssetBlob,

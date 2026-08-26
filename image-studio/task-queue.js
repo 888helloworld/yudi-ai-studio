@@ -20,7 +20,7 @@
         const createdAtMs = Date.now();
         const taskSourcePreviewUrls = createTaskSourcePreviewUrls(selectedSources);
         const task = {
-          id: 'xi-task-' + (++state.taskSeq),
+          id: ImageStudio.createTaskId(),
           index: state.taskSeq,
           status: 'queued',
           mode,

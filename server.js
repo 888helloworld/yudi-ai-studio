@@ -172,7 +172,8 @@ app.get('/xhs-tool/:filename', (req, res, next) => {
 app.get('/image-studio/:filename', (req, res, next) => {
   const filename = path.basename(req.params.filename);
   if (filename !== req.params.filename || !IMAGE_STUDIO_FILES.has(filename)) return next();
-  res.setHeader('Cache-Control', PUBLIC_STATIC_CACHE_CONTROL);
+  // 任务脚本必须及时更新；否则刷新后的页面可能沿用旧任务号规则，造成幂等冲突。
+  res.setHeader('Cache-Control', PUBLIC_HTML_CACHE_CONTROL);
   return res.sendFile(path.join(__dirname, 'image-studio', filename), { cacheControl: false }, next);
 });
 app.get('/frontend/:filename', (req, res, next) => {

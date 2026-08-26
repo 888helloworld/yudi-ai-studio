@@ -106,7 +106,7 @@
         const createdAtMs = Date.now() + index;
         const taskSourcePreviewUrls = createTaskSourcePreviewUrls(selectedSources);
         const task = {
-          id: 'xi-task-' + (++state.taskSeq),
+          id: ImageStudio.createTaskId(),
           index: state.taskSeq,
           status: 'queued',
           mode: 'edit',
@@ -148,4 +148,3 @@
       setStatus(`电商详情套图已加入队列：${modules.length} 张。`, 'ok');
       processQueue();
     }
-
