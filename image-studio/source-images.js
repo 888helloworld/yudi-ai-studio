@@ -56,7 +56,7 @@
       const preview = slot.querySelector('.xi-source-preview');
       setStatus(
         file.size > MAX_SOURCE_IMAGE_BYTES
-          ? `原图超过 20MB，正在温和压缩参考图 ${index + 1}...`
+          ? `正在压缩参考图 ${index + 1}，确保实际上传不超过 10MB...`
           : `正在准备参考图 ${index + 1}...`,
         ''
       );
@@ -77,7 +77,7 @@
       renderSourceSlot(index);
       generateBtn.disabled = false;
       updateGenerateButton();
-      setStatus(`已放入 ${getSelectedSourceImages().length} 张参考图，可以开始改图了。`, 'ok');
+      setStatus(`已放入 ${getSelectedSourceImages().length} 张参考图（图${index + 1} 实际上传 ${formatSourceFileSize(preparedFile.size)}），可以开始改图了。`, 'ok');
     }
 
     function renderSourceSlot(index) {
@@ -115,7 +115,7 @@
 
       const name = document.createElement('div');
       name.className = 'xi-source-name';
-      name.textContent = getSourceImageName(index);
+      name.textContent = `${getSourceImageName(index)} · ${formatSourceFileSize(file.size)}`;
       const remove = document.createElement('button');
       remove.className = 'remove-ref';
       remove.type = 'button';
@@ -264,6 +264,12 @@
       return `图${index + 1}.png`;
     }
 
+    function formatSourceFileSize(bytes) {
+      const value = Number(bytes || 0);
+      if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))}KB`;
+      return `${(value / (1024 * 1024)).toFixed(1)}MB`;
+    }
+
     async function prepareSourceImage(file) {
       const keepOriginal = file.size <= MAX_SOURCE_IMAGE_BYTES
         && file.type === 'image/png';
@@ -287,7 +293,7 @@
         }
       }
 
-      throw new Error('图片压缩后仍超过 20MB，请先缩小原图。');
+      throw new Error('图片压缩后仍超过 9MB，请先缩小原图。');
     }
 
     function readFileAsDataUrl(file) {

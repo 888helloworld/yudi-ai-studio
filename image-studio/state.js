@@ -215,9 +215,10 @@
     const DEFAULT_QUALITY = 'medium';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
-    const MAX_SOURCE_IMAGE_BYTES = 20 * 1024 * 1024;
+    // 服务端单图上限为 10MB；留出余量避免 multipart 编码和单位差异导致临界值失败。
+    const MAX_SOURCE_IMAGE_BYTES = 9 * 1024 * 1024;
     const MAX_SOURCE_INPUT_BYTES = 50 * 1024 * 1024;
-    const TARGET_PREPARED_SOURCE_BYTES = 19 * 1024 * 1024;
+    const TARGET_PREPARED_SOURCE_BYTES = 9 * 1024 * 1024;
     const PROMPT_PLACEHOLDERS = [
       '例如：雨后的窗边，一束柔光落在旧木桌上，咖啡还有热气，画面安静、真实、带一点温柔的颗粒感。',
       '例如：白底产品主图，一双米白色分趾袜平整摆放，纹理清楚，光线干净，像专业电商摄影棚拍出来的。',
