@@ -17,7 +17,14 @@ foreach ($target in $targets) {
   $permission = if ($item.PSIsContainer) { '(OI)(CI)F' } else { 'F' }
   & icacls.exe $target '/inheritance:r' | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Failed to disable ACL inheritance: $target" }
-  & icacls.exe $target '/grant:r' "*$currentSid`:$permission" '*S-1-5-32-544:F' '*S-1-5-18:F' | Out-Null
+  & icacls.exe $target '/grant:r' "*$currentSid`:$permission" "*S-1-5-32-544`:$permission" "*S-1-5-18`:$permission" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Failed to apply ACL: $target" }
+
+  if ($item.PSIsContainer) {
+    # /inheritance:r only changes the folder. Existing files keep their old ACL,
+    # so explicitly grant the service account access to them as well.
+    & icacls.exe (Join-Path $target '*') '/grant' '*S-1-5-18:F' '/T' '/C' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Failed to repair child ACLs: $target" }
+  }
   Write-Host "Secured: $target"
 }
