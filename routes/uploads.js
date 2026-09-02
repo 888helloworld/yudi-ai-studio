@@ -14,7 +14,8 @@ function createUploadRouter({ authMiddleware, canUserAccessUpload }) {
     const filepath = path.join(UPLOAD_DIR, filename);
     if (!filepath.startsWith(UPLOAD_DIR + path.sep)) return res.status(400).json({ error: '图片路径无效' });
     if (!fs.existsSync(filepath)) return res.status(404).json({ error: '图片不存在' });
-    res.setHeader('Cache-Control', 'private, max-age=86400');
+    // 不缓存图片权限失败结果，避免一次 500 让预览在浏览器里持续失效。
+    res.setHeader('Cache-Control', 'private, no-cache, must-revalidate');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     const responseFilepath = String(req.query.variant || '').toLowerCase() === 'thumb'

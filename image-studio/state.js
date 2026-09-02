@@ -29,7 +29,10 @@
     }
     function buildAssetFetchOptions(url) {
       const headers = isProtectedUploadUrl(url) && token ? { 'Authorization': 'Bearer ' + token } : {};
-      return { headers, credentials: 'same-origin', cache: 'default' };
+      // 预览图曾经可能被权限错误（500）缓存，之后即使服务恢复也会一直显示失败。
+      // 受保护图片每次都重新校验，避免把旧的失败响应继续留在浏览器里。
+      const cache = isProtectedUploadUrl(url) ? 'no-store' : 'default';
+      return { headers, credentials: 'same-origin', cache };
     }
 
     async function fetchAssetBlob(url) {
