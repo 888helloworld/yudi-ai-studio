@@ -29,7 +29,7 @@ function deductPoints(userId, amount, description, referenceKey = null) {
     addPointLog(userId, 'consume', -amount, user.points, description, referenceKey);
     return { success: true, balance: user.points, alreadyApplied: false };
   });
-  return transaction();
+  return transaction.immediate();
 }
 
 function rechargePoints(userId, amount, description = '管理员充值', referenceKey = null, logType = 'recharge') {
@@ -52,7 +52,7 @@ function rechargePoints(userId, amount, description = '管理员充值', referen
     addPointLog(userId, logType, amount, user.points, description, referenceKey);
     return { balance: user.points, alreadyApplied: false };
   });
-  return transaction();
+  return transaction.immediate();
 }
 
 function getPointLogs(userId, limit = 50, offset = 0) {

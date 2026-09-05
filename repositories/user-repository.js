@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('node:crypto');
 const { db } = require('../database');
 const { addPointLog } = require('./point-repository');
 const { deleteUnreferencedUploads, extractUploadFilenames } = require('../utils/upload-cleanup');
@@ -24,7 +25,7 @@ function createUser(username, password, policy = {}) {
     return user;
   });
   try {
-    return transaction();
+    return transaction.immediate();
   } catch (error) {
     if (error.message.includes('UNIQUE')) throw new Error('用户名已存在');
     throw error;
@@ -66,7 +67,7 @@ function createUserWithInvite(username, password, inviteCode, policy = {}) {
     return user;
   });
 
-  return transaction();
+  return transaction.immediate();
 }
 
 function verifyUser(username, password) {
@@ -142,7 +143,7 @@ function adjustUserPoints(userId, amount, description, referenceKey) {
     addPointLog(userId, 'admin_adjust', normalized, user.points, description || '管理员调整积分', referenceKey || null);
     return { success: true, balance: user.points };
   });
-  return transaction();
+  return transaction.immediate();
 }
 
 function deleteUser(id) {
@@ -150,6 +151,10 @@ function deleteUser(id) {
     const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId);
     if (!user) return { deleted: false, uploadValues: [] };
     if (user.role === 'admin') throw new Error('不能删除管理员账号');
+    const pendingOperation = db.prepare("SELECT id FROM operations WHERE user_id = ? AND status = 'running' LIMIT 1").get(userId);
+    const activeHistory = db.prepare(`SELECT id FROM history WHERE user_id = ? AND json_valid(content)
+      AND json_extract(CASE WHEN json_valid(content) THEN content ELSE '{}' END, '$.status') IN ('running','queued') LIMIT 1`).get(userId);
+    if (pendingOperation || activeHistory) throw new Error('用户还有进行中的任务，请等待结束后注销');
 
     const admin = db.prepare('SELECT id FROM users WHERE role = ? ORDER BY id ASC LIMIT 1').get('admin');
     if (!admin) throw new Error('缺少管理员账号，无法转移邀请码归属');
@@ -158,15 +163,18 @@ function deleteUser(id) {
       .flatMap((row) => [row.image_url, row.content]);
     db.prepare('UPDATE cdkeys SET used_by = NULL WHERE used_by = ?').run(userId);
     db.prepare('UPDATE cdkeys SET created_by = ? WHERE created_by = ?').run(admin.id, userId);
-    db.prepare('DELETE FROM payment_orders WHERE user_id = ?').run(userId);
+    db.prepare("UPDATE payment_orders SET status = 'closed' WHERE user_id = ? AND status = 'pending'").run(userId);
     db.prepare('DELETE FROM templates WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM analytics_events WHERE user_id = ?').run(userId);
-    db.prepare('DELETE FROM point_logs WHERE user_id = ?').run(userId);
+    db.prepare('UPDATE operations SET result = NULL, fingerprint = ? WHERE user_id = ?').run('', userId);
+    db.prepare('DELETE FROM feedback WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM history WHERE user_id = ?').run(userId);
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    db.prepare(`UPDATE users SET username = ?, password_hash = ?, status = 'banned', status_reason = '账号已注销',
+      token_version = token_version + 1, policy_ip = '', deleted_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .run(`deleted_${userId}_${crypto.randomBytes(4).toString('hex')}`, bcrypt.hashSync(crypto.randomUUID(), 10), userId);
     return { deleted: true, uploadValues };
   });
-  const result = transaction(id);
+  const result = transaction.immediate(id);
   if (result.deleted) deleteUnreferencedUploads(extractUploadFilenames(result.uploadValues));
   return result.deleted;
 }

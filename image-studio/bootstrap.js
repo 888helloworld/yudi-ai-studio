@@ -91,7 +91,16 @@
     });
     document.addEventListener('paste', handleSourcePaste);
 
-    generateBtn.addEventListener('click', enqueueTasks);
+    generateBtn.addEventListener('click', () => {
+      if (generateBtn.disabled) return;
+      generateBtn.disabled = true;
+      try { enqueueTasks(); } finally { setTimeout(() => updateGenerateButton(), 1000); }
+    });
+    window.addEventListener('beforeunload', (event) => {
+      if (state.queue.length || state.tasks.some(task => task.status === 'unknown' || (task.status === 'running' && !task.jobId))) {
+        event.preventDefault(); event.returnValue = '';
+      }
+    });
     polishPromptBtn?.addEventListener('click', polishCurrentPrompt);
     retryPromptPolishBtn?.addEventListener('click', polishCurrentPrompt);
     applyPromptPolishBtn?.addEventListener('click', applyPolishedPrompt);

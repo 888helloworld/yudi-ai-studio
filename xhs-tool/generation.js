@@ -1,6 +1,45 @@
+async function guardXhsSubmit(button, action) {
+  if (button.disabled) return;
+  button.disabled = true;
+  try { await action(); } finally { button.disabled = false; }
+}
+
+async function requestXhsTask(url, options) {
+  const taskId = options.body instanceof FormData ? options.body.get('clientTaskId') : JSON.parse(options.body).clientTaskId;
+  const card = document.getElementById(taskId);
+  try {
+    const response = await fetch(url, options);
+    const data = await response.clone().json();
+    if (card && Number.isFinite(data.chargedPoints)) card.dataset.billing = `预扣 ${data.chargedPoints} · 退款 ${data.refundedPoints} · 实际消耗 ${data.actualCost} 积分`;
+    return response;
+  } catch {
+    if (card) card.dataset.uncertain = 'true';
+    return new Response(JSON.stringify({ error: '网络中断，结果仍在确认，请勿重复生成。可在此等待或到历史记录查看。' }), { status: 202, headers: { 'Content-Type': 'application/json' } });
+  }
+}
+
+async function reconcileXhsOperations() {
+  for (const task of getPendingTasks()) {
+    const card = document.getElementById(task.id);
+    if (!card || card.dataset.uncertain !== 'true') continue;
+    try {
+      const response = await fetch('/api/user/tasks/' + encodeURIComponent(task.id), { headers: getAuthHeader(), cache: 'no-store' });
+      if (!response.ok) continue;
+      const { task: operation } = await response.json();
+      if (operation.status === 'running') continue;
+      delete card.dataset.uncertain;
+      const result = operation.result || {};
+      card.dataset.billing = `预扣 ${operation.chargedPoints} · 退款 ${operation.refundedPoints} · 实际消耗 ${operation.actualCost} 积分`;
+      updateTaskCard(task.id, { ...result, type: task.type === 'rewrite' ? 'copy' : task.type });
+      if (Number.isFinite(result.remainingPoints)) updatePoints(result.remainingPoints);
+      await loadServerHistory({ force: true });
+    } catch { /* 网络恢复后继续确认，不重复提交收费请求。 */ }
+  }
+}
+
 function initGenerateImage() {
   const btn = document.getElementById('generateBtn');
-  btn.addEventListener('click', generateImage);
+  btn.addEventListener('click', () => guardXhsSubmit(btn, generateImage));
 }
 
 function createClientTaskId() {
@@ -39,7 +78,7 @@ function forgetPendingTask(taskId) {
 }
 
 function restorePendingTasks() {
-  const cutoff = Date.now() - 15 * 60 * 1000;
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   const pending = getPendingTasks().filter((task) => task.createdAt >= cutoff);
   savePendingTasks(pending);
   const tasksGrid = document.getElementById('tasksGrid');
@@ -47,6 +86,7 @@ function restorePendingTasks() {
   pending.forEach((task) => {
     if (document.getElementById(task.id)) return;
     const card = createTaskCard(task.id, task.type, task.message);
+    card.dataset.uncertain = 'true';
     card.dataset.historyKey = task.historyKey || '';
     tasksGrid.appendChild(card);
     activeTasks.push(card.id);
@@ -69,7 +109,7 @@ function reconcilePendingTasks() {
 function startPendingTaskPolling() {
   if (pendingTaskPollTimer) return;
   pendingTaskPollTimer = window.setInterval(() => {
-    if (getPendingTasks().length) loadServerHistory({ force: true });
+    if (getPendingTasks().length) { reconcileXhsOperations(); loadServerHistory({ force: true }); }
   }, 4000);
 }
 
@@ -112,7 +152,7 @@ async function generateImage() {
   }
 
   try {
-    const res = await fetch('/generate', { 
+    const res = await requestXhsTask('/generate', {
       method: 'POST', 
       body: formData,
       headers: getAuthHeader()
@@ -145,7 +185,7 @@ async function generateImage() {
 // =============================================
 function initGenerateCopy() {
   const btn = document.getElementById('generateCopyBtn');
-  btn.addEventListener('click', generateCopy);
+  btn.addEventListener('click', () => guardXhsSubmit(btn, generateCopy));
 }
 
 async function generateCopy() {
@@ -166,7 +206,7 @@ async function generateCopy() {
   addTask(taskCard);
 
   try {
-    const res = await fetch('/generate-copy', {
+    const res = await requestXhsTask('/generate-copy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({ topic, type: selectedCopyType, clientTaskId: taskId })
@@ -211,7 +251,7 @@ function initRewrite() {
 
   // 鏀瑰啓鎸夐挳
   const btn = document.getElementById('rewriteBtn');
-  btn.addEventListener('click', rewriteCopy);
+  btn.addEventListener('click', () => guardXhsSubmit(btn, rewriteCopy));
 }
 
 // =============================================
@@ -230,7 +270,8 @@ function initGenerateBoth() {
   });
   
   // 生成按钮
-  document.getElementById('generateBothBtn').addEventListener('click', generateBoth);
+  const bothBtn = document.getElementById('generateBothBtn');
+  bothBtn.addEventListener('click', () => guardXhsSubmit(bothBtn, generateBoth));
 }
 
 async function generateBoth() {
@@ -254,7 +295,7 @@ async function generateBoth() {
   addTask(taskCard);
   
   try {
-    const res = await fetch('/generate-both', {
+    const res = await requestXhsTask('/generate-both', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({ prompt, ratio, imageCount, clientTaskId: taskId })
@@ -282,7 +323,7 @@ async function generateBoth() {
     // 刷新历史记录
     await loadServerHistory({ force: true });
     
-    document.getElementById('bothPrompt').value = '';
+
   } catch (err) {
     updateTaskCard(taskId, { error: err.message || '生成失败' });
   }
@@ -308,7 +349,7 @@ async function rewriteCopy() {
   addTask(taskCard);
 
   try {
-    const res = await fetch('/rewrite', {
+    const res = await requestXhsTask('/rewrite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
       body: JSON.stringify({ 
@@ -331,7 +372,7 @@ async function rewriteCopy() {
         copyType: '改写',
         isRewrite: true
       });
-      document.getElementById('rewriteInput').value = '';
+
       await loadServerHistory({ force: true });
     } else {
       updateTaskCard(taskId, { error: data.error || '改写失败' });

@@ -23,7 +23,7 @@ foreach ($target in $targets) {
   if ($item.PSIsContainer) {
     # /inheritance:r only changes the folder. Existing files keep their old ACL,
     # so explicitly grant the service account access to them as well.
-    & icacls.exe (Join-Path $target '*') '/grant' '*S-1-5-18:F' '/T' '/C' | Out-Null
+    & icacls.exe (Join-Path $target '*') '/grant' "*$currentSid`:F" '*S-1-5-32-544:F' '*S-1-5-18:F' '/T' '/C' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Failed to repair child ACLs: $target" }
   }
   Write-Host "Secured: $target"

@@ -262,7 +262,7 @@
     }
 
     async function deleteUser(userId) {
-      if (!confirm('确定要删除该用户吗？该操作不可恢复。')) return;
+      if (!confirm('确认注销该账号？创作内容将删除、登录将失效、未付订单将关闭。必要财务记录按隐私政策保留；这不会自动退款。')) return;
       try {
         const res = await authFetch(`/api/admin/users/${userId}`, {
           method: 'DELETE',

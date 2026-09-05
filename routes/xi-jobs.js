@@ -28,9 +28,6 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     try { assertXiImageSizeSupported(size); } catch (error) {
       return res.status(error.statusCode || 400).json({ error: error.message });
     }
-    try { manager.assertCanCreateJob(req.userId); } catch (error) {
-      return res.status(error.statusCode || 429).json({ error: error.message });
-    }
     const costPoints = POINTS.image * count;
     try {
       const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality: fixedQuality, costPoints, clientTaskId });
@@ -58,9 +55,6 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     if (sourceFiles.some((file) => (file.buffer?.length || 0) > 20 * 1024 * 1024)) {
       return res.status(400).json({ error: '改图原图处理后仍超过 20MB，请换一张更小的参考图' });
     }
-    try { manager.assertCanCreateJob(req.userId); } catch (error) {
-      return res.status(error.statusCode || 429).json({ error: error.message });
-    }
     const costPoints = POINTS.image * count;
     let sourcePreviewUrls = [];
     try {
@@ -82,6 +76,11 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
         costPoints,
         clientTaskId
       });
+      for (const url of sourcePreviewUrls) {
+        if (job.sourcePreviewUrls?.includes(url)) continue;
+        const filepath = getLocalUploadPath(url);
+        try { if (filepath && fs.existsSync(filepath)) fs.unlinkSync(filepath); } catch {}
+      }
       return res.json({ success: true, job: manager.serializeJob(job) });
     } catch (error) {
       sourcePreviewUrls.forEach((url) => {

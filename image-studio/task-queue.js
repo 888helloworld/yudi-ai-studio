@@ -48,7 +48,7 @@
       renderTaskPage();
       setStatus(`已开始生成 ${batchCount} 张${mode === 'edit' ? '参考图改图' : '新图'}。`, 'ok');
       updateStats();
-      resetImageForm();
+      // 保留描述、参考图和尺寸，方便提交失败后继续修改。
       processQueue();
     }
 
@@ -114,7 +114,7 @@
         task.doneAt = result.createdAt || formatBeijingDateTime();
         setStatus(`#${task.index} 已出图，看看有没有顺眼的。`, 'ok');
       } catch (err) {
-        task.status = 'failed';
+        task.status = err?.uncertain || /fetch|network|网络|连接|JSON/i.test(err?.message || '') ? 'unknown' : 'failed';
         task.finishedAtMs = Date.now();
         task.error = formatTaskError(err?.message || '任务失败');
         setStatus(`#${task.index} 没生成成功，已继续下一个任务：${formatTaskError(task.error)}`, 'error');
@@ -128,6 +128,7 @@
     }
 
     async function requestImageTask(task) {
+      if (task.jobId) return waitServerJob(task);
       const submitResult = task.mode !== 'edit'
         ? await requestJson('/api/xi-image/jobs/generate', {
           prompt: task.prompt,
@@ -142,6 +143,8 @@
       const job = submitResult.job;
       updateNavPoints(job.remainingPoints);
       task.jobId = job.id;
+      task.costPoints = job.costPoints;
+      task.refundedPoints = job.refundedPoints;
       task.historyId = job.historyId || task.historyId || '';
       if (task.historyId) task.index = task.historyId;
       task.sourcePreviewUrls = job.sourcePreviewUrls || task.sourcePreviewUrls || [];
@@ -226,6 +229,8 @@
         task.actualSize = job.upstreamMeta?.actual_size || task.actualSize || '';
         task.billingOutputTokens = job.upstreamMeta?.billing_output_tokens || task.billingOutputTokens || 0;
         task.error = formatTaskError(job.error || '');
+        task.costPoints = job.costPoints;
+        task.refundedPoints = job.refundedPoints;
         task.historyId = job.historyId || task.historyId || '';
         if (task.historyId) task.index = task.historyId;
         task.provider = job.provider || task.provider || '';
@@ -266,77 +271,44 @@
           setTimeout(() => pollServerJob(task, resolve, reject), 2000);
           return;
         }
+        err.uncertain = true;
+        task.status = 'unknown';
+        task.error = '暂时无法确认结果，服务器可能仍在生成。请继续确认，不要新建重复任务。';
+        updateTaskCard(task);
         if (reject) reject(err);
       }
     }
 
     async function handleMissingServerJob(task, resolve, reject) {
-      task.status = 'running';
-      task.error = '服务刚刚重启，正在从历史记录找回结果...';
-      updateTaskCard(task);
       try {
-        const jobsRes = await fetch('/api/xi-image/jobs', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const jobsData = await jobsRes.json().catch(() => ({}));
-        const recoveredJob = (jobsData.jobs || []).find((job) => {
-          if (task.historyId && job.historyId && String(job.historyId) === String(task.historyId)) return true;
-          return job.prompt === task.prompt
-            && job.size === task.size
-            && job.mode === task.mode;
-        });
-        if (recoveredJob) {
-          task.jobId = recoveredJob.id;
-          task.historyId = recoveredJob.historyId || task.historyId || '';
-          task.status = recoveredJob.status || 'running';
-          task.error = '';
-          task.startedAtMs = recoveredJob.startedAtMs || task.startedAtMs;
-          const submittedAtMs = parseServerJobSubmittedAtMs(recoveredJob);
-          task.createdAtMs = submittedAtMs || task.createdAtMs || 0;
-          task.submittedAtMs = submittedAtMs || task.submittedAtMs || task.createdAtMs || 0;
-          task.durationMs = recoveredJob.durationMs || task.durationMs || 0;
-          updateTaskCard(task);
-          pollServerJob(task, resolve, reject);
-          return;
-        }
-        await loadSavedTasks({ force: true });
-        const candidates = state.tasks.filter((item) => {
-          if (item.id === task.id || item.jobId === task.jobId) return false;
-          const sameTask = item.status === 'done'
-            && item.prompt === task.prompt
-            && item.size === task.size
-            && item.mode === task.mode;
-          if (!sameTask) return false;
-          const itemTime = Number(item.createdAtMs || 0);
-          const taskTime = Number(task.createdAtMs || 0);
-          return !itemTime || !taskTime || Math.abs(itemTime - taskTime) < 15 * 60 * 1000;
-        });
-        candidates.sort((a, b) => Number(b.createdAtMs || b.finishedAtMs || 0) - Number(a.createdAtMs || a.finishedAtMs || 0));
-        const recovered = candidates[0];
-        if (recovered) {
-          Object.assign(task, {
-            status: 'done',
-            imageUrls: recovered.imageUrls || [],
-            outputDimensions: recovered.outputDimensions || [],
-            requestedQuality: recovered.requestedQuality || task.requestedQuality || task.quality,
-            actualQuality: recovered.actualQuality || task.actualQuality || '',
-            actualSize: recovered.actualSize || task.actualSize || '',
-            billingOutputTokens: recovered.billingOutputTokens || task.billingOutputTokens || 0,
-            sourceDimensions: recovered.sourceDimensions || [],
-            historyId: recovered.historyId || task.historyId || '',
-            saved: true,
-            error: '',
-            finishedAtMs: recovered.finishedAtMs || Date.now(),
-            durationMs: recovered.durationMs || task.durationMs || 0
-          });
-          updateTaskCard(task);
-          updateStats();
-          if (resolve) resolve({ job: task });
-          return;
+        const response = await fetch('/api/xi-image/jobs', { headers: { Authorization: 'Bearer ' + token } });
+        if (!response.ok) throw new Error('任务状态暂不可用');
+        const data = await response.json();
+        const recovered = (data.jobs || []).find(job =>
+          (task.historyId && String(job.historyId) === String(task.historyId)) ||
+          (job.clientTaskId && job.clientTaskId === (task.clientTaskId || task.id)));
+        if (recovered) { task.jobId = recovered.id; return pollServerJob(task, resolve, reject); }
+        if (task.historyId) {
+          const historyResponse = await fetch('/api/user/history/' + encodeURIComponent(task.historyId), { headers: { Authorization: 'Bearer ' + token } });
+          if (historyResponse.ok) {
+            const { history } = await historyResponse.json();
+            const meta = parseJson(history.content) || {};
+            const urls = parseSavedImageUrls(history.image_url);
+            if (meta.status === 'failed' || urls.length) {
+              Object.assign(task, {status: urls.length ? 'done' : 'failed',imageUrls: urls,
+                refundedPoints:Number(meta.refunded_points || 0),costPoints:Number(history.cost_points || 0)+Number(meta.refunded_points || 0),
+                outputDimensions:meta.output_dimensions || [],error:meta.error || '',saved:true});
+              updateTaskCard(task); updateStats();
+              if (task.status === 'done') { if (resolve) resolve({job:task}); }
+              else if (reject) reject(new Error(task.error || '任务失败'));
+              return;
+            }
+          }
         }
       } catch {}
-      const err = new Error('服务重启后任务状态丢失，未在历史记录里找到结果。请重新生成一次。');
-      if (reject) reject(err);
+      task.status = 'unknown'; task.error = '暂时无法确认结果，请稍后继续确认或到帮助中心反馈。';
+      updateTaskCard(task);
+      if (reject) reject(Object.assign(new Error(task.error), {uncertain:true}));
     }
 
     async function requestJson(url, body) {

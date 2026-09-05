@@ -68,7 +68,7 @@
         loading.className = 'task-loading';
         loading.innerHTML = `<div class="spinner"></div><span>${task.detailSuite ? '正在生成详情图' : `正在${task.mode === 'edit' ? '参考改图' : '生成图片'}`}...</span>`;
         body.appendChild(loading);
-      } else if (task.status === 'failed') {
+      } else if (task.status === 'failed' || task.status === 'unknown') {
         appendTaskSourceThumbs(body, task);
         body.appendChild(createDurationLine(task));
         const error = document.createElement('div');
@@ -80,8 +80,8 @@
         const retry = document.createElement('button');
         retry.className = 'task-btn';
         retry.type = 'button';
-        retry.textContent = '重试';
-        retry.addEventListener('click', () => retryTask(task.id));
+        retry.textContent = task.status === 'unknown' ? '继续确认（不重复扣费）' : '重新生成（按新任务扣费）';
+        retry.addEventListener('click', () => task.status === 'unknown' ? runTask(task) : retryTask(task.id));
         actions.appendChild(retry);
         body.appendChild(actions);
       } else if (task.status === 'done') {
@@ -104,7 +104,8 @@
         queued: '等待中',
         running: '出图中',
         done: '完成',
-        failed: '失败'
+        failed: '失败',
+        unknown: '结果待确认'
       };
       if (task.status !== 'done') {
         const stateLine = document.createElement('div');
@@ -176,6 +177,7 @@
     }
 
     function refillPromptFromTask(task) {
+      trackProductEvent('history_reuse');
       if (!(task.prompt || '').trim()) {
         setStatus('这条记录没有可回填的提示词。', 'error');
         return;

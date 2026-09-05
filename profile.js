@@ -65,10 +65,10 @@
 
       let html = '<table class="log-table"><thead><tr><th>时间</th><th>类型</th><th>金额</th><th>说明</th></tr></thead><tbody>';
       pageLogs.forEach(log => {
-        const typeLabel = log.type === 'recharge' ? '获得' : '消耗';
-        const typeClass = log.type === 'recharge' ? 'recharge' : 'consume';
-        const amountClass = log.type === 'recharge' ? 'positive' : 'negative';
-        const amount = log.type === 'recharge' ? `+${log.amount}` : `${log.amount}`;
+        const typeLabel = ({ refund: '退款', recharge: '充值', consume: '消费', signup_bonus: '注册赠送', invite_bonus: '邀请赠送', admin_adjust: '管理员调整' })[log.type] || (log.amount > 0 ? '获得' : '消耗');
+        const typeClass = log.amount > 0 ? 'recharge' : 'consume';
+        const amountClass = log.amount > 0 ? 'positive' : 'negative';
+        const amount = log.amount > 0 ? `+${log.amount}` : `${log.amount}`;
         html += `<tr>
           <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(log.created_at)}</td>
           <td><span class="log-type ${typeClass}">${typeLabel}</span></td>

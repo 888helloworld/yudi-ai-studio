@@ -1,4 +1,7 @@
 const { db } = require('../database');
+function findXiHistory(userId, clientId) {
+  return db.prepare("SELECT * FROM history WHERE user_id = ? AND client_task_id = ? AND sub_type IN ('xi-edit','xi-generate') ORDER BY id DESC LIMIT 1").get(userId, clientId);
+}
 
 function createChargedXiJobHistory({ job, content }) {
   const transaction = db.transaction(() => {
@@ -15,7 +18,8 @@ function createChargedXiJobHistory({ job, content }) {
         const samePayload = existing.sub_type === expectedSubType
           && String(existing.prompt || '') === String(job.prompt || '')
           && String(existing.ratio || '') === String(job.size || '')
-          && Number(meta.count || 1) === Number(job.count || 1);
+          && Number(meta.count || 1) === Number(job.count || 1)
+          && (!meta.source_fingerprint || meta.source_fingerprint === job.sourceFingerprint);
         if (!samePayload) {
           const error = new Error('同一任务号的参数不一致，请新建任务后重试');
           error.statusCode = 409;
@@ -52,7 +56,7 @@ function createChargedXiJobHistory({ job, content }) {
     );
     return { historyId: result.lastInsertRowid, alreadyExists: false, row: null };
   });
-  return transaction();
+  return transaction.immediate();
 }
 
 function settleXiJobHistory({ historyId, userId, content, imageUrls, costPoints, refundAmount, refundDescription }) {
@@ -100,7 +104,7 @@ function settleXiJobHistory({ historyId, userId, content, imageUrls, costPoints,
     );
     return { updated: result.changes > 0, refunded };
   });
-  return transaction();
+  return transaction.immediate();
 }
 
 function updateXiJobHistory({ historyId, userId, content, imageUrls, costPoints }) {
@@ -135,6 +139,7 @@ function updateXiHistoryState(historyId, content, imageUrl = null, costPoints = 
 }
 
 module.exports = {
+  findXiHistory,
   createChargedXiJobHistory,
   getRecoverableXiJobHistories,
   settleXiJobHistory,

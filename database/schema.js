@@ -2,6 +2,14 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 function initDatabase(db) {
+  db.exec(`CREATE TABLE IF NOT EXISTS operations (
+    id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
+    client_id TEXT NOT NULL, endpoint TEXT NOT NULL, fingerprint TEXT NOT NULL,
+    charged INTEGER NOT NULL, refunded INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'running', result TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at TEXT,
+    UNIQUE(user_id, client_id)
+  )`);
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,6 +23,7 @@ function initDatabase(db) {
   `);
 
   const userColumns = db.prepare('PRAGMA table_info(users)').all();
+  if (!userColumns.some((column) => column.name === 'deleted_at')) db.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
   if (!userColumns.some((column) => column.name === 'token_version')) {
     db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
   }
@@ -73,6 +82,10 @@ function initDatabase(db) {
   `);
 
   const historyColumns = db.prepare('PRAGMA table_info(history)').all();
+  if (!historyColumns.some((column) => column.name === 'operation_id')) {
+    db.exec('ALTER TABLE history ADD COLUMN operation_id TEXT');
+  }
+  db.exec('CREATE INDEX IF NOT EXISTS idx_history_operation ON history(operation_id)');
   if (!historyColumns.some((column) => column.name === 'client_task_id')) {
     db.exec('ALTER TABLE history ADD COLUMN client_task_id TEXT');
   }
@@ -162,6 +175,18 @@ function initDatabase(db) {
   db.exec('CREATE INDEX IF NOT EXISTS idx_admin_audit_admin ON admin_audit_logs(admin_user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_analytics_event_created ON analytics_events(event_name, created_at)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)');
+  db.exec(`CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER REFERENCES users(id),
+    category TEXT NOT NULL, task_id TEXT NOT NULL DEFAULT '', message TEXT NOT NULL,
+    contact TEXT NOT NULL DEFAULT '', access_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open', reply TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.exec(`CREATE TABLE IF NOT EXISTS provider_costs (
+    day TEXT NOT NULL, currency TEXT NOT NULL, amount REAL NOT NULL,
+    note TEXT NOT NULL DEFAULT '', updated_by INTEGER NOT NULL REFERENCES users(id),
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(day, currency)
+  )`);
 
   const adminExists = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
   if (!adminExists) {

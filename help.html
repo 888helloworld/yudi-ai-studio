@@ -119,8 +119,26 @@
           <h3>为什么粘贴图片没有反应？</h3>
           <p>请先点击参考图上传区域，再使用 Ctrl+V 粘贴。浏览器需要允许页面读取剪贴板图片。</p>
         </section>
+        <section class="content-section" id="feedback">
+          <h2>问题反馈与回复查询</h2>
+          <p>无法登录也可以提交。请说明发生时间和问题；不要填写密码、完整卡密或 API 密钥。账号问题需经管理员核实身份后处理。</p>
+          <form id="feedbackForm">
+            <label>问题类型<select name="category"><option value="other">使用问题</option><option value="account">账号 / 忘记密码</option><option value="billing">积分 / 卡密</option><option value="quality">生成质量</option></select></label>
+            <label>任务号（可选）<input name="taskId" maxlength="160"></label>
+            <label>联系方式（可选，仅用于处理本次问题）<input name="contact" maxlength="200"></label>
+            <label>问题说明<textarea name="message" required minlength="5" maxlength="2000" rows="4"></textarea></label>
+            <button type="submit" class="btn-primary">提交反馈</button>
+          </form>
+          <p id="feedbackStatus" role="status" aria-live="polite"></p>
+          <form id="feedbackQuery">
+            <label>反馈编号<input name="id" required inputmode="numeric"></label>
+            <label>查询码<input name="code" required maxlength="100" autocomplete="off"></label>
+            <button type="submit" class="btn-primary">查看回复</button>
+          </form>
+        </section>
       </div>
     </div>
   </main>
+  <script src="feedback.js"></script>
 </body>
 </html>

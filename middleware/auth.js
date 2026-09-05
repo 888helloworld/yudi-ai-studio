@@ -91,7 +91,7 @@ function optionalAuth(req, res, next) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       const user = getUserAuthById(decoded.id);
-      if (user && Number(decoded.tv || 0) === Number(user.token_version || 0)) {
+      if (user && (!user.status || user.status === 'active') && Number(decoded.tv || 0) === Number(user.token_version || 0)) {
         req.user = user;
         req.userId = user.id;
       }

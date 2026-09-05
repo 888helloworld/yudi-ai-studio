@@ -1,4 +1,6 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { accountLimit } = require('../middleware/account-limits');
 const db = require('../db');
 const { getUserPaymentOrder } = require('../repositories/payment-repository');
 
@@ -53,9 +55,9 @@ function createPaymentRouter({ authMiddleware, safeCompareSecret }) {
     res.json({ orders: db.getUserPaymentOrders(req.userId) });
   });
 
-  router.post('/api/cdkey/redeem', authMiddleware, (req, res) => {
+  router.post('/api/cdkey/redeem', rateLimit({ windowMs: 900000, limit: 60, message: { error: '兑换请求过于频繁，请稍后再试' } }), authMiddleware, accountLimit(10), (req, res) => {
     const { code } = req.body;
-    if (!code) return res.status(400).json({ error: '请输入卡密' });
+    if (typeof code !== 'string' || !code.trim() || code.length > 100 || !/^[A-Za-z0-9-]+$/.test(code.trim())) return res.status(400).json({ error: '请输入有效的卡密' });
     const result = db.redeemCdkey(code.trim().toUpperCase(), req.userId);
     if (!result.success) return res.status(400).json({ error: result.error });
     res.json({ success: true, points: result.points, balance: result.balance });

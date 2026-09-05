@@ -116,6 +116,7 @@
         link.download = safeName;
         document.body.appendChild(link);
         link.click();
+        trackProductEvent('asset_download');
         link.remove();
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       } catch (err) {

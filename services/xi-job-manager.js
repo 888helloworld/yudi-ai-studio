@@ -1,9 +1,9 @@
 const crypto = require('crypto');
-const { updateXiJobHistory: persistXiJobHistory } = require('../repositories/xi-history-repository');
+const { updateXiJobHistory: persistXiJobHistory, findXiHistory } = require('../repositories/xi-history-repository');
 
 const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
 
-function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJobsPerUser = 0, maxQueuedJobs = 20, formatDateTime, runJob, getModel, createHistory }) {
+function createXiJobManager({ db, maxActiveJobs = 4, maxJobsPerUser = 10, maxQueuedJobs = 20, maxRunningPerUser = 2, formatDateTime, runJob, getModel, createHistory }) {
   const jobs = new Map();
   const queue = [];
   const cleanupTimers = new Map();
@@ -20,7 +20,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
         throw error;
       }
     }
-    if (queue.length >= maxQueuedJobs) {
+    if (maxQueuedJobs > 0 && queue.length >= maxQueuedJobs) {
       const error = new Error('画面工坊当前排队任务较多，请稍后再试');
       error.statusCode = 503;
       throw error;
@@ -53,6 +53,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       size_parameter_affects_output_guarantee: job.upstreamMeta?.size_parameter_affects_output_guarantee,
       quality_parameter_affects_output_guarantee: job.upstreamMeta?.quality_parameter_affects_output_guarantee,
       count: job.count,
+      source_fingerprint: job.sourceFingerprint || '',
       sources: job.sourceFileNames || [],
       source_urls: job.sourcePreviewUrls || [],
       source_dimensions: job.sourceDimensions || [],
@@ -140,7 +141,9 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
 
   function scheduleJobs() {
     while (activeJobs < maxActiveJobs && queue.length > 0) {
-      const job = queue.shift();
+      const index = queue.findIndex((candidate) => Array.from(jobs.values()).filter((item) => item.userId === candidate.userId && item.status === 'running').length < maxRunningPerUser);
+      if (index < 0) break;
+      const [job] = queue.splice(index, 1);
       if (!job || !jobs.has(job.id) || job.status !== 'queued') continue;
       activeJobs += 1;
       runJob(job)
@@ -160,12 +163,21 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
   }
 
   function createJob(userId, payload) {
+    const sourceHash = crypto.createHash('sha256');
+    for (const file of payload.sourceFiles || []) sourceHash.update(file.buffer);
+    payload.sourceFingerprint = sourceHash.digest('hex');
     if (payload.clientTaskId) {
       const existingJob = Array.from(jobs.values()).find((item) => (
         item.userId === userId && item.clientTaskId === payload.clientTaskId
       ));
-      if (existingJob) return existingJob;
+      if (existingJob) {
+        if (existingJob.prompt !== payload.prompt || existingJob.size !== payload.size || existingJob.mode !== payload.mode || existingJob.count !== payload.count || existingJob.sourceFingerprint !== payload.sourceFingerprint) {
+          throw Object.assign(new Error('同一任务号的内容不一致，请新建任务'), { statusCode: 409 });
+        }
+        return existingJob;
+      }
     }
+    if (!payload.clientTaskId || !findXiHistory(userId, payload.clientTaskId)) assertCanCreateJob(userId);
     const now = Date.now();
     const job = {
       id: `xijob_${now}_${crypto.randomBytes(4).toString('hex')}`,
@@ -189,6 +201,9 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
         try { const parsed = JSON.parse(row.image_url); return Array.isArray(parsed) ? parsed : [row.image_url]; } catch { return [row.image_url]; }
       })() : [];
       job.refundedPoints = Number(meta.refunded_points) || 0;
+      job.sourcePreviewUrls = Array.isArray(meta.source_urls) ? meta.source_urls : [];
+      job.sourceFileNames = Array.isArray(meta.sources) ? meta.sources : [];
+      job.sourceDimensions = Array.isArray(meta.source_dimensions) ? meta.source_dimensions : [];
       job.error = meta.error || '';
       job.finishedAtMs = ['done', 'failed', 'cancelled'].includes(job.status) ? now : 0;
       jobs.set(job.id, job);
@@ -213,6 +228,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       : 0;
     return {
       id: job.id,
+      clientTaskId: job.clientTaskId || '',
       status: job.status,
       mode: job.mode,
       prompt: job.prompt,
@@ -234,6 +250,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       error: job.error || '',
       historyId: job.historyId,
       costPoints: job.costPoints || 0,
+      actualCost: Math.max(0, (job.costPoints || 0) - (job.refundedPoints || 0)),
       refundedPoints: job.refundedPoints || 0,
       provider: job.provider || '',
       fallbackReason: job.fallbackReason || '',

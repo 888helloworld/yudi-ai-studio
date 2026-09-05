@@ -71,7 +71,7 @@ function isLoginLocked(username, ip) {
   const entry = loginFailCounts.get(key);
   if (!entry) return false;
   if (Date.now() < entry.lockedUntilMs) return true;
-  loginFailCounts.delete(key); // 锁定期过了，清除
+  if (entry.lockedUntilMs > 0 || Date.now() - entry.touchedAtMs >= LOGIN_LOCK_MS) loginFailCounts.delete(key);
   return false;
 }
 

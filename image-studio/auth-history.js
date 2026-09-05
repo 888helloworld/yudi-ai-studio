@@ -1,6 +1,5 @@
     function handleAuthExpired(message) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearLocalAuthState();
       document.getElementById('loginPrompt').classList.add('show');
       document.body.classList.add('login-locked');
       generateBtn.disabled = true;
@@ -52,6 +51,8 @@
           const task = {
             id: 'saved-xi-' + item.id,
             historyId: item.id,
+            costPoints: Number(item.cost_points || 0) + Number(meta.refunded_points || 0),
+            refundedPoints: Number(meta.refunded_points || 0),
             index: item.id,
             status: meta.status === 'failed' ? 'failed' : 'done',
             mode: item.sub_type === 'xi-edit' ? 'edit' : 'generate',
@@ -184,6 +185,9 @@
       return {
         id: 'job-' + job.id,
         jobId: job.id,
+        clientTaskId: job.clientTaskId || '',
+        costPoints: job.costPoints,
+        refundedPoints: job.refundedPoints,
         index,
         status: job.status,
         mode: job.mode || 'generate',

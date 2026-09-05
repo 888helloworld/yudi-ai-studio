@@ -40,9 +40,10 @@ function updateTaskCard(taskId, data) {
   const body = card.querySelector('.task-body');
 
   if (data.error) {
-    card.dataset.status = 'failed';
-    body.innerHTML = `<div class="xhs-task-state"><span class="task-type">失败</span></div><div class="task-error">${escapeHtml(data.error)}</div>`;
-    forgetPendingTask(taskId);
+    const uncertain = card.dataset.uncertain === 'true';
+    card.dataset.status = uncertain ? 'running' : 'failed';
+    body.innerHTML = `<div class="xhs-task-state"><span class="task-type">${uncertain ? '结果待确认' : '失败'}</span></div><div class="task-error">${escapeHtml(data.error)}</div>`;
+    if (!uncertain) forgetPendingTask(taskId);
     updateXhsWorkStats();
     return;
   }
@@ -164,6 +165,7 @@ async function downloadImage(url, prompt = '', ratio = 'image') {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
+    trackProductEvent('asset_download');
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   } catch (err) {
@@ -174,10 +176,10 @@ async function downloadImage(url, prompt = '', ratio = 'image') {
 XhsTool.downloadImage = downloadImage;
 
 function copyText(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
+  copyTextToClipboard(text).then(() => {
     btn.textContent = '已复制';
     setTimeout(() => { btn.textContent = '复制'; }, 2000);
-  });
+  }).catch(() => alert('复制失败，请手动选择文字复制'));
 }
 
 XhsTool.copyText = copyText;

@@ -1,9 +1,10 @@
 const { db } = require('../database');
+const operationContext = require('../services/operation-context');
 
 function addHistory(userId, type, data) {
   const result = db.prepare(`
-    INSERT INTO history (user_id, type, sub_type, content, image_url, prompt, ratio, cost_points, client_task_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO history (user_id, type, sub_type, content, image_url, prompt, ratio, cost_points, client_task_id, operation_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     userId,
     type,
@@ -13,7 +14,8 @@ function addHistory(userId, type, data) {
     data.prompt || null,
     data.ratio || null,
     data.cost_points ?? null,
-    data.client_task_id || null
+    data.client_task_id || operationContext.getStore()?.operation?.client_id || null,
+    operationContext.getStore()?.operation?.id || null
   );
   return result.lastInsertRowid;
 }
@@ -82,15 +84,19 @@ function getUserHistoryCount(userId, options = {}) {
 }
 
 function deleteHistory(id, userId) {
+  return db.transaction(() => {
   const row = db.prepare('SELECT * FROM history WHERE id = ? AND user_id = ?').get(id, userId);
   if (!row) return { success: false, reason: 'not_found' };
+  if (row.operation_id && db.prepare("SELECT id FROM operations WHERE id = ? AND status = 'running'").get(row.operation_id)) return { success: false, reason: 'active' };
   if (row.sub_type === 'xi-edit' || row.sub_type === 'xi-generate') {
     let meta = {};
     try { meta = JSON.parse(row.content || '{}'); } catch {}
     if (['queued', 'running'].includes(meta.status)) return { success: false, reason: 'active' };
   }
   const result = db.prepare('DELETE FROM history WHERE id = ? AND user_id = ?').run(id, userId);
+  if (row.operation_id) db.prepare('UPDATE operations SET result = NULL WHERE id = ?').run(row.operation_id);
   return { success: result.changes > 0, row };
+  }).immediate();
 }
 
 function appendAdminHistoryFilters(sql, params, options) {
@@ -130,15 +136,19 @@ function getAllHistoryCount(options = {}) {
 }
 
 function deleteHistoryAdmin(id) {
+  return db.transaction(() => {
   const row = db.prepare('SELECT * FROM history WHERE id = ?').get(id);
   if (!row) return { success: false, reason: 'not_found' };
+  if (row.operation_id && db.prepare("SELECT id FROM operations WHERE id = ? AND status = 'running'").get(row.operation_id)) return { success: false, reason: 'active' };
   if (row.sub_type === 'xi-edit' || row.sub_type === 'xi-generate') {
     let meta = {};
     try { meta = JSON.parse(row.content || '{}'); } catch {}
     if (['queued', 'running'].includes(meta.status)) return { success: false, reason: 'active' };
   }
   const result = db.prepare('DELETE FROM history WHERE id = ?').run(id);
+  if (row.operation_id) db.prepare('UPDATE operations SET result = NULL WHERE id = ?').run(row.operation_id);
   return { success: result.changes > 0, row };
+  }).immediate();
 }
 
 function userOwnsUpload(userId, filename) {

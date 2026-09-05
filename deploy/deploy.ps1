@@ -64,6 +64,7 @@ $Excludes = @(
 if (-not $IncludeRuntimeData) {
   $Excludes += @(
     "--exclude=./data.db",
+    "--exclude=./data.db-*",
     "--exclude=./uploads"
   )
 }
@@ -113,8 +114,9 @@ sudo -n find . -maxdepth 1 -type f \( -name 'data.db' -o -name 'data.db-*' \) -e
 
 env PATH="$PATH" npm ci --omit=dev
 env PATH="$PATH" npm run check
+env PATH="$PATH" node scripts/production-check.js --strict
 if [ -f data.db ]; then
-  env PATH="$PATH" npm run backup
+  env PATH="$PATH" npm run backup:full
 fi
 
 if sudo -n env PATH="$PATH" pm2 describe "$APP_NAME" >/dev/null 2>&1; then
@@ -142,7 +144,7 @@ if [ "$healthy" -ne 1 ]; then
   exit 1
 fi
 
-BACKUP_CRON="17 3 * * * cd $REMOTE_DIR && PATH=$PATH npm run backup >> logs/backup.log 2>&1"
+BACKUP_CRON="17 3 * * * cd $REMOTE_DIR && PATH=$PATH npm run backup:full >> logs/backup.log 2>&1"
 MAINTENANCE_CRON="47 3 * * * cd $REMOTE_DIR && PATH=$PATH npm run maintenance >> logs/maintenance.log 2>&1"
 (crontab -l 2>/dev/null | grep -v "npm run backup" | grep -v "npm run maintenance"; echo "$BACKUP_CRON"; echo "$MAINTENANCE_CRON") | crontab -
 

@@ -1,5 +1,18 @@
 const express = require('express');
+const { accountLimit } = require('../middleware/account-limits');
+const { getUserOperation, serializeOperation } = require('../repositories/operation-repository');
+const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
+router.get('/tasks/:id', authMiddleware, (req, res) => {
+  const task = getUserOperation(req.userId, req.params.id);
+  if (!task) return res.status(404).json({ error: '尚未找到任务，请保留输入并稍后确认' });
+  res.json({ task: serializeOperation(task) });
+});
+router.get('/history/:id', authMiddleware, (req, res) => {
+  const row = require('../database').db.prepare('SELECT * FROM history WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!row) return res.status(404).json({ error: '记录不存在' });
+  res.json({ history: row });
+});
 const { parsePositiveInt } = require('../utils/pagination');
 const {
   getUserPoints,
@@ -15,7 +28,6 @@ const {
   getUserInviteCodes,
   getUserUnusedInviteCount
 } = require('../db');
-const { authMiddleware } = require('../middleware/auth');
 const { deleteUnreferencedUploads, extractUploadFilenames } = require('../utils/upload-cleanup');
 
 function readBoundedEnvInteger(name, fallback, minimum, maximum) {
@@ -160,9 +172,9 @@ router.post('/invites/generate', authMiddleware, (req, res) => {
 });
 
 // 修改密码
-router.post('/change-password', authMiddleware, async (req, res) => {
+router.post('/change-password', authMiddleware, accountLimit(5), (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  if (!oldPassword || !newPassword) return res.status(400).json({ error: '请填写旧密码和新密码' });
+  if (typeof oldPassword !== 'string' || typeof newPassword !== 'string' || !oldPassword || !newPassword || oldPassword.length > 128 || newPassword.length > 128) return res.status(400).json({ error: '请填写有效的旧密码和新密码（最多128位）' });
 
   const result = changePassword(req.userId, oldPassword, newPassword);
   if (!result.success) return res.status(400).json({ error: result.error });

@@ -48,6 +48,9 @@
   }
 
   function clearLocalAuthState() {
+    for (const key of Object.keys(global.localStorage)) {
+      if (key.startsWith('yudi_xhs_pending_tasks') || key.startsWith('yudi_draft:')) global.localStorage.removeItem(key);
+    }
     global.localStorage.removeItem('token');
     global.localStorage.removeItem('user');
   }
@@ -88,4 +91,32 @@
   global.escapeHtml = escapeHtml;
   global.getImageFileFromClipboard = getImageFileFromClipboard;
   global.isProtectedUploadUrl = isProtectedUploadUrl;
+  global.trackProductEvent = (eventName) => {
+    global.fetch('/api/events', { method: 'POST', credentials: 'same-origin', keepalive: true,
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventName }) }).catch(() => {});
+  };
+  function initDrafts() {
+    let user;
+    try { user = JSON.parse(global.localStorage.getItem('user') || '{}'); } catch { return; }
+    if (!user.id) return;
+    const ids = ['imgPrompt', 'copyTopic', 'bothPrompt', 'rewriteInput', 'prompt'];
+    const key = `yudi_draft:${user.id}:${global.location.pathname}`;
+    const elements = ids.map(id => document.getElementById(id)).filter(Boolean);
+    try {
+      const saved = JSON.parse(global.localStorage.getItem(key) || '{}');
+      if (Date.now() - Number(saved.at || 0) < 86400000) for (const element of elements) {
+        if (!element.value && typeof saved[element.id] === 'string') element.value = saved[element.id].slice(0, 5000);
+      }
+    } catch {}
+    const save = () => {
+      // 只保存当前账号的文字草稿，不缓存密码、卡密或参考图。
+      if (!global.localStorage.getItem('token')) return;
+      try { global.localStorage.setItem(key, JSON.stringify({ at: Date.now(), ...Object.fromEntries(elements.map(el => [el.id, el.value.slice(0,5000)])) })); } catch {}
+    };
+    elements.forEach(element => element.addEventListener('input', save));
+    global.addEventListener('pagehide', save);
+    document.addEventListener('click', () => global.setTimeout(save, 0));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initDrafts);
+  else initDrafts();
 }(window));

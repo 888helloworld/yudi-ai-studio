@@ -27,6 +27,8 @@ const { createXiImageRouter } = require('./routes/xi-image');
 const { createXiJobsRouter } = require('./routes/xi-jobs');
 const { buildImageVariationPrompt } = require('./services/prompt-service');
 const { chargePoints, refundPoints } = require('./services/point-service');
+const { durableOperation } = require('./middleware/durable-operation');
+const { recoverOperations } = require('./repositories/operation-repository');
 const { createXiImageProvider } = require('./services/xi-image-provider');
 const { createXiJobRuntime } = require('./services/xi-job-runtime');
 const { formatUpstreamError, generateArkImageUrls } = require('./services/upstream-http');
@@ -133,7 +135,7 @@ const PUBLIC_FILES = new Set([
   'help.html', 'privacy.html', 'terms.html', 'content-policy.html', 'image-studio.html',
   'reverse-prompt.html', 'xi-image.html', 'favicon.svg', 'favicon.ico', 'style.css',
   'script.js', 'shared-shell.js', 'image-studio.js', 'admin.js', 'profile.js',
-  'reverse-prompt.js', 'login.js', 'register.js'
+  'reverse-prompt.js', 'login.js', 'register.js', 'feedback.js', 'operations-admin.js'
 ]);
 const PUBLIC_STATIC_FILES = new Set([
   'style.css', 'script.js', 'shared-shell.js', 'image-studio.js', 'admin.js', 'profile.js',
@@ -150,7 +152,7 @@ const IMAGE_STUDIO_FILES = new Set([
 const FRONTEND_FILES = new Set(['shared-utils.js']);
 const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js']);
 const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
-const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=604800, immutable';
+const PUBLIC_STATIC_CACHE_CONTROL = 'public, no-cache, must-revalidate';
 
 function sendPublicFile(res, filename, next) {
   res.setHeader('Cache-Control', PUBLIC_STATIC_FILES.has(filename) ? PUBLIC_STATIC_CACHE_CONTROL : PUBLIC_HTML_CACHE_CONTROL);
@@ -230,23 +232,30 @@ const upload = multer({
 function enforceSafeJobLimit(name, fallback) {
   const raw = String(process.env[name] ?? '').trim();
   if (/^(unlimited|无限)$/i.test(raw)) {
-    process.env[name] = '0';
+    process.env[name] = String(fallback);
     return;
   }
   const configured = Number(raw);
-  // 0 是明确的“不限并发”，不能被安全默认值覆盖。
-  if (!Number.isFinite(configured) || configured < 0) process.env[name] = String(fallback);
+  // 旧配置里的0/无限迁移到有界默认值，避免任务直接耗尽机器资源。
+  if (!Number.isFinite(configured) || configured <= 0) process.env[name] = String(fallback);
 }
-enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 0);
-enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 0);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 4);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 10);
 enforceSafeJobLimit('XI_XU_MAX_QUEUED_JOBS', 20);
 
 const provider = createXiImageProvider();
 const xiRuntime = createXiJobRuntime({ db, provider, refundPoints, formatDateTime: formatBeijingDateTime });
 
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/generate') || req.path === '/rewrite') res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+app.use(durableOperation);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminLimiter, adminRoutes);
+app.use(require('./routes/feedback'));
+app.use(require('./routes/operations-admin'));
 app.use(createAnalyticsRouter({ optionalAuth }));
 app.use(createUploadRouter({
   authMiddleware,
@@ -332,6 +341,7 @@ app.use((error, req, res, next) => {
 });
 
 if (require.main === module) {
+  recoverOperations();
   xiRuntime.initializeRecovery();
   const port = process.env.PORT || 3001;
   const host = process.env.HOST || '127.0.0.1';

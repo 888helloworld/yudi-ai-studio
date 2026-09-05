@@ -16,10 +16,10 @@ const { parseImageCount } = require('../utils/request-utils');
 
 function getMaxActiveJobs() {
   const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS ?? '0').trim();
-  if (/^(unlimited|无限)$/i.test(raw)) return Number.POSITIVE_INFINITY;
+  if (/^(unlimited|无限)$/i.test(raw)) return 4;
   const parsed = Number(raw);
-  if (parsed === 0) return Number.POSITIVE_INFINITY;
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : Number.POSITIVE_INFINITY;
+  if (parsed === 0) return 4;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(20, Math.floor(parsed)) : 4;
 }
 
 function getJobLimit(name, fallback, maximum) {
@@ -34,7 +34,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
   const manager = createXiJobManager({
     db,
     maxActiveJobs: getMaxActiveJobs(),
-    maxJobsPerUser: getJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 0, 1000),
+    maxJobsPerUser: getJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 10, 100) || 10,
     maxQueuedJobs: getJobLimit('XI_XU_MAX_QUEUED_JOBS', 20, 1000),
     formatDateTime,
     createHistory: (job) => createChargedXiJobHistory({
@@ -141,7 +141,8 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
             fallbackReason: '',
             refundedPoints,
             refundedOnFail: false,
-            clientTaskId: row.client_task_id || null
+            clientTaskId: row.client_task_id || null,
+            sourceFingerprint: meta.source_fingerprint || crypto.createHash('sha256').update(Buffer.concat(sourceFiles.map(file => file.buffer))).digest('hex')
           });
           recovered += 1;
         } catch (error) {
@@ -178,6 +179,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
         job.fallbackReason = '';
       }
       generatedUrls = localUrls;
+      if (!Array.isArray(localUrls) || localUrls.length === 0) throw new Error('没有生成图片，任务积分将退回');
       job.status = 'done';
       job.finishedAtMs = Date.now();
       job.imageUrls = localUrls;

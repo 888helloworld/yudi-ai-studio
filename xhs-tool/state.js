@@ -25,7 +25,8 @@ let referencePreviewUrl = '';
 let xhsReverseFile = null;
 let xhsReversePreviewUrl = '';
 let selectedReverseMode = 'general';
-const PENDING_XHS_TASKS_KEY = 'yudi_xhs_pending_tasks';
+localStorage.removeItem('yudi_xhs_pending_tasks');
+const PENDING_XHS_TASKS_KEY = 'yudi_xhs_pending_tasks:' + (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id || 'guest'; } catch { return 'guest'; } })();
 const XHS_ACTIVE_TOOL_KEY = 'yudi_xhs_active_tool';
 let pendingTaskPollTimer = null;
 

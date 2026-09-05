@@ -7,6 +7,8 @@
     "check": "node scripts/check-js.js",
     "test": "node --test \"test/*.test.js\"",
     "backup": "node scripts/backup-database.js",
+    "backup:full": "node scripts/backup-full.js",
+    "check:production": "node scripts/production-check.js",
     "audit:uploads": "node scripts/audit-orphan-uploads.js",
     "maintenance": "node scripts/audit-orphan-uploads.js --quarantine --cleanup-quarantine",
     "secure:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/secure-runtime-acl.ps1"
@@ -22,5 +24,8 @@
     "multer": "^2.2.0",
     "pngjs": "^7.0.0",
     "undici": "^7.29.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

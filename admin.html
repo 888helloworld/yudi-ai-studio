@@ -196,6 +196,7 @@
       <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="cdkeysPanel" tabindex="-1" data-tab="cdkeys">卡密管理</button>
       <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="paymentPanel" tabindex="-1" data-tab="payment">支付订单</button>
       <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="auditPanel" tabindex="-1" data-tab="audit">操作审计</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="operationsPanel" tabindex="-1" data-tab="operations">运营与反馈</button>
     </nav>
 
     <section class="admin-panel active" id="usersPanel" role="tabpanel">
@@ -390,6 +391,14 @@
       </div>
       <div id="auditLogsPager"></div>
     </section>
+    <section class="admin-panel" id="operationsPanel" role="tabpanel" hidden>
+      <h2>运营与反馈</h2><button class="admin-btn" id="operationsRefresh">刷新数据</button>
+      <p id="operationsStatus" role="status"></p><p id="operationsSummary"></p><p id="operationsCosts"></p><p id="operationsEvents"></p>
+      <h3>备份与上线配置</h3><p id="operationsBackup"></p><div id="operationsChecks"></div>
+      <h3>录入已核对的上游账单</h3><p>同一天同币种填当天合计金额；修改会覆盖原值。不同币种分别展示。</p>
+      <form id="providerCostForm"><label>账单日期<input type="date" name="day" required></label><label>币种<select name="currency"><option value="CNY">人民币 CNY</option><option value="USD">美元 USD</option></select></label><label>当天总花费<input type="number" name="amount" required min="0" max="1000000" step="0.01"></label><label>核对备注<input name="note" maxlength="200"></label><button class="admin-btn">保存账单</button></form>
+      <h3>用户反馈</h3><div id="feedbackList"></div><button class="admin-btn" id="feedbackPrev">上一页</button><span id="feedbackPage"></span><button class="admin-btn" id="feedbackNext">下一页</button>
+    </section>
   </main>
 
   <div class="admin-modal" id="rechargeModal" role="dialog" aria-modal="true" aria-labelledby="rechargeModalTitle" style="display:none;">
@@ -424,6 +433,7 @@
 
     <script src="frontend/shared-utils.js?v=20260826-2"></script>
     <script src="admin.js?v=20260826-2"></script>
+<script src="operations-admin.js"></script>
 </body>
 </html>
 
