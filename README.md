@@ -1,526 +1,339 @@
-# 雨滴AI AI 图文创作工作台
+<div align="center">
 
-2026-09-05 更新：安全与任务账本、简洁的结果区、帮助中心反馈、运营统计、完整备份和恢复流程见 [本次修整记录](docs/RELEASE_2026-09-05.md)。本机暂未配置正式域名或异地备份，在线支付仍关闭。
+<img src="docs/assets/readme/cover.svg" alt="雨滴AI — 从一句想法，到一组能用的图文" width="100%">
 
-嘿，欢迎来到“雨滴AI”——一个给内容创作者、电商卖家、设计团队和运营同学准备的小工具。
+# 雨滴AI · Yudi AI
 
-你可以把它理解成一个能帮你写文案、配图、改图的个人助手，顺便还带个后台管管积分和用量。项目目前最核心、最好玩的部分叫“画面工坊”，基本就是你上传参考图、写几句描述，然后让 AI 给你出图的页面。
+**自托管 AI 图文创作工作台**
 
-整个系统是一个轻量的 Node.js 单体应用，数据库跑着 SQLite，前端就是原生三件套（HTML/CSS/JS），后端用 Express 搭起来。选型主打简单直接，适合一个人或小团队在本地、内网先跑起来，以后有需要再往复杂架构上走。
+图片生成 · 参考图改图 · 文案创作 · 历史复用 · 积分管理
 
----
+<p>
+  <img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-43853D?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white">
+  <img alt="Express 4" src="https://img.shields.io/badge/Express-4-333333?style=flat-square&amp;logo=express&amp;logoColor=white">
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-local_storage-003B57?style=flat-square&amp;logo=sqlite&amp;logoColor=white">
+  <img alt="Self-hosted" src="https://img.shields.io/badge/Self--hosted-your_workspace-07C160?style=flat-square">
+</p>
 
-## 这玩意儿到底能干啥？
+[产品预览](#产品预览) · [功能亮点](#功能亮点) · [快速开始](#快速开始) · [配置说明](#配置说明) · [部署与备份](#部署与备份)
 
-| 模块 | 页面/接口 | 说明 |
-| --- | --- | --- |
-| 首页 | `index.html` | 内容创作的入口，从这里出发 |
-| 小红书工作台 | `xhs.html` | 小红书配图、标题、正文、标签一站搞定 |
-| 画面工坊 | `image-studio.html` | **主角**：文生图、参考图改图、看图写 Prompt、生成记录 |
-| 旧生图入口 | `xi-image.html` | 自动跳转到画面工坊，免得你迷路 |
-| 看图写 Prompt | `reverse-prompt.html` | 上传一张图，让 AI 反推出提示词 |
-| 个人中心 | `profile.html` | 查看积分、历史、卡密、订单、邀请码 |
-| 管理后台 | `admin.html` | 管理员专用：管用户、充积分、看流水、发卡密 |
-| 登录/注册 | `login.html` / `register.html` | 浏览器使用 HttpOnly Cookie 登录；本地或内网访问时可以不需要邀请码 |
-| 帮助与协议 | `help.html`、`terms.html`、`privacy.html`、`content-policy.html` | 一些基础说明 |
-
-如果你刚来，建议直奔**画面工坊**（`image-studio.html`），那是目前打磨最久、功能最集中的地方。
+</div>
 
 ---
 
-## 画面工坊：你的私人 AI 画室
+雨滴AI将图片、文案和创作记录放在同一个工作台中。你可以从一句描述生成画面，用参考图继续调整，完成小红书内容起稿，再把结果保存下来供后续下载和复用。
 
-画面工坊是整个项目目前最重要的页面。它专门负责和图片模型打交道，尤其是 `gpt-image-2` 这个能在文字描述和参考图之间切换的画图引擎。
+项目采用 **Express + SQLite + 原生 HTML / CSS / JavaScript**，不需要单独搭建前端构建服务。适合个人创作者、电商运营和需要自托管创作工具的小团队。
 
-画面工坊的文生图和参考图改图都只调用 `gpt-image-2`。上游失败时任务会报错并退款，不会静默切换豆包、参考板或其他备用模型。小红书普通生图、图文一体和亚马逊主图仍是各自独立的豆包功能。
+> [!NOTE]
+> 当前支持本地部署与卡密兑换。支付宝、微信自动支付尚未接入；在线订单创建保持关闭。
 
-### 它能做的事情
+## 产品预览
 
-- **文生图**：写一段描述，AI 给你出图。
-- **参考图改图**：上传最多 4 张参考图，告诉 AI“照着这个感觉，但改改光线/构图”。
-- **多种上传方式**：点击上传、拖拽上传、甚至直接粘贴剪贴板里的图片。
-- **批量生成**：你只需要选“要生成几张”，一次最多 5 张，系统自动安排。
-- **后台排队**：页面不用让用户理解并发，服务端会按配置控制任务运行。
-- **固定标准质量**：当前画面工坊统一使用上游 `medium` 标准档，页面暂不提供质量切换。
-- **生成记录**：每个任务都能查看进度、预览结果、单张下载、提示词重新生图。
-- **参考图复用**：可以把已生成的图直接拖回参考图区域，继续改。
-- **历史编号**：列表中优先展示数据库历史 ID，比如 `#539`，而不是一串看不懂的时间戳。
+### 01 · 画面工坊
 
-### 关于图片尺寸，有个“小魔法”你得知道
+从描述到画面，从参考图到新版本。输入区与生成记录并排呈现，支持多图创作、预览、下载和再次使用提示词。
 
-上游 `gpt-image-2` 当前有个特点：你请求的尺寸和实际拿到的图片尺寸有时不完全相同。页面会按**你真正看到的图片尺寸**展示，但发给上游的请求仍然使用它目前接受的参数。
+![画面工坊：图片描述、参考图、画布选择与作品记录](docs/assets/readme/image-studio.png)
 
-下面这张表记录了我们实测的结果（如果你发现变化，请以实际出图尺寸为准）：
+### 02 · 小红书工作台
 
-| 页面选的比例 | 实际返回尺寸 | 请求上游的 `size` | 备注 |
-| --- | --- | --- | --- |
-| 1:1 方图 | `1254x1254` | `1024x1024` | 你请求 1024 方图，上游大概率回来 1254 方图 |
-| 2:3 竖图 | `1024x1536` | `1024x1536` | 正常听话 |
-| 3:2 横图 | `1536x1024` | `1536x1024` | 正常听话 |
-| 高清横图 | `1672x941` | `2048x1152` | 你请求 2K 横图，上游给你 1672x941 |
-| 高清竖图 | `941x1672` | `1152x2048` | 你请求 2K 竖图，上游给你 941x1672 |
+图片生成、文案起稿、文案改写、图文一体和看图提取提示词，按创作任务切换；已有内容保存在账号历史中。
 
-至于 **4K**那个按钮，我们已经暂时去掉了。因为测试发现，不管请求 `3840x2160` 还是 `2560x1440`，上游都返回 `1672x941`，没必要单独留着它误导你。
+![小红书工作台与文案预览：两处真实界面细节拼图](docs/assets/readme/xhs-workspace.png)
 
-### 尺寸不一致时系统怎么处理？
+### 03 · 管理后台
 
-服务端保存上游返回的图片之后，会读取真实的 PNG 尺寸，并把真实宽高记在历史记录的 `output_dimensions` 字段里。
+用户、积分、卡密、历史、订单和操作审计集中管理；运营页补充任务成功率、耗时、反馈、上游账单与备份状态。
 
-当前策略很简单：
+![管理后台：用户、积分与运营管理](docs/assets/readme/admin.png)
 
-- 上游返回尺寸和请求尺寸不一致？**不拦截，不退款，不丢图**。 原图照样存、照样给你。
-- 服务端日志会悄悄记一笔，提醒你“真实尺寸和请求尺寸不一样”。
-- 如果你非要让图片拉伸/裁切到请求尺寸，可以设置环境变量 `XI_XU_NORMALIZE_OUTPUT_SIZE=true`。**大多数情况不建议开**，因为它会改原图画布，可能不是你想要的。
+<sub>以上为真实页面的独立演示环境截图。账号、记录与数值均为演示数据；几何插画为原创界面示例，不代表模型实测生成质量，不包含实际用户资料或私人作品。</sub>
 
----
+## 功能亮点
 
-## gpt-image-2 的质量和价格怎么算？
+| 创作能力 | 使用方式 |
+| --- | --- |
+| **文生图与参考图改图** | 输入画面描述，或点击、拖拽、粘贴参考图继续创作 |
+| **画面工坊批量生成** | 页面单次选择 1–5 张；应用默认不限制生图并发与排队数量 |
+| **描述优化与图片反推** | 优化当前图片描述，或从参考图中提取可复用的提示词 |
+| **小红书内容创作** | 支持种草、探店、穿搭、美食、旅行、知识等文案类型，以及改写与图文一体生成 |
+| **作品历史与复用** | 查看任务进度，预览、下载图片，复制文案，复用提示词和参考图 |
+| **草稿保留** | 提交生图后保留输入；文字草稿按账号保存，24 小时内可恢复 |
 
-当前画面工坊统一使用上游 `medium` 标准质量，页面没有“快速/标准/精细”切换。即使客户端自行传入 `quality`，任务路由也会以服务端固定档位为准。
+| 管理能力 | 当前实现 |
+| --- | --- |
+| **积分与任务账本** | 扣费可追踪；相同任务号防重复扣费；失败和少出图按规则退款 |
+| **中断恢复** | 画面工坊尝试恢复未完成任务；普通收费任务核对已保存结果并退回未完成部分 |
+| **账号与权限** | 用户和管理员角色、账号冻结、密码重置、登录状态撤销 |
+| **反馈与运营** | 站内反馈、查询码查回复、管理员回复、任务统计和账单录入 |
+| **完整备份** | 数据库快照、历史引用图片、文件校验清单和 Windows 定时备份 |
 
-用户侧按站内积分计费：图片生成固定 `10 积分/张`。生成失败或实际出图少于请求数量时，系统按失败或缺少的张数退回积分。上游美元成本只用于运营核算，不作为用户结算依据，也不应在页面上承诺固定美元价格。
+生图结果区保持简洁：积分明细在个人中心查看，问题反馈从帮助中心进入。
 
----
+## 快速开始
 
-## 积分规则
+### 1. 获取项目并安装依赖
 
-当前后端基础积分配置长这样，你可以根据需要在代码里调整：
+推荐使用 **Node.js 24 LTS**。当前依赖包含原生 SQLite 模块；请使用受支持的 Node.js 版本。
 
-| 行为 | 扣积分 |
+```bash
+git clone https://github.com/888helloworld/yudi-ai-studio.git
+cd yudi-ai-studio
+npm ci
+```
+
+### 2. 创建本地配置
+
+在项目根目录创建 `.env`。下面是本地 HTTP 使用的最小示例；已有配置时，请按需修改，不要覆盖现有密钥。
+
+```dotenv
+NODE_ENV=development
+HOST=127.0.0.1
+PORT=3001
+ALLOWED_ORIGIN=http://127.0.0.1:3001
+TRUST_PROXY_HOPS=0
+
+# 必须替换：登录签名密钥与首次创建管理员使用的密码
+JWT_SECRET=replace_with_your_random_secret
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=replace_with_your_strong_password
+
+# 本机 HTTP；公网 HTTPS 部署使用 Secure Cookie
+AUTH_COOKIE_SECURE=false
+AUTH_RETURN_TOKEN=false
+LOCAL_REGISTER_WITHOUT_INVITE=true
+ENABLE_MOCK_PAYMENT=false
+
+# 0 表示不限生图执行/任务/排队数量
+XI_XU_MAX_ACTIVE_JOBS=0
+XI_XU_MAX_ACTIVE_JOBS_PER_USER=0
+XI_XU_MAX_QUEUED_JOBS=0
+```
+
+使用下面的命令生成随机 `JWT_SECRET`，将输出填入 `.env`：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+接着根据需要使用的功能，填写对应模型服务配置：
+
+| 功能 | 配置项 |
+| --- | --- |
+| 画面工坊生图 / 改图 | `XI_XU_API_BASE_URL` + `XI_XU_API_KEY`，使用支持对应图片接口的服务 |
+| 小红书及电商普通生图 | `ARK_API_KEY` |
+| 文案生成 / 改写 | `DEEPSEEK_API_KEY` |
+| 看图提取提示词 | `XI_XU_API_BASE_URL` + `XI_XU_API_KEY` + `XI_XU_VISION_MODEL` |
+| 图片描述视觉润色 | `DEEPSEEK_VISION_API_KEY`，未配置时使用 `DEEPSEEK_API_KEY`；模型需支持对应视觉能力 |
+
+更多参数可查阅 [`.env.example`](.env.example)。该模板偏向生产环境，不应原样用于本机 HTTP 登录。
+
+### 3. 启动并使用
+
+```bash
+npm run check
+npm start
+```
+
+打开 **[http://127.0.0.1:3001](http://127.0.0.1:3001)**。
+
+首次启动会自动初始化数据库，并使用配置中的账号和密码创建管理员。管理员已存在时，修改 `.env` 不会自动重置其密码。
+
+| 页面 | 路径 |
+| --- | --- |
+| 首页 | `/` |
+| 画面工坊 | `/image-studio.html` |
+| 小红书工作台 | `/xhs.html` |
+| 个人中心 | `/profile.html` |
+| 管理后台 | `/admin.html` |
+| 帮助与反馈 | `/help.html` |
+
+## 配置说明
+
+### 模型与出图行为
+
+画面工坊当前使用 `gpt-image-2`，质量固定为 `medium`。小红书普通生图、图文一体的图片部分及亚马逊主图使用独立的图片服务；文案使用 DeepSeek。具体服务可用性取决于所配置的提供方。
+
+- 画面工坊上游失败时按任务规则处理，不会静默换成其他图片模型。
+- 请求尺寸与最终输出可能不同；实际图片和历史记录中的宽高为准。
+- 应用默认不限制生图并发；请求频率限制和上游服务限额是独立配置。
+- 当前不提供 4K 输出保证，也不提供自动发布到小红书的功能。
+
+<details>
+<summary><strong>展开：图片接口优先级与任务配置</strong></summary>
+
+<br>
+
+配置 `OPENAI_IMAGE_API_KEY` 或 `OPENAI_IMAGE_API_BASE_URL` 时，图片请求优先使用这组配置；否则使用 `XI_XU_API_BASE_URL` 和 `XI_XU_API_KEY`。
+
+| 参数 | 说明 |
+| --- | --- |
+| `XI_XU_MAX_ACTIVE_JOBS` | 全站同时执行的画面工坊任务数；默认 `0`，不限 |
+| `XI_XU_MAX_ACTIVE_JOBS_PER_USER` | 单账号运行中与排队中的任务总数；默认 `0`，不限 |
+| `XI_XU_MAX_QUEUED_JOBS` | 全站排队数量；默认 `0`，不限 |
+| `XI_XU_IMAGE_RATE_LIMIT_PER_MIN` | 图片接口每分钟请求次数；默认 `30` |
+| `XI_XU_GENERATE_TIMEOUT_MS` / `XI_XU_EDIT_TIMEOUT_MS` | 图片服务等待时间；`0` 关闭对应超时限制 |
+| `NEW_USER_BONUS_POINTS` | 新用户初始赠送积分；默认 `1000` |
+
+当前页面支持 JPG、PNG、WebP 等常见参考图，上传后会检查真实文件类型和像素大小。服务端有效单文件限制同时受单文件与总上传配置约束，不能只看扩展名或一个大小参数。
+
+</details>
+
+### 积分规则
+
+基础价格由 [`config/points.js`](config/points.js) 统一定义。
+
+| 操作 | 积分 |
 | --- | ---: |
-| 图片生成 | 10 / 张 |
+| 图片生成 / 改图 | 10 / 张 |
 | 文案生成 | 5 / 次 |
 | 文案改写 | 3 / 次 |
-| 图文一体 | 15 起，按图片张数叠加 |
-| 看图写 Prompt | 5 / 次 |
+| 图文一体 | 5 + 10 × 图片张数 |
+| 看图提取提示词 / 视觉润色 | 5 / 次 |
 
-积分相关的几个贴心设定：
+积分是站内结算单位，不等于上游现金成本。当前支持卡密兑换与管理员积分操作；自动在线收款尚未开放。
 
-- 新用户默认赠送积分，默认 1000 分（可通过环境变量 `NEW_USER_BONUS_POINTS` 修改）。
-- 扣积分用的是 SQLite 的原子更新操作，保证在高并发时不会把余额扣成负数。
-- 图片生成如果失败了，积分自动退。
-- 批量生成时实际出图少于请求数量，按缺的图数退款。
-- 服务重启后会优先恢复未完成的 `gpt-image-2` 队列任务；参考图缺失或记录损坏而无法恢复时，会按任务号幂等退款，重复启动不会重复加积分。
-- 管理员可以在后台给用户充值、生成卡密、查看积分流水。
+## 架构概览
 
----
-
-## 画面工坊的批量和队列控制
-
-画面工坊现在尽量把复杂参数藏起来，用户主要只需要关心“要生成几张”：
-
-- **页面“要生成几张”**：用户一次可选择 1-5 张。
-- **服务端 `XI_XU_MAX_ACTIVE_JOBS`**：控制同一时刻真正跑多少个 `gpt-image-2` 上游任务。
-
-环境变量示例：
-
-```env
-XI_XU_MAX_ACTIVE_JOBS=0
-XI_XU_MAX_ACTIVE_JOBS_PER_USER=0
-XI_XU_MAX_QUEUED_JOBS=20
-XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
+```mermaid
+flowchart LR
+    UI[浏览器工作台] --> API[Express 服务]
+    API --> Auth[账号与权限]
+    API --> Jobs[生成任务与积分结算]
+    Jobs --> Models[图片 / 文案 / 视觉服务]
+    Jobs --> DB[(SQLite)]
+    Jobs --> Images[本地图片目录]
+    Auth --> DB
+    API --> Ops[管理后台与反馈]
+    Ops --> DB
+    DB --> Backup[完整备份与校验]
+    Images --> Backup
 ```
 
-- 全局并发默认不设上限；填正整数时才启用全局上限。
-- 每个用户默认不设并发上限；填正整数时才启用单账号上限。
-- `XI_XU_IMAGE_RATE_LIMIT_PER_MIN` 限制了图片相关接口每分钟请求数，默认 30。
-- 实际生成速度还会受上游 API 限流、网络、服务器带宽等因素影响，并不是开得越大越快。
-
----
-
-## API 概览
-
-浏览器登录后使用 `HttpOnly + SameSite=Strict` Cookie，JavaScript 读不到真实 JWT。旧 API 客户端仍可在开启 `AUTH_RETURN_TOKEN=true` 后使用 Bearer：
-
-```http
-Authorization: Bearer <你的令牌>
+```text
+.
+├── server.js                  # 服务入口与路由装配
+├── routes/                    # 账号、生成、积分、反馈与后台接口
+├── services/                  # 模型调用、任务调度与业务服务
+├── repositories/              # 数据读写与事务
+├── database/                  # SQLite 连接与表结构
+├── middleware/                # 鉴权、上传检查与收费请求上下文
+├── image-studio/               # 画面工坊前端模块
+├── xhs-tool/                   # 小红书工作台前端模块
+├── admin/                      # 管理后台前端模块
+├── scripts/                    # 检查、备份与维护脚本
+├── test/                       # 自动化回归测试
+└── docs/                       # 文档与项目展示图片
 ```
 
-### 账号相关
+### 主要接口
 
-| 方法 | 路径 | 说明 |
+| 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `GET` | `/api/auth/register-config` | 查看当前是否需要邀请码才能注册 |
-| `POST` | `/api/auth/register` | 注册 |
-| `POST` | `/api/auth/login` | 登录 |
-| `GET` | `/api/auth/me` | 获取当前用户信息 |
-
-### 用户中心
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `GET` | `/api/user/points` | 查积分余额 |
-| `GET` | `/api/user/points/logs` | 积分流水 |
-| `GET` | `/api/user/history` | 我的生成历史 |
-| `DELETE` | `/api/user/history/:id` | 删除某条历史 |
-| `GET` | `/api/user/stats` | 我的统计 |
-| `GET` | `/api/user/invites` | 我的邀请码列表 |
-| `POST` | `/api/user/invites/generate` | 生成新邀请码 |
-| `POST` | `/api/user/change-password` | 修改密码 |
-
-### 画面工坊推荐使用的任务接口
-
-推荐使用下面这套任务接口，因为它支持排队、轮询状态，而且服务重启后会帮你自动处理遗留任务。
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `GET` | `/api/xi-image/jobs` | 获取当前用户的排队/运行中任务 |
-| `GET` | `/api/xi-image/jobs/:id` | 查询单个任务状态 |
-| `POST` | `/api/xi-image/jobs/generate` | 创建文生图任务 |
+| `POST` | `/api/auth/login` | 登录并设置 HttpOnly Cookie |
+| `POST` | `/api/xi-image/jobs/generate` | 创建画面工坊文生图任务 |
 | `POST` | `/api/xi-image/jobs/edit` | 创建参考图改图任务 |
+| `GET` | `/api/xi-image/jobs/:id` | 查询画面工坊任务 |
+| `POST` | `/generate-copy` / `/rewrite` | 文案生成 / 改写 |
+| `GET` | `/api/user/history` | 查询当前账号的作品历史 |
+| `GET` | `/api/user/tasks/:id` | 查询普通收费任务及其结算结果 |
+| `POST` | `/api/cdkey/redeem` | 兑换积分 |
+| `POST` | `/api/feedback` | 提交问题反馈 |
 
-文生图示例：
+浏览器默认使用 Cookie 登录；需要 Bearer Token 的旧客户端可显式开启 `AUTH_RETURN_TOKEN`。用户数据接口校验账号归属，后台接口要求管理员权限。
 
-```bash
-curl -X POST http://localhost:3001/api/xi-image/jobs/generate \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "a clean editorial product photo, soft directional light",
-    "size": "1024x1536",
-    "count": 1
-  }'
-```
+## 部署与备份
 
-参考图改图示例（图片文件用 multipart 上传）：
+### 运行模式
 
-```bash
-curl -X POST http://localhost:3001/api/xi-image/jobs/edit \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "prompt=keep the subject, improve lighting and composition" \
-  -F "size=1024x1536" \
-  -F "count=1" \
-  -F "image=@reference.png"
-```
+当前架构面向 **单实例、自托管部署**。使用同一个数据库时，应保持一个服务实例负责生成任务和恢复流程。
 
-### 同时也保留的直接调用接口
-
-如果你只想简单调用，不走任务队列，也可以：
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `POST` | `/api/xi-image/generate` | 直接文生图 |
-| `POST` | `/api/xi-image/edit` | 直接改图 |
-| `POST` | `/api/xi-image/reverse-prompt` | 看图写 Prompt |
-
-### 小红书和电商相关接口
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `POST` | `/generate` | 小红书图片生成 |
-| `POST` | `/generate-copy` | DeepSeek 文案生成 |
-| `POST` | `/rewrite` | 文案改写 |
-| `POST` | `/generate-both` | 图文一体生成 |
-| `POST` | `/api/amazon-image/generate` | 亚马逊主图批量生成 |
-
-亚马逊主图示例：
+公网部署前配置 HTTPS、可信反向代理、安全 Cookie 和备份位置，并运行：
 
 ```bash
-curl -X POST http://localhost:3001/api/amazon-image/generate \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "prompt=304 stainless steel insulated cup, black, with lid, pure white background, professional studio photo" \
-  -F "ratio=1:1" \
-  -F "imageCount=4"
+npm run check:production
 ```
 
----
+该命令列出配置检查结果；详细发布流程见 [部署说明](docs/DEPLOYMENT.md)。
 
-## 注册和邀请码
-
-注册策略以服务端显式配置为准：
-
-- 生产环境默认必须邀请码，不能根据反向代理看到的内网 IP 自动放行。
-- 非生产环境只有无 Forwarded 请求头的本机/内网直连请求才可默认免邀请码。
-
-你也可以通过环境变量强制控制：
-
-```env
-# 不管什么环境，都免邀请码
-LOCAL_REGISTER_WITHOUT_INVITE=true
-
-# 不管什么环境，都必须邀请码
-LOCAL_REGISTER_WITHOUT_INVITE=false
-```
-
-前端注册页面会先调 `/api/auth/register-config`，如果返回 `inviteRequired:false`，邀请码输入框会自动隐藏起来，省得用户疑惑。
-
----
-
-## 环境变量
-
-复制项目里的 `.env.example` 为 `.env`，然后填上你自己的配置。**特别注意：不要把真实密钥提交到 Git。**
-
-```env
-PORT=3001
-HOST=0.0.0.0
-ALLOWED_ORIGIN=http://localhost:3001
-
-ARK_API_KEY=your_ark_api_key_here
-
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
-
-XI_XU_API_BASE_URL=https://your-image-api.example
-XI_XU_API_KEY=your_xi_xu_api_key_here
-XI_XU_IMAGE_MODEL=gpt-image-2
-XI_XU_VISION_MODEL=gpt-5.5
-XI_XU_GENERATE_TIMEOUT_MS=0
-XI_XU_GENERATE_RETRIES=1
-XI_XU_EDIT_TIMEOUT_MS=0
-XI_XU_EDIT_RETRIES=1
-XI_XU_MAX_ACTIVE_JOBS=0
-XI_XU_MAX_ACTIVE_JOBS_PER_USER=0
-XI_XU_MAX_QUEUED_JOBS=20
-XI_XU_IMAGE_RATE_LIMIT_PER_MIN=30
-XI_XU_NORMALIZE_OUTPUT_SIZE=false
-
-MAX_UPLOAD_IMAGE_MB=20
-MAX_UPLOAD_TOTAL_MB=40
-MAX_UPLOAD_PIXELS=16000000
-MAX_UPLOAD_TOTAL_PIXELS=24000000
-
-JWT_SECRET=replace_with_a_long_random_secret
-JWT_EXPIRES_IN=7d
-AUTH_COOKIE_MAX_AGE_MS=604800000
-AUTH_COOKIE_SECURE=true
-AUTH_RETURN_TOKEN=false
-
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=replace_with_a_strong_password
-
-NEW_USER_BONUS_POINTS=1000
-USER_INVITE_POINTS=0
-LOCAL_REGISTER_WITHOUT_INVITE=
-
-ENABLE_MOCK_PAYMENT=false
-MOCK_PAYMENT_TOKEN=replace_with_a_long_random_token
-PAYMENT_PROVIDER=mock
-PUBLIC_BASE_URL=https://your-domain.example
-```
-
-如果你用的是官方 OpenAI 图片接口，也可以额外配置这些变量：
-
-```env
-OPENAI_IMAGE_API_BASE_URL=https://api.openai.com
-OPENAI_IMAGE_API_KEY=your_openai_api_key
-```
-
-只要配置了 `OPENAI_IMAGE_API_KEY` 或 `OPENAI_IMAGE_API_BASE_URL`，图片请求会优先走这套 OpenAI 配置；否则才会使用 `XI_XU_API_BASE_URL` 和 `XI_XU_API_KEY`。
-
----
-
-## 本地跑起来
-
-先把依赖装好：
+### 完整备份
 
 ```bash
-npm install
+npm run backup:full
 ```
 
-然后启动服务：
-
-```bash
-npm start
-```
-
-默认访问地址：
+完整备份包含数据库快照、历史引用的图片，以及 SHA-256 校验清单；执行后会检查数据库完整性、外键和图片文件。`.env` 不包含在备份包内。
 
 ```text
-http://localhost:3001
+backups/
+└── snapshot-<timestamp>-<id>/
+    ├── data.db
+    ├── manifest.json
+    └── uploads/
 ```
 
-语法检查：
+验证指定快照：
+
+```bash
+node scripts/backup-full.js --verify "<snapshot-directory>"
+```
+
+Windows 可安装每天凌晨 03:17 执行的定时备份任务：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-backup-task.ps1
+```
+
+完整备份默认保留 7 天，可配置为 1–30 天。需要独立副本时，将 `BACKUP_MIRROR_DIR` 指向独立磁盘或受控网络盘；同一硬盘上的备份不属于异地备份。恢复步骤见 [运行与恢复说明](docs/RELEASE_2026-09-05.md#恢复步骤)。
+
+## 安全与数据
+
+- **登录保护**：HttpOnly / SameSite Cookie、登录失败锁定、密码变更后旧令牌失效。
+- **访问隔离**：生成记录与私有图片校验用户归属，管理员操作记录审计日志。
+- **上传与下载检查**：检查文件头、大小和像素；外部图片下载校验地址并拦截内网目标。
+- **积分一致性**：数据库事务、唯一业务号和任务账本用于减少重复扣费与重复退款。
+- **资料管理**：注销清理创作资料，必要财务记录按保留策略处理；具体规则见 [隐私政策](privacy.html)。
+
+密钥保存在服务端配置中，不返回浏览器。`.env`、数据库、用户图片、日志与备份不应提交到仓库。
+
+## 开发与验证
 
 ```bash
 npm run check
+npm test
+npm audit --omit=dev --registry=https://registry.npmjs.org
 ```
 
-Windows 下如果想让服务在后台保活，可以用我们准备好的脚本：
+测试覆盖积分结算、重复请求、任务恢复、权限隔离、登录锁定、反馈查询和备份校验。模型相关自动测试使用模拟上游，不代表真实服务的画质或可用性保证。
 
-```powershell
-.\deploy\ensure-local-service.ps1
-```
-
----
-
-## 管理后台
-
-第一次启动时，如果数据库里还没有管理员，系统会自动用 `.env` 里的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 创建管理员账号。
-
-登录管理后台（`admin.html`）后，管理员可以：
-
-- 查看用户列表，删除用户，重置用户密码
-- 给用户充值积分
-- 查看和删除生成历史
-- 查看积分流水
-- 生成卡密、查看卡密统计
-- 查看支付订单，手动确认到账或关闭订单
-- 检查系统配置
-- 对 `gpt-image-2` 上游做 ping 测试
-
-**生产环境一定要把管理员密码改成强密码，不要用默认值上线。**
-
----
-
-## 支付那点事儿
-
-当前在线支付未开放。现阶段可用的是卡密兑换，以及管理员根据线下凭证人工处理已有订单；支付订单和模拟回调代码只用于内部联调：
-
-- `/api/payment/create` 当前固定返回 `503`，在线充值尚未开放；现阶段使用卡密兑换或管理员人工核对到账。
-- 管理员只能对数据库中已经存在的待处理订单进行人工确认，前台当前不能创建新的在线支付订单。
-- 真实的支付宝/微信回调接口已经留好了位置，但在完成验签逻辑之前不会自动入账。
-
-如果你准备进入正式收费阶段，务必完成下面这些事：
-
-- 对接支付宝/微信真实下单接口
-- 实现回调验签（RSA 公钥、证书校验等）
-- 幂等处理，防止重复到账
-- 订单金额二次校验
-- 回调 IP/证书/平台公钥校验
-- 准备好财务对账流程
-
----
-
-## 数据库和备份
-
-默认数据库文件就是项目根目录下的：
-
-```text
-data.db
-```
-
-里面核心的表有这些：
-
-| 表 | 说明 |
+| 命令 | 说明 |
 | --- | --- |
-| `users` | 用户信息，密码存的是哈希，还有积分和角色 |
-| `point_logs` | 积分流水 |
-| `history` | 所有生成历史 |
-| `cdkeys` | 卡密和邀请码 |
-| `payment_orders` | 支付订单 |
+| `npm start` | 启动本地服务 |
+| `npm run check` | 检查 JavaScript 语法 |
+| `npm test` | 运行回归测试 |
+| `npm run backup` | 仅备份数据库 |
+| `npm run backup:full` | 完整备份数据库及引用图片 |
+| `npm run audit:uploads` | 只读检查疑似孤儿图片 |
+| `npm run check:production` | 查看生产配置检查结果 |
 
-以下文件和目录属于运行时数据，**不要提交到 Git**：
+## 文档导航
 
-- `.env`
-- `data.db`
-- `uploads/`
-- `logs/`
-- `node_modules/`
-- `history.json`
-
-运行中的 SQLite 不建议直接复制。使用在线备份命令：
-
-```bash
-npm run backup
-```
-
-它会调用 SQLite backup API，在 `backups/` 生成带时间戳的数据库副本。生产环境建议定期备份：
-
-- `data.db`
-- `uploads/`
-- 云端 `.env`（安全存放，不要公开）
-
-上传目录清理前先只读审计：
-
-```bash
-npm run audit:uploads
-```
-
-默认只报告疑似孤儿文件，不删除。确认后可手工运行 `node scripts/audit-orphan-uploads.js --quarantine` 将文件移入 `uploads/_quarantine/`，仍不会直接删除。
+| 文档 | 内容 |
+| --- | --- |
+| [产品框架](docs/PRODUCT_FRAMEWORK.md) | 使用场景、功能边界与产品定位 |
+| [部署说明](docs/DEPLOYMENT.md) | 服务部署与运行数据保护 |
+| [版本与恢复记录](docs/RELEASE_2026-09-05.md) | 当前能力、运维命令与恢复步骤 |
+| [后续路线](docs/ROADMAP.md) | 已实现功能与后续迭代条件 |
+| [指标与事件](docs/METRICS_AND_EVENTS.md) | 统计口径与事件约定 |
+| [发布检查清单](docs/RELEASE_CHECKLIST.md) | 发布前的验证项目 |
 
 ---
 
-## 上传和图片保存
+<div align="center">
 
-- 上传文件默认限制最大 `20MB`（`MAX_UPLOAD_IMAGE_MB=20`）。画面工坊超过 20MB 的参考图会在浏览器端尽量保留细节压缩后再上传。
-- 改图时上传的参考图会在服务端先处理并限制大小。
-- 支持常见图片 MIME 并校验文件头，防止伪装文件。
-- 生成的图片会先下载到本地的 `uploads/` 目录，然后以本地 URL 返回。
-- `/uploads` 已要求登录，并核对图片是否属于当前用户；管理员可以访问全部图片。
+**让灵感有结果，让创作可继续。**
 
----
+[反馈问题](https://github.com/888helloworld/yudi-ai-studio/issues) · [浏览代码](https://github.com/888helloworld/yudi-ai-studio) · [查看提交记录](https://github.com/888helloworld/yudi-ai-studio/commits/main)
 
-## 安全相关的唠叨
-
-我们已经做了这些安全措施：
-
-- 生产环境如果没设置 `JWT_SECRET`，服务会拒绝启动。
-- `ENABLE_MOCK_PAYMENT` 默认关闭；模拟支付回调也必须配置 `MOCK_PAYMENT_TOKEN`。
-- 图片接口、注册接口都有限流。
-- 用户列表和历史查询都有分页限制。
-- 上传文件有大小限制、MIME 白名单和文件头检查。
-- 上传还限制单次总大小、单图/总像素和最大边长，避免像素炸弹。
-- `/uploads` 有用户归属鉴权，并添加 `Cache-Control: private`、`X-Content-Type-Options: nosniff`、`X-Robots-Tag: noindex`。
-- 响应头关闭了 `X-Powered-By`。
-- 上传依赖库使用了 `multer` 2.x。
-- 浏览器 JWT 存在 HttpOnly Cookie，不写入 `localStorage`；修改或重置密码后旧令牌立即失效。
-- 外部图片下载会校验 DNS、拦截内网/保留地址、逐次校验重定向并限制下载大小。
-- 管理员敏感操作写入审计日志，可在后台“操作审计”查看。
-
-你仍然需要注意这几点：
-
-- 支付正式上线前，必须完成真实回调验签，否则一切都只是模拟。
-- **任何时候都不要把真实 API Key、服务器地址、SSH 信息、管理员密码、支付密钥提交到仓库或公开分享。**
-
----
-
-## 部署
-
-详细的部署说明看这里：[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-
-目前的部署规则很简单：你的本地代码是唯一真源，云端运行时数据（`.env`、`data.db`、`uploads/`）要以云端为准。正常部署只会更新代码，不会覆盖云端的用户、积分、历史和图片。
-
-执行部署命令：
-
-```powershell
-.\deploy\deploy.ps1
-```
-
-只有第一次安装或者明确要恢复数据时，才加上 `-IncludeRuntimeData` 参数：
-
-```powershell
-.\deploy\deploy.ps1 -IncludeRuntimeData
-```
-
----
-
-## 常用命令速查
-
-```bash
-npm install
-npm start
-npm run check
-```
-
-```powershell
-.\deploy\ensure-local-service.ps1
-.\deploy\deploy.ps1
-```
-
-```bash
-git status --short --branch
-git log -1 --oneline
-git push
-```
-
----
-
-## 更多文档
-
-- [部署说明](docs/DEPLOYMENT.md)
-- [产品框架](docs/PRODUCT_FRAMEWORK.md)
-- [指标和埋点](docs/METRICS_AND_EVENTS.md)
-- [隐私与运营配置清单](docs/PRIVACY_OPERATIONS.md)
-- [迭代路线](docs/ROADMAP.md)
-- [发布验收清单](docs/RELEASE_CHECKLIST.md)
-
----
-
-## 当前已知的“小脾气”和限制
-
-- `gpt-image-2` 上游的尺寸会发生变化，上面那张尺寸表是基于当前测试和页面适配总结的，将来可能会有出入，请以实际出图为准。
-- 4K 按钮已经拿掉了，因为目前上游不管你怎么请求大横图，返回的实际尺寸都和 2K 横图一样，没必要单独保留。
-- 积分扣费（每张 10 积分）和页面展示的美元成本是两套独立的逻辑：前端算的是上游成本估算，后端按积分扣费，互不干扰。
-- 支付目前还是模拟/人工确认，不是生产级自动收款。
-- 项目是轻量单体结构，特别适合低并发场景。如果要上高并发商用，后面需要拆分任务队列、引入对象存储、升级支付服务和日志监控等。
-- 服务重启会尝试恢复未完成的画面工坊任务；参考图缺失或记录损坏的任务会自动退款，并用唯一退款业务号防止重复到账。
+</div>

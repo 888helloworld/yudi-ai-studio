@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="580" viewBox="0 0 1600 580" role="img" aria-labelledby="title desc">
+  <title id="title">雨滴AI · Yudi AI</title>
+  <desc id="desc">自托管 AI 图文创作工作台，连接灵感、图片、文案和可复用的作品。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#12291f"/><stop offset="1" stop-color="#0b100e"/></linearGradient>
+    <linearGradient id="drop" x2="1" y2="1"><stop stop-color="#a3efb6"/><stop offset="1" stop-color="#07c160"/></linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#c5edd1" stroke-opacity=".06"/></pattern>
+  </defs>
+  <rect width="1600" height="580" rx="24" fill="url(#bg)"/>
+  <rect width="1600" height="580" rx="24" fill="url(#grid)"/>
+  <circle cx="1280" cy="294" r="210" fill="none" stroke="#6ecf92" stroke-opacity=".16"/>
+  <circle cx="1280" cy="294" r="156" fill="none" stroke="#6ecf92" stroke-opacity=".12"/>
+  <path d="M1280 146C1256 183 1176 271 1176 327a104 104 0 0 0 208 0c0-56-80-144-104-181Z" fill="url(#drop)"/>
+  <path d="M1226 328a54 54 0 0 0 54 54" fill="none" stroke="#effff3" stroke-width="8" stroke-linecap="round" opacity=".72"/>
+  <rect x="88" y="76" width="255" height="35" rx="17.5" fill="#76d995" fill-opacity=".12" stroke="#76d995" stroke-opacity=".25"/>
+  <text x="110" y="99" fill="#b4e9c3" font-family="Arial,sans-serif" font-size="14" letter-spacing="3">SELF-HOSTED AI STUDIO</text>
+  <text x="82" y="236" fill="#f0f5ef" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="94" font-weight="700" letter-spacing="-3">雨滴AI <tspan fill="#7dd79b" font-weight="400">/ Yudi AI</tspan></text>
+  <text x="88" y="300" fill="#b6c8bc" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="30">从一句想法，到一组能用的图文。</text>
+  <text x="89" y="346" fill="#80988a" font-family="Arial,sans-serif" font-size="21" letter-spacing="1">Create. Refine. Reuse.</text>
+  <path d="M88 413H947" stroke="#afcfb9" stroke-opacity=".18"/>
+  <g fill="#c3d4c8" font-family="Arial,'Microsoft YaHei',sans-serif" font-size="19">
+    <text x="88" y="460">图片生成</text><text x="273" y="460">参考图改图</text><text x="477" y="460">文案创作</text><text x="663" y="460">作品与积分管理</text>
+  </g>
+  <g fill="#55cb81"><circle cx="235" cy="452" r="3"/><circle cx="439" cy="452" r="3"/><circle cx="625" cy="452" r="3"/></g>
+</svg>
