@@ -161,6 +161,38 @@
       .admin-modal { padding: 10px; }
       .admin-modal-content { padding: 16px; border-radius: var(--radius-md); }
     }
+    /* 紧凑概览：桌面一行、手机三列。 */
+    .admin-container { padding-top: 14px; }
+    #stats { grid-template-columns: repeat(9,minmax(0,1fr)); gap: 6px; margin-bottom: 12px; }
+    #stats .admin-stat-card { padding: 10px 8px; border-radius: 7px; min-width: 0; }
+    #stats .admin-stat-card:hover { transform: none; box-shadow: none; }
+    #stats .admin-stat-label { font-size: 11px; letter-spacing: 0; margin-bottom: 5px; white-space: nowrap; }
+    #stats .admin-stat-value { font-size: 20px; line-height: 1.2; font-weight: 700; background: none; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    .admin-toolbar select { width: auto; flex: 0 0 auto; }
+    .admin-help { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-bottom: 10px; }
+    .overview-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--text-muted); font-size: 12px; flex-wrap: wrap; }
+    .overview-toolbar details { flex: 1; }
+    .overview-toolbar summary { cursor: pointer; }
+    .overview-toolbar details p { max-width: 650px; margin-top: 8px; line-height: 1.6; }
+    .admin-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .admin-btn:focus-visible, .admin-tab:focus-visible, summary:focus-visible { outline: 2px solid var(--neon-green); outline-offset: 3px; }
+    #operationsPanel > h3 { margin: 24px 0 10px; font-size: 15px; }
+    #operationsPanel > p { color: var(--text-muted); line-height: 1.7; font-size: 13px; margin: 10px 0; }
+    #operationsChecks { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+    #operationsChecks p, #feedbackList form { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.6; }
+    #providerCostForm { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+    #providerCostForm label { font-size: 12px; color: var(--text-muted); }
+    #providerCostForm input, #providerCostForm select, #feedbackList textarea { display: block; width: 100%; padding: 10px; margin-top: 6px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; }
+    #feedbackList textarea { min-height: 90px; resize: vertical; margin-bottom: 10px; }
+    #feedbackList form { margin-bottom: 12px; }
+    @media (max-width: 1100px) { #stats { grid-template-columns: repeat(5,minmax(0,1fr)); } }
+    @media (max-width: 640px) {
+      #stats { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
+      #stats .admin-stat-card { padding: 8px 6px; }
+      #stats .admin-stat-label { font-size: 10px; }
+      #stats .admin-stat-value { font-size: 18px; }
+      #operationsChecks, #providerCostForm { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body class="admin-body">
@@ -176,16 +208,21 @@
   </header>
 
   <main class="admin-container">
+    <div class="overview-toolbar">
+      <details><summary>数据概览 · 今日按北京时间统计 · 查看口径</summary><p>用户余额是全体用户当前剩余积分。今日生成按有产出的记录计数，不是图片张数；生成耗分是这些记录的积分消耗。支付充值仅包含已支付订单；退款、赠送和人工调整单列，人工调整为净增减积分，均不计入支付金额。</p></details>
+      <span id="statsStatus" role="status">正在更新概览…</span>
+      <button class="admin-btn admin-btn-sm" id="refreshStats" type="button">刷新概览</button>
+    </div>
     <section class="admin-stats" id="stats">
       <div class="admin-stat-card"><div class="admin-stat-label">总用户数</div><div class="admin-stat-value" id="totalUsers">-</div></div>
-      <div class="admin-stat-card"><div class="admin-stat-label">总积分</div><div class="admin-stat-value" id="totalPoints">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">用户余额积分</div><div class="admin-stat-value" id="totalPoints">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日生成</div><div class="admin-stat-value" id="todayCount">-</div></div>
-      <div class="admin-stat-card"><div class="admin-stat-label">今日消耗积分</div><div class="admin-stat-value" id="todayCost">-</div></div>
-      <div class="admin-stat-card"><div class="admin-stat-label">今日充值积分</div><div class="admin-stat-value" id="todayRecharge">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日生成耗分</div><div class="admin-stat-value" id="todayCost">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日支付充值</div><div class="admin-stat-value" id="todayRecharge">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日退款积分</div><div class="admin-stat-value" id="todayRefundPoints">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日赠送积分</div><div class="admin-stat-value" id="todayBonusPoints">-</div></div>
       <div class="admin-stat-card"><div class="admin-stat-label">今日人工调整</div><div class="admin-stat-value" id="todayAdminAdjustments">-</div></div>
-      <div class="admin-stat-card"><div class="admin-stat-label">今日支付金额</div><div class="admin-stat-value" id="todayPaidRevenue">-</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-label">今日支付金额 / 元</div><div class="admin-stat-value" id="todayPaidRevenue">-</div></div>
     </section>
 
     <nav class="admin-tabs" role="tablist" aria-label="管理功能">
@@ -201,7 +238,7 @@
 
     <section class="admin-panel active" id="usersPanel" role="tabpanel">
       <div class="admin-panel-title">
-        <div><h2>用户管理</h2><p>查看余额、给用户充值、重置密码、冻结或封禁普通用户。</p></div>
+        <div><h2>用户管理</h2><p>查看余额、人工调整积分、重置密码、冻结或封禁普通用户。</p></div>
         <button class="admin-btn admin-btn-sm" type="button" data-admin-action="refresh-users">刷新列表</button>
       </div>
       <div class="admin-toolbar">
@@ -270,6 +307,7 @@
       <div class="admin-panel-title">
         <div><h2>积分流水</h2><p>查看全平台充值、消费与变更后余额。</p></div>
       </div>
+<form class="admin-toolbar" id="pointLogFilters"><input type="text" id="pointLogKeyword" aria-label="搜索用户或流水说明" placeholder="用户名 / 流水说明"><select id="pointLogType" aria-label="流水类型"><option value="">全部类型</option><option value="recharge">充值</option><option value="consume">消费</option><option value="refund">退款</option><option value="signup_bonus">注册赠送</option><option value="invite_bonus">邀请奖励</option><option value="admin_adjust">人工调整</option></select><button class="admin-btn admin-btn-primary" type="submit">查询</button><button class="admin-btn" type="reset">重置</button></form>
       <div class="admin-table-wrap">
         <table>
           <thead>
@@ -277,7 +315,7 @@
               <th>时间</th>
               <th>用户</th>
               <th>类型</th>
-              <th>金额</th>
+              <th>变动积分</th>
               <th>余额</th>
               <th>说明</th>
             </tr>
@@ -358,6 +396,7 @@
         </div>
       </div>
       <div class="payment-stats" id="paymentStats"></div>
+<form class="admin-toolbar" id="paymentFilters"><input type="text" id="paymentKeyword" aria-label="搜索订单号或用户名" placeholder="订单号 / 用户名"><select id="paymentStatus" aria-label="订单状态"><option value="">全部状态</option><option value="pending">待支付</option><option value="paid">已支付</option><option value="closed">已关闭</option></select><button class="admin-btn admin-btn-primary" type="submit">查询</button><button class="admin-btn" type="reset">重置</button></form>
       <div class="admin-table-wrap">
         <table>
           <thead>
@@ -403,14 +442,14 @@
 
   <div class="admin-modal" id="rechargeModal" role="dialog" aria-modal="true" aria-labelledby="rechargeModalTitle" style="display:none;">
     <form class="admin-modal-content" id="rechargeForm">
-      <h3 id="rechargeModalTitle">积分充值</h3>
+      <h3 id="rechargeModalTitle">人工加积分</h3><p class="admin-help">仅调整余额，不代表支付到账，不计入收入。</p>
       <div class="admin-error" id="rechargeError"></div>
       <p id="rechargeUser" style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;"></p>
-      <input type="number" id="rechargeAmount" aria-label="充值积分数量" placeholder="充值积分数量">
-      <input type="text" id="rechargeDesc" aria-label="充值备注" placeholder="备注（可选）">
+      <input type="number" id="rechargeAmount" aria-label="增加积分数量" placeholder="增加积分数量（1–100000）" min="1" max="100000" step="1" required>
+      <input type="text" id="rechargeDesc" aria-label="调整备注" placeholder="备注（可选）">
       <div class="admin-modal-actions">
                 <button class="admin-btn" type="button" data-admin-action="close-recharge">取消</button>
-                <button class="admin-btn admin-btn-primary" type="submit">确认充值</button>
+                <button class="admin-btn admin-btn-primary" type="submit">确认增加</button>
       </div>
     </form>
   </div>
@@ -431,9 +470,9 @@
     </form>
   </div>
 
-    <script src="frontend/shared-utils.js?v=20260826-2"></script>
-    <script src="admin.js?v=20260826-2"></script>
-<script src="operations-admin.js"></script>
+    <script src="frontend/shared-utils.js?v=20260906-1"></script>
+    <script src="admin.js?v=20260906-1"></script>
+<script src="operations-admin.js?v=20260906-1"></script>
 </body>
 </html>
 

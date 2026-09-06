@@ -86,6 +86,25 @@ function runDatabaseWorker(action, values) {
   });
 }
 
+test('后台查账支持跨页筛选和特殊关键词', () => {
+  const user = api.createUser('filter_%_user', 'FilterTest123');
+  api.rechargePoints(user.id, 30, 'filter refund', null, 'refund');
+  api.rechargePoints(user.id, 20, 'filter bonus', null, 'signup_bonus');
+  const filters = { keyword: 'filter_%_user', type: 'refund' };
+  assert.equal(api.getAllPointLogsCount(filters), 1);
+  assert.equal(api.getAllPointLogs(1, 0, filters)[0].type, 'refund');
+  assert.equal(api.getAllPointLogs(1, 1, filters).length, 0);
+  assert.equal(api.getAllPointLogsCount({ keyword: "' OR 1=1 --" }), 0);
+  const first = api.createPaymentOrder(user.id, 1, 10, 'alipay');
+  api.createPaymentOrder(user.id, 2, 20, 'wxpay');
+  api.closePaymentOrder(first.order_no);
+  const orders = api.getAllPaymentOrders({ keyword: 'filter_%_user', status: 'pending', limit: 1 });
+  assert.equal(orders.total, 1);
+  assert.equal(orders.list[0].status, 'pending');
+  assert.equal(api.getAllPaymentOrders({ keyword: first.order_no }).total, 1);
+  assert.equal(api.getAllPaymentOrders({ keyword: "' OR 1=1 --" }).total, 0);
+});
+
 test.after(() => {
   db.close();
   removeTestDatabase();

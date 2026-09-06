@@ -51,13 +51,21 @@ function getUserPaymentOrders(userId, limit = 20) {
 
 function getAllPaymentOrders(options = {}) {
   const { page = 1, limit = 50 } = options;
-  const offset = (page - 1) * limit;
+  const keyword = String(options.keyword || '').trim();
+  const status = String(options.status || '');
+  const args = [keyword, keyword, keyword, status, status];
   const list = db.prepare(`
     SELECT po.*, u.username FROM payment_orders po
     LEFT JOIN users u ON po.user_id = u.id
-    ORDER BY po.created_at DESC LIMIT ? OFFSET ?
-  `).all(limit, offset);
-  const total = db.prepare('SELECT COUNT(*) as total FROM payment_orders').get().total;
+    WHERE (? = '' OR instr(po.order_no, ?) > 0 OR instr(COALESCE(u.username, ''), ?) > 0)
+      AND (? = '' OR po.status = ?)
+    ORDER BY po.created_at DESC, po.id DESC LIMIT ? OFFSET ?
+  `).all(...args, limit, (page - 1) * limit);
+  const total = db.prepare(`SELECT COUNT(*) as total FROM payment_orders po
+    LEFT JOIN users u ON po.user_id = u.id
+    WHERE (? = '' OR instr(po.order_no, ?) > 0 OR instr(COALESCE(u.username, ''), ?) > 0)
+      AND (? = '' OR po.status = ?)
+  `).get(...args).total;
   return { list, total };
 }
 

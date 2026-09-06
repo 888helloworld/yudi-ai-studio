@@ -57,7 +57,10 @@
     });
     document.getElementById('rechargeForm')?.addEventListener('submit', (event) => {
       event.preventDefault();
-      confirmRecharge();
+      const button = event.target.querySelector('[type=submit]');
+      if (button.disabled) return;
+      button.disabled = true;
+      confirmRecharge().finally(() => { button.disabled = false; });
     });
     document.getElementById('resetPasswordForm')?.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -69,6 +72,12 @@
       return Number.isInteger(number) ? String(number) : number.toFixed(2);
     }
 
+    document.getElementById('refreshStats').addEventListener('click', loadStats);
+    for (const [id, reload] of [['pointLogFilters', loadPointLogs], ['paymentFilters', loadPaymentOrders]]) {
+      const form = document.getElementById(id);
+      form.addEventListener('submit', event => { event.preventDefault(); reload(1); });
+      form.addEventListener('reset', () => setTimeout(() => reload(1), 0));
+    }
     checkAdmin();
     loadStats();
     loadUsers();

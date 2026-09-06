@@ -1,9 +1,16 @@
+    let pointLogRequest = 0;
+    let paymentRequest = 0;
     async function loadPointLogs(page = pointLogsPage) {
+      const request = ++pointLogRequest;
       try {
         pointLogsPage = page;
         const params = new URLSearchParams({ page: String(pointLogsPage), limit: String(pointLogsLimit) });
+        params.set('keyword', document.getElementById('pointLogKeyword').value.trim());
+        params.set('type', document.getElementById('pointLogType').value);
         const res = await authFetch(`/api/admin/point-logs?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
+        if (request !== pointLogRequest) return;
+        if (!res.ok) throw new Error(data.error || '加载失败');
         const tbody = document.getElementById('pointLogsList');
         if (!data.logs || data.logs.length === 0) {
           tbody.innerHTML = '<tr><td class="admin-table-empty" colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">暂无数据</td></tr>';
@@ -11,15 +18,15 @@
           return;
         }
         tbody.innerHTML = data.logs.map(log => {
-          const typeLabel = log.type === 'recharge' ? '充值' : '消费';
-          const typeClass = log.type === 'recharge' ? 'recharge' : 'consume';
-          const amountClass = log.type === 'recharge' ? 'positive' : 'negative';
-          const amount = log.type === 'recharge' ? `+${log.amount}` : `${log.amount}`;
+          const typeLabel = { recharge: '充值', consume: '消费', refund: '退款', signup_bonus: '注册赠送', invite_bonus: '邀请奖励', admin_adjust: '人工调整' }[log.type] || log.type;
+          const typeClass = Number(log.amount) >= 0 ? 'recharge' : 'consume';
+          const amountClass = Number(log.amount) >= 0 ? 'positive' : 'negative';
+          const amount = Number(log.amount) > 0 ? `+${log.amount}` : `${log.amount}`;
           return `<tr>
             <td data-label="时间" style="color:var(--text-muted);font-size:12px;">${escapeHtml(log.created_at)}</td>
             <td data-label="用户">${escapeHtml(log.username || '未知')}</td>
-            <td data-label="类型"><span class="log-type ${typeClass}">${typeLabel}</span></td>
-            <td data-label="金额" class="log-amount ${amountClass}">${escapeHtml(amount)}</td>
+            <td data-label="类型"><span class="log-type ${typeClass}">${escapeHtml(typeLabel)}</span></td>
+            <td data-label="变动积分" class="log-amount ${amountClass}">${escapeHtml(amount)}</td>
             <td data-label="余额">${escapeHtml(log.balance)}</td>
             <td data-label="说明" style="color:var(--text-secondary);">${escapeHtml(log.description || '-')}</td>
           </tr>`;
@@ -34,6 +41,8 @@
           onLimit: (limit) => { pointLogsLimit = limit; loadPointLogs(1); }
         });
       } catch (e) {
+        if (request !== pointLogRequest) return;
+        document.getElementById('pointLogsPager').innerHTML = '';
         document.getElementById('pointLogsList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--neon-red);padding:40px;">加载失败</td></tr>';
       }
     }
@@ -176,11 +185,16 @@
     }
 
     async function loadPaymentOrders(page = paymentPage) {
+      const request = ++paymentRequest;
       try {
         paymentPage = page;
         const params = new URLSearchParams({ page: String(paymentPage), limit: String(paymentLimit) });
+        params.set('keyword', document.getElementById('paymentKeyword').value.trim());
+        params.set('status', document.getElementById('paymentStatus').value);
         const res = await authFetch(`/api/admin/payment-orders?${params}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
+        if (request !== paymentRequest) return;
+        if (!res.ok) throw new Error(data.error || '加载失败');
         const tbody = document.getElementById('paymentOrdersList');
         if (!data.orders || data.orders.length === 0) {
           tbody.innerHTML = '<tr><td class="admin-table-empty" colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">暂无支付订单</td></tr>';
@@ -220,7 +234,11 @@
           onPage: loadPaymentOrders,
           onLimit: (limit) => { paymentLimit = limit; loadPaymentOrders(1); }
         });
-      } catch (e) { console.error('加载支付订单失败', e); }
+      } catch (e) {
+        if (request !== paymentRequest) return;
+        document.getElementById('paymentOrdersPager').innerHTML = '';
+        document.getElementById('paymentOrdersList').innerHTML = '<tr><td class="admin-table-empty" colspan="9">订单加载失败，请点击查询重试。</td></tr>';
+      }
     }
 
     async function markPaymentPaid(orderNo) {

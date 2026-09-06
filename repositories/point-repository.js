@@ -69,16 +69,26 @@ function getUserPoints(userId) {
   return user ? user.points : 0;
 }
 
-function getAllPointLogs(limit = 100, offset = 0) {
+function getAllPointLogs(limit = 100, offset = 0, filters = {}) {
+  const keyword = String(filters.keyword || '').trim();
+  const type = String(filters.type || '');
   return db.prepare(`
     SELECT pl.*, u.username FROM point_logs pl
     LEFT JOIN users u ON pl.user_id = u.id
-    ORDER BY pl.created_at DESC LIMIT ? OFFSET ?
-  `).all(limit, offset);
+    WHERE (? = '' OR instr(COALESCE(u.username, ''), ?) > 0 OR instr(COALESCE(pl.description, ''), ?) > 0)
+      AND (? = '' OR pl.type = ?)
+    ORDER BY pl.created_at DESC, pl.id DESC LIMIT ? OFFSET ?
+  `).all(keyword, keyword, keyword, type, type, limit, offset);
 }
 
-function getAllPointLogsCount() {
-  return db.prepare('SELECT COUNT(*) as total FROM point_logs').get().total;
+function getAllPointLogsCount(filters = {}) {
+  const keyword = String(filters.keyword || '').trim();
+  const type = String(filters.type || '');
+  return db.prepare(`SELECT COUNT(*) as total FROM point_logs pl
+    LEFT JOIN users u ON pl.user_id = u.id
+    WHERE (? = '' OR instr(COALESCE(u.username, ''), ?) > 0 OR instr(COALESCE(pl.description, ''), ?) > 0)
+      AND (? = '' OR pl.type = ?)
+  `).get(keyword, keyword, keyword, type, type).total;
 }
 
 module.exports = {

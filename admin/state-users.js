@@ -37,7 +37,11 @@
       }
     }
 
+    let statsLoading = false;
     async function loadStats() {
+      if (statsLoading) return;
+      statsLoading = true;
+      document.getElementById("refreshStats").disabled = true;
       try {
         const res = await authFetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } });
         if (!res.ok) throw new Error('统计加载失败');
@@ -51,8 +55,14 @@
         document.getElementById('todayBonusPoints').textContent = data.todayBonusPoints || 0;
         document.getElementById('todayAdminAdjustments').textContent = data.todayAdminAdjustments || 0;
         document.getElementById('todayPaidRevenue').textContent = formatMoney(data.todayPaidRevenue || 0);
+        document.querySelectorAll('#stats .admin-stat-value').forEach(node => { node.textContent = Number(node.textContent).toLocaleString('zh-CN', { maximumFractionDigits: 2 }); });
+        document.getElementById('statsStatus').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
       } catch (err) {
         console.error('加载统计失败', err);
+        document.getElementById('statsStatus').textContent = '更新失败，当前数值可能过期，请重试';
+      } finally {
+        statsLoading = false;
+        document.getElementById('refreshStats').disabled = false;
       }
     }
 
@@ -90,6 +100,7 @@
 
     function renderUsers(list) {
       const tbody = document.getElementById('usersList');
+      if (!list.length) { tbody.innerHTML = '<tr><td class="admin-table-empty" colspan="7">没有符合条件的用户，请更换关键词或状态。</td></tr>'; return; }
       tbody.innerHTML = list.map(u => `
         <tr>
           <td data-label="ID">${escapeHtml(u.id)}</td>
@@ -100,7 +111,7 @@
           <td data-label="注册时间">${escapeHtml(u.created_at)}</td>
           <td data-label="操作">
             <div class="admin-row-actions">
-              <button class="admin-btn admin-btn-primary admin-btn-sm" data-admin-action="open-recharge" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">充值</button>
+              <button class="admin-btn admin-btn-primary admin-btn-sm" data-admin-action="open-recharge" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">加积分</button>
               <button class="admin-btn admin-btn-sm" data-admin-action="adjust-points" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">增减积分</button>
               <button class="admin-btn admin-btn-sm" data-admin-action="open-reset-password" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">改密码</button>
               ${u.role !== 'admin' && u.status !== 'frozen' ? `<button class="admin-btn admin-btn-sm" data-admin-action="set-user-status" data-user-id="${Number(u.id)}" data-status="frozen">冻结</button>` : ''}
@@ -122,7 +133,7 @@
     async function adjustUserPoints(userId, username) {
       const rawAmount = prompt(`调整 ${username} 的积分。正数增加，负数扣减：`, '0');
       if (rawAmount === null) return;
-      const amount = Number.parseInt(rawAmount, 10);
+      const amount = Number(rawAmount);
       if (!Number.isInteger(amount) || amount === 0) return alert('请输入非 0 的整数');
       const reason = prompt('请输入调整原因：', amount > 0 ? '管理员增加积分' : '管理员扣减积分');
       if (reason === null || !reason.trim()) return alert('必须填写调整原因');
@@ -157,7 +168,7 @@
     function openRechargeModal(userId, username) {
       adminModalTrigger = document.activeElement;
       currentUserId = userId;
-      document.getElementById('rechargeUser').textContent = `为 ${username} 充值积分`;
+      document.getElementById('rechargeUser').textContent = `为 ${username} 增加积分（人工调整）`;
       document.getElementById('rechargeAmount').value = '';
       document.getElementById('rechargeDesc').value = '';
       document.getElementById('rechargeError').style.display = 'none';
@@ -171,10 +182,10 @@
     }
 
     async function confirmRecharge() {
-      const amount = parseInt(document.getElementById('rechargeAmount').value, 10);
+      const amount = Number(document.getElementById('rechargeAmount').value);
       const desc = document.getElementById('rechargeDesc').value;
 
-      if (!amount || amount <= 0) {
+      if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000) {
         document.getElementById('rechargeError').textContent = '请输入正确的积分数量';
         document.getElementById('rechargeError').style.display = 'block';
         return;
@@ -191,7 +202,7 @@
         closeRechargeModal();
         loadUsers();
         loadStats();
-        alert(`充值成功！当前积分：${data.balance}`);
+        alert(`积分增加成功，当前余额：${data.balance}`);
       } catch (err) {
         document.getElementById('rechargeError').textContent = err.message;
         document.getElementById('rechargeError').style.display = 'block';

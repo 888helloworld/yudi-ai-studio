@@ -175,8 +175,8 @@ router.post('/users/recharge', (req, res) => {
     return res.status(400).json({ error: '参数错误' });
   }
   
-  const numAmount = parseInt(amount);
-  if (numAmount <= 0) {
+  const numAmount = Number(amount);
+  if (!Number.isSafeInteger(numAmount) || numAmount <= 0) {
     return res.status(400).json({ error: '充值金额必须大于0' });
   }
   
@@ -188,14 +188,14 @@ router.post('/users/recharge', (req, res) => {
   const result = adjustUserPoints(
     parseInt(userId),
     numAmount,
-    description || '管理员充值',
+    description || '管理员增加积分',
     `admin-adjust:${req.userId}:${Date.now()}`
   );
   
   if (!result.success) {
     return res.status(400).json({ error: result.error || '用户不存在' });
   }
-  auditAdminAction(req, 'user.recharge', 'user', userId, { amount: numAmount, description: description || '管理员充值' });
+  auditAdminAction(req, 'user.recharge', 'user', userId, { amount: numAmount, description: description || '管理员增加积分' });
   res.json({ success: true, balance: result.balance });
 });
 
@@ -220,8 +220,8 @@ router.delete('/users/:id', (req, res) => {
 
 router.post('/users/adjust-points', (req, res) => {
   const userId = parseInt(req.body.userId);
-  const amount = Math.trunc(Number(req.body.amount));
-  if (!userId || !amount) return res.status(400).json({ error: '用户和调整积分不能为空' });
+  const amount = Number(req.body.amount);
+  if (!userId || !Number.isSafeInteger(amount) || !amount) return res.status(400).json({ error: '用户和调整积分不能为空' });
   const description = String(req.body.description || '管理员调整积分').slice(0, 200);
   const result = adjustUserPoints(userId, amount, description, `admin-adjust:${req.userId}:${Date.now()}`);
   if (!result.success) return res.status(400).json({ error: result.error });
@@ -303,8 +303,9 @@ router.get('/point-logs', (req, res) => {
   const page = parsePositiveInt(req.query.page, 1, 100000);
   const limit = parsePositiveInt(req.query.limit, 50, 200);
   const offset = (page - 1) * limit;
-  const logs = getAllPointLogs(limit, offset);
-  const total = getAllPointLogsCount();
+  const filters = { keyword: String(req.query.keyword || '').trim(), type: String(req.query.type || '') };
+  const logs = getAllPointLogs(limit, offset, filters);
+  const total = getAllPointLogsCount(filters);
   res.json({
     logs,
     total,
@@ -367,6 +368,8 @@ router.get('/payment-orders', (req, res) => {
   const pageNum = parsePositiveInt(page, 1, 100000);
   const limitNum = parsePositiveInt(limit, 50, 200);
   const result = getAllPaymentOrders({
+    keyword: String(req.query.keyword || '').trim(),
+    status: String(req.query.status || ''),
     page: pageNum,
     limit: limitNum
   });
