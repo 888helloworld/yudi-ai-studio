@@ -105,6 +105,40 @@ test('后台查账支持跨页筛选和特殊关键词', () => {
   assert.equal(api.getAllPaymentOrders({ keyword: "' OR 1=1 --" }).total, 0);
 });
 
+test('后台用户详情隔离用户、任务去重并准确关联退款', () => {
+  const support = require('../repositories/admin-support-repository');
+  const operations = require('../repositories/operation-repository');
+  const user = api.createUser('support_user', 'SupportTest123');
+  const other = api.createUser('support_other', 'SupportTest123');
+  const started = operations.beginOperation(user.id,'support-failed','/generate-copy','test',10,'test');
+  operations.settleOperation(started.operation.id, { error:'upstream failed' }, false);
+  const historyId = api.addHistory(user.id,'image',{ sub_type:'xi-generate', content:JSON.stringify({status:'failed',refunded_points:20}),cost_points:0,client_task_id:'legacy-support' });
+  api.rechargePoints(user.id,20,'legacy refund',`xi-job-failure:${historyId}`,'refund');
+  // 同业务号不属于该用户的流水不能被关联。
+  api.rechargePoints(other.id,99,'unrelated',`operation:${started.operation.id}:refund:99`,'refund');
+  const duplicate = api.addHistory(user.id,'image',{sub_type:'xi-generate',content:'{"status":"failed"}',cost_points:0});
+  db.prepare('UPDATE history SET operation_id=? WHERE id=?').run(started.operation.id,duplicate);
+  const tasks = support.getAdminTasks({userId:user.id,status:'failed'});
+  assert.equal(tasks.total,2);
+  const op = tasks.items.find(t=>t.task_key.startsWith('operation:'));
+  assert.equal(op.actualCost,0);
+  assert.equal(op.refunds.length,1);
+  assert.equal(op.refunds[0].amount,10);
+  const legacy = tasks.items.find(t=>t.task_key.startsWith('history:'));
+  assert.equal(legacy.charged,20);
+  assert.equal(legacy.refunds[0].amount,20);
+  assert.equal(support.getAdminTasks({userId:user.id,limit:1,page:2}).items.length,1);
+  assert.equal(support.getAdminTasks({keyword:"' OR 1=1 --"}).total,0);
+  api.createPaymentOrder(user.id,1,10,'alipay');
+  api.createPaymentOrder(other.id,2,20,'alipay');
+  const detail = support.getAdminUserDetail(user.id,'orders');
+  assert.equal(detail.items.length,1);
+  assert.equal(detail.items[0].amount,1);
+  assert.equal(Object.hasOwn(detail.user,'password_hash'),false);
+  assert.equal(Object.hasOwn(detail.user,'token_version'),false);
+  assert.equal(support.getAdminUserDetail(999999),null);
+});
+
 test.after(() => {
   db.close();
   removeTestDatabase();

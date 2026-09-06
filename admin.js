@@ -1,10 +1,10 @@
 (() => {
-  const files = ['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js'];
+  const files = ['state-users.js', 'history.js', 'billing.js', 'audit.js', 'support.js', 'bootstrap.js'];
 
   function loadScript(filename) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `admin/${filename}?v=20260906-1`;
+      script.src = `admin/${filename}?v=20260906-2`;
       script.async = false;
       script.onload = resolve;
       script.onerror = () => reject(new Error(`管理后台脚本加载失败：${filename}`));

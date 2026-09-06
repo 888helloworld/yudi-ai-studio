@@ -150,7 +150,7 @@ const IMAGE_STUDIO_FILES = new Set([
   'image-actions.js', 'source-images.js', 'prompt-polish.js', 'reverse-prompt.js', 'utilities.js', 'bootstrap.js'
 ]);
 const FRONTEND_FILES = new Set(['shared-utils.js']);
-const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'audit.js', 'bootstrap.js']);
+const ADMIN_FILES = new Set(['state-users.js', 'history.js', 'billing.js', 'audit.js', 'support.js', 'bootstrap.js']);
 const PUBLIC_HTML_CACHE_CONTROL = 'private, no-cache, must-revalidate';
 const PUBLIC_STATIC_CACHE_CONTROL = 'public, no-cache, must-revalidate';
 

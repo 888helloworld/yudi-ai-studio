@@ -118,6 +118,23 @@ function getPaymentIntegrationStatus(req) {
 // 所有路由需要管理员权限
 router.use(authMiddleware, adminMiddleware);
 
+const { getAdminTasks, getAdminUserDetail } = require('../repositories/admin-support-repository');
+router.get('/tasks', (req, res) => {
+  const status = String(req.query.status || '');
+  if (!['', 'failed', 'partial', 'queued', 'running', 'done', 'cancelled', 'unknown'].includes(status)) return res.status(400).json({ error: '无效任务状态' });
+  res.json(getAdminTasks({ status, keyword: String(req.query.keyword || '').trim().slice(0,200),
+    page: parsePositiveInt(req.query.page,1,100000), limit: parsePositiveInt(req.query.limit,20,100) }));
+});
+router.get('/users/:id/detail', (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id<=0) return res.status(400).json({ error: '用户编号无效' });
+  const section = String(req.query.section || 'logs');
+  if (!['logs','orders','history','tasks'].includes(section)) return res.status(400).json({ error: '无效明细类型' });
+  const result = getAdminUserDetail(id, section, parsePositiveInt(req.query.page,1,100000),20);
+  if (!result) return res.status(404).json({ error: '用户不存在' });
+  res.json(result);
+});
+
 // 获取统计数据
 router.get('/stats', (req, res) => {
   const stats = getStats();

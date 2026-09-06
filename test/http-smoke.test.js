@@ -56,6 +56,7 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     assert.doesNotMatch(csp, /script-src[^;]*unsafe-inline/);
     assert.match(await home.text(), /雨滴AI/);
 
+    assert.equal((await fetch(`${baseUrl}/admin/support.js`)).status, 200);
     const loader = await fetch(`${baseUrl}/script.js`);
     assert.equal(loader.status, 200);
     assert.equal(loader.headers.get('cache-control'), 'public, no-cache, must-revalidate');
@@ -273,6 +274,17 @@ test('公开页面、拆分脚本与公开接口可以正常访问', async () =>
     });
     assert.equal(adminLogin.status, 200);
     const adminToken = (await adminLogin.json()).token;
+    for (const endpoint of ['/api/admin/tasks', `/api/admin/users/${registerBody.user.id}/detail`]) {
+      assert.equal((await fetch(baseUrl+endpoint)).status,401);
+      assert.equal((await fetch(baseUrl+endpoint,{headers:authHeaders})).status,403);
+      const response = await fetch(baseUrl+endpoint,{headers:{Authorization:`Bearer ${adminToken}`}});
+      assert.equal(response.status,200);
+      const body = await response.json();
+      assert.ok(Array.isArray(body.items));
+      assert.equal(JSON.stringify(body).includes('password_hash'),false);
+    }
+    assert.equal((await fetch(`${baseUrl}/api/admin/users/999999/detail`,{headers:{Authorization:`Bearer ${adminToken}`}})).status,404);
+    assert.equal((await fetch(`${baseUrl}/api/admin/tasks?status=invalid`,{headers:{Authorization:`Bearer ${adminToken}`}})).status,400);
     const recharge = await fetch(`${baseUrl}/api/admin/users/recharge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },

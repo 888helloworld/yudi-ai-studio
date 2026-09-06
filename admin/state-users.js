@@ -111,6 +111,7 @@
           <td data-label="注册时间">${escapeHtml(u.created_at)}</td>
           <td data-label="操作">
             <div class="admin-row-actions">
+              <button class="admin-btn admin-btn-sm" data-support-user="${Number(u.id)}">查看详情</button>
               <button class="admin-btn admin-btn-primary admin-btn-sm" data-admin-action="open-recharge" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">加积分</button>
               <button class="admin-btn admin-btn-sm" data-admin-action="adjust-points" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">增减积分</button>
               <button class="admin-btn admin-btn-sm" data-admin-action="open-reset-password" data-user-id="${Number(u.id)}" data-username="${escapeHtml(u.username || '')}">改密码</button>

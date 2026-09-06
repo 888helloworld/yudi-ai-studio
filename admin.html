@@ -169,6 +169,12 @@
     #stats .admin-stat-label { font-size: 11px; letter-spacing: 0; margin-bottom: 5px; white-space: nowrap; }
     #stats .admin-stat-value { font-size: 20px; line-height: 1.2; font-weight: 700; background: none; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
     .admin-toolbar select { width: auto; flex: 0 0 auto; }
+    .support-card { padding: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+    .support-card p { margin: 6px 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+    .support-meta { color: var(--text-muted); font-size: 12px; }
+    .support-sections { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .support-sections [aria-pressed="true"] { border-color: var(--neon-green); color: var(--neon-green); }
+    #userDetail { scroll-margin-top: 84px; }
     .admin-help { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-bottom: 10px; }
     .overview-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--text-muted); font-size: 12px; flex-wrap: wrap; }
     .overview-toolbar details { flex: 1; }
@@ -227,6 +233,7 @@
 
     <nav class="admin-tabs" role="tablist" aria-label="管理功能">
       <button class="admin-tab active" type="button" role="tab" aria-selected="true" aria-controls="usersPanel" data-tab="users">用户管理</button>
+      <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="tasksPanel" tabindex="-1" data-tab="tasks">任务中心</button>
       <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="historyPanel" tabindex="-1" data-tab="history">历史记录</button>
       <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="chartsPanel" tabindex="-1" data-tab="charts">数据图表</button>
       <button class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="pointlogsPanel" tabindex="-1" data-tab="pointlogs">积分流水</button>
@@ -237,6 +244,7 @@
     </nav>
 
     <section class="admin-panel active" id="usersPanel" role="tabpanel">
+      <div id="usersOverview">
       <div class="admin-panel-title">
         <div><h2>用户管理</h2><p>查看余额、人工调整积分、重置密码、冻结或封禁普通用户。</p></div>
         <button class="admin-btn admin-btn-sm" type="button" data-admin-action="refresh-users">刷新列表</button>
@@ -267,6 +275,26 @@
         </table>
       </div>
       <div id="usersPager"></div>
+      </div>
+      <section id="userDetail" hidden aria-label="用户详情">
+        <div class="admin-panel-title"><h2 id="userDetailTitle" tabindex="-1">用户详情</h2><button type="button" class="admin-btn" id="closeUserDetail">返回用户列表</button></div>
+        <div id="userDetailSummary"></div>
+        <div class="support-sections" aria-label="用户明细类别">
+          <button class="admin-btn" data-user-section="logs" aria-pressed="true">积分流水</button>
+          <button class="admin-btn" data-user-section="orders" aria-pressed="false">支付订单</button>
+          <button class="admin-btn" data-user-section="tasks" aria-pressed="false">生成任务</button>
+          <button class="admin-btn" data-user-section="history" aria-pressed="false">创作记录</button>
+          <button class="admin-btn" id="refreshUserDetail">刷新明细</button>
+        </div>
+        <p id="userDetailStatus" role="status"></p><div id="userDetailList"></div><div id="userDetailPager"></div>
+      </section>
+    </section>
+
+    <section class="admin-panel" id="tasksPanel" role="tabpanel" hidden>
+      <div class="admin-panel-title"><div><h2>任务中心</h2><p>集中查看生成任务及退款情况，时间均为北京时间。部分成功可能已有交付内容；运行中的任务请先等待结果。</p></div></div>
+      <form class="admin-toolbar" id="taskFilters"><input type="text" id="taskKeyword" aria-label="用户名或任务号" placeholder="用户名 / 任务号"><select id="taskStatus" aria-label="任务状态"><option value="failed">失败</option><option value="partial">部分成功</option><option value="queued">排队中</option><option value="running">运行中</option><option value="done">成功</option><option value="cancelled">已取消</option><option value="unknown">旧记录状态未知</option><option value="">全部状态</option></select><button class="admin-btn admin-btn-primary" type="submit">查询 / 刷新</button><button class="admin-btn" type="reset">重置</button></form>
+      <p class="admin-help">覆盖有任务状态的生成请求和画面工坊记录；早期普通创作记录请到用户详情查看。退款按业务号关联，未匹配不代表未退款。</p>
+      <p id="taskLoadStatus" role="status"></p><div id="taskList"></div><div id="taskPager"></div>
     </section>
 
     <section class="admin-panel" id="historyPanel" role="tabpanel" hidden>
@@ -470,9 +498,9 @@
     </form>
   </div>
 
-    <script src="frontend/shared-utils.js?v=20260906-1"></script>
-    <script src="admin.js?v=20260906-1"></script>
-<script src="operations-admin.js?v=20260906-1"></script>
+    <script src="frontend/shared-utils.js?v=20260906-2"></script>
+    <script src="admin.js?v=20260906-2"></script>
+<script src="operations-admin.js?v=20260906-2"></script>
 </body>
 </html>
 
