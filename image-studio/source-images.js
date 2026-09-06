@@ -17,7 +17,7 @@
       setStat('statTotal', total);
       setStat('statImages', images);
       setStat('statFailed', failed);
-      setStat('statConcurrency', getParallelism());
+      setStat('statConcurrency', '不限');
       if (state.tasks.length > 0) {
         taskPageInfoEl.textContent = `第 ${state.taskPage} / ${totalPages} 页 · 共 ${state.tasks.length} 条`;
         taskPrevPageBtn.disabled = state.taskPage <= 1;

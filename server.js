@@ -232,16 +232,16 @@ const upload = multer({
 function enforceSafeJobLimit(name, fallback) {
   const raw = String(process.env[name] ?? '').trim();
   if (/^(unlimited|无限)$/i.test(raw)) {
-    process.env[name] = String(fallback);
+    process.env[name] = '0';
     return;
   }
   const configured = Number(raw);
-  // 旧配置里的0/无限迁移到有界默认值，避免任务直接耗尽机器资源。
-  if (!Number.isFinite(configured) || configured <= 0) process.env[name] = String(fallback);
+  // 0/无限明确表示不限任务数量，不覆盖用户设置。
+  if (!Number.isFinite(configured) || configured < 0) process.env[name] = String(fallback);
 }
-enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 4);
-enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 10);
-enforceSafeJobLimit('XI_XU_MAX_QUEUED_JOBS', 20);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS', 0);
+enforceSafeJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 0);
+enforceSafeJobLimit('XI_XU_MAX_QUEUED_JOBS', 0);
 
 const provider = createXiImageProvider();
 const xiRuntime = createXiJobRuntime({ db, provider, refundPoints, formatDateTime: formatBeijingDateTime });

@@ -12,8 +12,12 @@ function beginOperation(userId, clientId, endpoint, fingerprint, amount, descrip
       return { operation: existing, alreadyApplied: true };
     }
     const id = crypto.randomUUID();
-    const active = db.prepare("SELECT COUNT(*) total, COALESCE(SUM(user_id = ?),0) own FROM operations WHERE status = 'running'").get(userId);
-    if (active.total >= 4 || active.own >= 2) throw Object.assign(new Error('正在处理的任务较多，请等待已有任务完成'), { statusCode: 429 });
+    const limitedEndpoints = ['/generate-copy', '/rewrite', '/api/xi-image/reverse-prompt', '/api/xi-image/polish-prompt'];
+    if (limitedEndpoints.includes(endpoint)) {
+      const placeholders = limitedEndpoints.map(() => '?').join(',');
+      const active = db.prepare(`SELECT COUNT(*) total, COALESCE(SUM(user_id = ?),0) own FROM operations WHERE status = 'running' AND endpoint IN (${placeholders})`).get(userId, ...limitedEndpoints);
+      if (active.total >= 4 || active.own >= 2) throw Object.assign(new Error('正在处理的任务较多，请等待已有任务完成'), { statusCode: 429 });
+    }
     const charge = points.deductPoints(userId, amount, description, `operation:${id}:charge`);
     if (!charge.success) throw Object.assign(new Error('积分不足，请使用卡密兑换'), { statusCode: 400 });
     db.prepare(`INSERT INTO operations (id, user_id, client_id, endpoint, fingerprint, charged)

@@ -126,13 +126,10 @@ test('Xi 队列拒绝单用户超额任务和全局排队溢出', () => {
   assert.throws(() => manager.assertCanCreateJob(users[1].id), /排队任务较多/);
 });
 
-test('Xi 队列允许关闭单用户任务数量限制', () => {
+test('Xi 默认不限并发，25个同账号任务立即运行且不被2/4/10/20上限阻挡', () => {
   const user = api.createUser('xi_unlimited_user', 'XiUnlimitedPass123');
   const manager = createXiJobManager({
     db: api,
-    maxActiveJobs: Number.POSITIVE_INFINITY,
-    maxJobsPerUser: 0,
-    maxQueuedJobs: 20,
     formatDateTime: () => '12:00',
     getModel: () => 'gpt-image-2',
     runJob: async (job) => {
@@ -141,9 +138,11 @@ test('Xi 队列允许关闭单用户任务数量限制', () => {
     }
   });
   const payload = { mode: 'generate', prompt: '不限任务测试', size: '1024x1024', count: 1, quality: 'medium', costPoints: 10 };
-  for (let index = 0; index < 10; index += 1) {
+  for (let index = 0; index < 25; index += 1) {
     manager.assertCanCreateJob(user.id);
     manager.createJob(user.id, payload);
   }
-  assert.equal(manager.listActiveJobsForUser(user.id).length, 10);
+  const jobs = manager.listActiveJobsForUser(user.id);
+  assert.equal(jobs.length, 25);
+  assert.ok(jobs.every(job => job.status === 'running'));
 });

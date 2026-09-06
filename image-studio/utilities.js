@@ -1,5 +1,5 @@
     function getParallelism() {
-      return clamp(Number(parallelismEl?.value || DEFAULT_PARALLELISM), 1, MAX_PARALLELISM);
+      return Number.POSITIVE_INFINITY;
     }
 
     function clamp(value, min, max) {
@@ -11,4 +11,3 @@
       statusEl.textContent = text || '';
       statusEl.className = 'xi-status' + (type ? ' ' + type : '');
     }
-

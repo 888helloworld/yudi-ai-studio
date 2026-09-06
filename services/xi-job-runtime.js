@@ -16,10 +16,10 @@ const { parseImageCount } = require('../utils/request-utils');
 
 function getMaxActiveJobs() {
   const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS ?? '0').trim();
-  if (/^(unlimited|无限)$/i.test(raw)) return 4;
+  if (/^(unlimited|无限)$/i.test(raw)) return Number.POSITIVE_INFINITY;
   const parsed = Number(raw);
-  if (parsed === 0) return 4;
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(20, Math.floor(parsed)) : 4;
+  if (parsed === 0) return Number.POSITIVE_INFINITY;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : Number.POSITIVE_INFINITY;
 }
 
 function getJobLimit(name, fallback, maximum) {
@@ -34,8 +34,8 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
   const manager = createXiJobManager({
     db,
     maxActiveJobs: getMaxActiveJobs(),
-    maxJobsPerUser: getJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 10, 100) || 10,
-    maxQueuedJobs: getJobLimit('XI_XU_MAX_QUEUED_JOBS', 20, 1000),
+    maxJobsPerUser: getJobLimit('XI_XU_MAX_ACTIVE_JOBS_PER_USER', 0, Number.MAX_SAFE_INTEGER),
+    maxQueuedJobs: getJobLimit('XI_XU_MAX_QUEUED_JOBS', 0, Number.MAX_SAFE_INTEGER),
     formatDateTime,
     createHistory: (job) => createChargedXiJobHistory({
       job,

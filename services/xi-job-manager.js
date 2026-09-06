@@ -3,7 +3,7 @@ const { updateXiJobHistory: persistXiJobHistory, findXiHistory } = require('../r
 
 const XI_JOB_CLEANUP_DELAY_MS = 10 * 60 * 1000;
 
-function createXiJobManager({ db, maxActiveJobs = 4, maxJobsPerUser = 10, maxQueuedJobs = 20, maxRunningPerUser = 2, formatDateTime, runJob, getModel, createHistory }) {
+function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJobsPerUser = 0, maxQueuedJobs = 0, maxRunningPerUser = Number.POSITIVE_INFINITY, formatDateTime, runJob, getModel, createHistory }) {
   const jobs = new Map();
   const queue = [];
   const cleanupTimers = new Map();
