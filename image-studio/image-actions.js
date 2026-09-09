@@ -221,22 +221,18 @@
         setStatus('没有可用于改图的图片。', 'error');
         return;
       }
-      const targetIndex = state.sourceFiles.findIndex((file) => !file);
-      if (targetIndex === -1) {
-        setStatus('参考图已经放满 4 张，请先清掉一张再添加。', 'error');
-        closeImagePreview();
-        return;
-      }
-
       previewEditBtn.disabled = true;
       previewEditBtn.textContent = '正在放入参考图...';
       try {
         const file = await imageUrlToFile(currentPreviewImage.url, currentPreviewImage.filename || 'preview.png');
         closeImagePreview();
-        await setSourceImage(targetIndex, file);
+        // “用这张改图”表示把当前查看的结果作为下一轮唯一参考图，
+        // 不能追加到空槽位，否则连续对两张结果操作时会把两张都带进下一轮。
+        sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
+        await setSourceImage(0, file);
         promptEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         promptEl.focus();
-        setStatus(`已把图片放到参考图 ${targetIndex + 1}，写下想修改的地方就可以改图。`, 'ok');
+        setStatus('已用当前图片替换参考图，写下想修改的地方就可以改图。', 'ok');
       } catch (err) {
         setStatus(err?.message || '图片放入参考图失败，请下载后手动上传。', 'error');
       } finally {
