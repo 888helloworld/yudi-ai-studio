@@ -138,6 +138,8 @@ async function generateImage() {
   formData.append('prompt', fullPrompt);
   formData.append('ratio', selectedRatio);
   formData.append('imageCount', imageCount);
+  const quality = document.querySelector('.quality-btn.active')?.dataset.quality || 'medium';
+  formData.append('quality', quality);
   formData.append('clientTaskId', taskId);
   
   const referenceInput = document.getElementById('referenceImage');
