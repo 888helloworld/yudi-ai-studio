@@ -389,6 +389,12 @@
       releaseTaskSourcePreviewUrls(task);
       renderTaskPage();
       updateStats();
+      // 删除结果卡片后，生成按钮可能仍然停留在上一次提交时的 disabled 状态。
+      // 删除只是列表操作，不应该阻塞用户继续使用当前描述开始下一次生图。
+      if (!document.body.classList.contains('login-locked')) {
+        generateBtn.disabled = false;
+        updateGenerateButton();
+      }
       if (task.historyId) {
         setStatus('生成记录已删除，刷新历史也不会再显示。', 'ok');
       } else {

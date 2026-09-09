@@ -1,3 +1,7 @@
+    // 不让浏览器在 F5 后恢复上一次已删除任务的图片描述/润色结果。
+    // 任务历史仍然保留，用户需要继续使用时可从历史卡片主动带回描述。
+    promptEl.value = '';
+    resetPromptPolish();
     refreshPromptPlaceholder();
 
     if (!token) {
