@@ -97,8 +97,17 @@
 
     generateBtn.addEventListener('click', () => {
       if (generateBtn.disabled) return;
-      generateBtn.disabled = true;
-      try { enqueueTasks(); } finally { setTimeout(() => updateGenerateButton(), 1000); }
+      // 入队只是提交一个任务，后台队列可以并行处理；不能把主按钮锁到任务完成。
+      // 之前这里先设为 disabled，但 finally 只更新了按钮文字，没有恢复 disabled，
+      // 导致必须 F5 才能提交第二个任务。
+      try {
+        enqueueTasks();
+      } finally {
+        if (!document.body.classList.contains('login-locked')) {
+          generateBtn.disabled = false;
+          updateGenerateButton();
+        }
+      }
     });
     window.addEventListener('beforeunload', (event) => {
       if (state.queue.length || state.tasks.some(task => task.status === 'unknown' || (task.status === 'running' && !task.jobId))) {
