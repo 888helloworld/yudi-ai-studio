@@ -43,11 +43,6 @@ function validateEditFiles(sourceFiles) {
 
 function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateUploadedImageFiles, db, provider, chargePoints, refundPoints }) {
   const router = express.Router();
-  const allowedQualities = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
-  const parseQuality = (value) => {
-    const quality = String(value || provider.fixedQuality || 'medium').toLowerCase();
-    return allowedQualities.has(quality) ? quality : null;
-  };
 
   router.post('/api/xi-image/generate', xiImageLimiter, authMiddleware, async (req, res) => {
     const prompt = sanitizeInput(req.body.prompt, 3000);
@@ -55,8 +50,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const count = parseImageCount(req.body.count, 5);
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const operationKey = clientTaskId ? `xi-sync-generate:${req.userId}:${clientTaskId}` : null;
-    const quality = parseQuality(req.body.quality);
-    if (!quality) return res.status(400).json({ error: '无效的图片质量，可选 low、medium、high、xhigh、max' });
+    const quality = provider.fixedQuality;
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     try { assertXiImageSizeSupported(size); } catch (error) {
       return res.status(error.statusCode || 400).json({ error: error.message });
@@ -122,8 +116,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const count = parseImageCount(req.body.count, 5);
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const operationKey = clientTaskId ? `xi-sync-edit:${req.userId}:${clientTaskId}` : null;
-    const quality = parseQuality(req.body.quality);
-    if (!quality) return res.status(400).json({ error: '无效的图片质量，可选 low、medium、high、xhigh、max' });
+    const quality = provider.fixedQuality;
     const sourceFiles = Array.isArray(req.files) ? req.files : [];
     sourceFiles.forEach((file, index) => { file.originalname = normalizeSourceImageFilename(file.originalname, index); });
     if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
