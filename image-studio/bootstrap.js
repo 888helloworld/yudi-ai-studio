@@ -102,6 +102,9 @@
       // 导致必须 F5 才能提交第二个任务。
       try {
         enqueueTasks();
+        // 任务已复制了描述、尺寸和参考图文件，提交后清空编辑区，
+        // 让用户可以直接填写下一条生图任务；后台队列不受影响。
+        resetImageForm();
       } finally {
         if (!document.body.classList.contains('login-locked')) {
           generateBtn.disabled = false;
