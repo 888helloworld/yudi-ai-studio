@@ -50,7 +50,7 @@ function createReversePromptRouter({ authMiddleware, copyLimiter, upload, valida
     const apiKey = getRequiredEnv('XI_XU_API_KEY');
     if (!apiKey) {
       refundPoints(req.userId, refundablePoints, '看图写 Prompt 失败退款', operationKey ? `${operationKey}:failure` : null);
-      return res.status(500).json({ error: 'gpt-image-2 服务未配置' });
+      return res.status(500).json({ error: 'gpt-image-codex 服务未配置' });
     }
 
     const startedAtMs = Date.now();

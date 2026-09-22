@@ -27,7 +27,7 @@ function getTimeoutMs(name, fallback = TEN_MINUTES_MS) {
 }
 
 function timeoutMessage(action, timeoutMs) {
-  return `gpt-image-2 ${action}超时（超过${Math.round(timeoutMs / 1000)}秒）`;
+  return `gpt-image-codex ${action}超时（超过${Math.round(timeoutMs / 1000)}秒）`;
 }
 
 function boundedRetryCount(value, fallback = 1) {
@@ -43,7 +43,7 @@ function createXiImageProvider() {
 
   function logGenerateError(error, details = {}) {
     const cause = error?.cause || {};
-    console.error('gpt-image-2 生图请求失败:', JSON.stringify({
+    console.error('gpt-image-codex 生图请求失败:', JSON.stringify({
       message: error?.message || String(error),
       name: error?.name || '',
       code: error?.code || '',
@@ -58,7 +58,7 @@ function createXiImageProvider() {
 
   function logEditError(error, files = [], context = {}) {
     const cause = error?.cause || {};
-    console.error('gpt-image-2 改图请求失败:', JSON.stringify({
+    console.error('gpt-image-codex 改图请求失败:', JSON.stringify({
       message: error?.message || String(error),
       name: error?.name || '',
       causeCode: cause.code || '',
@@ -72,7 +72,7 @@ function createXiImageProvider() {
 
   async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt = 1) {
     const apiKey = getXiImageApiKey();
-    if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
+    if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
     const timeoutMs = generateTimeoutMs;
     const startedAt = Date.now();
@@ -82,7 +82,7 @@ function createXiImageProvider() {
         signal: controller.signal,
         headers: buildXiImageHeaders({ Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+          model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
           prompt: buildXiGeneratePrompt(prompt, size),
           size,
           n: count,
@@ -105,7 +105,7 @@ function createXiImageProvider() {
       };
     } catch (error) {
       const normalizedError = error.name === 'AbortError'
-        ? new Error(timeoutMs > 0 ? timeoutMessage('生图请求', timeoutMs) : 'gpt-image-2 生图连接被中断')
+        ? new Error(timeoutMs > 0 ? timeoutMessage('生图请求', timeoutMs) : 'gpt-image-codex 生图连接被中断')
         : error;
       logGenerateError(normalizedError, { attempt, size, count, quality, durationMs: Date.now() - startedAt });
       throw normalizedError;
@@ -124,7 +124,7 @@ function createXiImageProvider() {
         lastError = error;
         if (attempt >= maxAttempts || !isTransientXiXuError(error)) break;
         const waitMs = Math.min(1000 * attempt, 3000);
-        console.warn('gpt-image-2 生图瞬时故障，准备重试:', JSON.stringify({ attempt, nextAttempt: attempt + 1, waitMs, message: error.message || String(error) }));
+        console.warn('gpt-image-codex 生图瞬时故障，准备重试:', JSON.stringify({ attempt, nextAttempt: attempt + 1, waitMs, message: error.message || String(error) }));
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
     }
@@ -133,7 +133,7 @@ function createXiImageProvider() {
 
   async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, promptOverride }, attempt = 1) {
     const apiKey = getXiImageApiKey();
-    if (!apiKey) throw new Error('gpt-image-2 图片服务未配置');
+    if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
     const timeoutMs = editTimeoutMs;
     try {
@@ -142,13 +142,13 @@ function createXiImageProvider() {
       requestSourceFiles.forEach((file, index) => {
         form.append('image', new Blob([file.buffer], { type: file.mimetype }), file.originalname || getSourceImageFilename(index));
       });
-      form.append('model', process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2');
+      form.append('model', process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex');
       form.append('prompt', promptOverride || buildXiEditPrompt(prompt, sourceFiles, size));
       form.append('size', size);
       form.append('n', String(count));
       form.append('quality', quality);
       form.append('output_format', 'png');
-      console.log('gpt-image-2 改图请求:', JSON.stringify({
+      console.log('gpt-image-codex 改图请求:', JSON.stringify({
         size, quality, count,
         sourceDimensions: getUploadedImageDimensions(sourceFiles),
         requestFiles: summarizeImageFiles(requestSourceFiles),
@@ -173,7 +173,7 @@ function createXiImageProvider() {
       return { localUrls, upstreamMeta: extractXiXuImageMetadata(data, { size, quality }) };
     } catch (error) {
       const normalizedError = error.name === 'AbortError'
-        ? new Error(timeoutMs > 0 ? timeoutMessage('改图请求', timeoutMs) : 'gpt-image-2 改图连接被中断')
+        ? new Error(timeoutMs > 0 ? timeoutMessage('改图请求', timeoutMs) : 'gpt-image-codex 改图连接被中断')
         : error;
       logEditError(normalizedError, sourceFiles, { attempt });
       throw normalizedError;
@@ -192,7 +192,7 @@ function createXiImageProvider() {
         lastError = error;
         if (attempt >= maxAttempts || !isTransientXiXuError(error)) break;
         const waitMs = Math.min(1000 * attempt, 3000);
-        console.warn('gpt-image-2 改图瞬时故障，准备重试:', JSON.stringify({ attempt, nextAttempt: attempt + 1, waitMs, message: error.message || String(error) }));
+        console.warn('gpt-image-codex 改图瞬时故障，准备重试:', JSON.stringify({ attempt, nextAttempt: attempt + 1, waitMs, message: error.message || String(error) }));
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
     }

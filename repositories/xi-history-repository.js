@@ -41,7 +41,7 @@ function createChargedXiJobHistory({ job, content }) {
     db.prepare(`
       INSERT INTO point_logs (user_id, type, amount, balance, description, reference_key)
       VALUES (?, 'consume', ?, ?, ?, ?)
-    `).run(job.userId, -job.costPoints, user.points, `gpt-image-2 ${job.mode === 'edit' ? '改图' : '生图'} x${job.count}`, chargeReference);
+    `).run(job.userId, -job.costPoints, user.points, `gpt-image-codex ${job.mode === 'edit' ? '改图' : '生图'} x${job.count}`, chargeReference);
     const result = db.prepare(`
       INSERT INTO history (user_id, type, sub_type, content, image_url, prompt, ratio, cost_points, client_task_id)
       VALUES (?, 'image', ?, ?, NULL, ?, ?, ?, ?)
@@ -88,7 +88,7 @@ function settleXiJobHistory({ historyId, userId, content, imageUrls, costPoints,
         db.prepare(`
           INSERT INTO point_logs (user_id, type, amount, balance, description, reference_key)
           VALUES (?, 'refund', ?, ?, ?, ?)
-        `).run(userId, additionalRefund, user.points, refundDescription || 'gpt-image-2 任务退款', referenceKey);
+        `).run(userId, additionalRefund, user.points, refundDescription || 'gpt-image-codex 任务退款', referenceKey);
         refunded = true;
       }
     }

@@ -5,7 +5,7 @@ function buildPromptPolishInstruction({ prompt, size, imageCount }) {
     ? `用户上传了 ${imageCount} 张参考图，顺序为图1到图${imageCount}。只按用户需要说明每张图的作用，不要默认把所有图片内容混在一起。`
     : '用户没有上传参考图，只需要整理文字要求。';
 
-  return `你是 DeepSeek 文本与视觉提示词润色助手，负责为 gpt-image-2 整理图片生成和图片编辑指令。你的目标是先准确理解文字和参考图，再让提示词更短、更明确、更容易执行，不是把一句话扩写成长文。
+  return `你是 DeepSeek 文本与视觉提示词润色助手，负责为 gpt-image-codex 整理图片生成和图片编辑指令。你的目标是先准确理解文字和参考图，再让提示词更短、更明确、更容易执行，不是把一句话扩写成长文。
 
 目标画布：${size}
 ${imageHint}
@@ -27,7 +27,7 @@ ${prompt}
 
 严格返回 JSON，不要使用 Markdown，不要添加前后说明：
 {
-  "polished_prompt": "1-3句、简短明确、可直接发送给 gpt-image-2 的中文提示词",
+  "polished_prompt": "1-3句、简短明确、可直接发送给 gpt-image-codex 的中文提示词",
   "visual_understanding": ["图1：简短说明它在本次任务中的作用"],
   "changes": ["简短说明本次补强了什么，最多4条"],
   "reference_corrections": [{"input_text":"用户文字中与参考图冲突的属性","reference_value":"参考图中实际可见的属性"}]

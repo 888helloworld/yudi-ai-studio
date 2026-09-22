@@ -54,7 +54,7 @@ DEEPSEEK_TEXT_MODEL=deepseek-v4-pro
 
 XI_XU_API_BASE_URL=https://your-image-api.example
 XI_XU_API_KEY=your_xi_xu_api_key_here
-XI_XU_IMAGE_MODEL=gpt-image-2
+XI_XU_IMAGE_MODEL=gpt-image-codex
 XI_XU_VISION_MODEL=gpt-5.5
 XI_XU_GENERATE_TIMEOUT_MS=0
 XI_XU_GENERATE_RETRIES=1
@@ -102,7 +102,7 @@ OPENAI_IMAGE_API_KEY=your_openai_api_key
 
 ## 图片尺寸和部署注意点
 
-当前画面工坊页面保留 5 个实测尺寸入口，服务端保存图片后会读取真实像素并写入历史记录。`gpt-image-2` 官方显式尺寸约束是：宽高为 16 的倍数，比例在 1:3 到 3:1 之间，且不超过 3840x2160 等量像素；页面按 xixu 实测输出展示常用规格。
+当前画面工坊页面保留 5 个实测尺寸入口，服务端保存图片后会读取真实像素并写入历史记录。`gpt-image-codex` 的输出尺寸和质量以当前上游实际返回为准；页面按 xixu 实测输出展示常用规格。
 
 | 页面显示 | 实测输出尺寸 | 请求上游尺寸 |
 | --- | --- | --- |

@@ -96,7 +96,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       });
       return true;
     } catch (historyErr) {
-      console.error('更新 gpt-image-2 任务历史失败:', historyErr);
+      console.error('更新 gpt-image-codex 任务历史失败:', historyErr);
       return false;
     }
   }
@@ -134,7 +134,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
         cost_points: 0
       });
     } catch (historyErr) {
-      console.error('保存 gpt-image-2 失败历史失败:', historyErr);
+      console.error('保存 gpt-image-codex 失败历史失败:', historyErr);
     }
     return job.historyId;
   }
@@ -148,7 +148,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       activeJobs += 1;
       runJob(job)
         .catch((err) => {
-          console.error('gpt-image-2 任务运行异常:', err);
+          console.error('gpt-image-codex 任务运行异常:', err);
         })
         .finally(() => {
           activeJobs = Math.max(0, activeJobs - 1);

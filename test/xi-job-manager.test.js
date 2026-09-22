@@ -111,7 +111,7 @@ test('Xi 队列拒绝单用户超额任务和全局排队溢出', () => {
     maxJobsPerUser: 2,
     maxQueuedJobs: 1,
     formatDateTime: () => '12:00',
-    getModel: () => 'gpt-image-2',
+    getModel: () => 'gpt-image-codex',
     runJob: async (job) => {
       job.status = 'running';
       await new Promise(() => {});
@@ -131,7 +131,7 @@ test('Xi 默认不限并发，25个同账号任务立即运行且不被2/4/10/20
   const manager = createXiJobManager({
     db: api,
     formatDateTime: () => '12:00',
-    getModel: () => 'gpt-image-2',
+    getModel: () => 'gpt-image-codex',
     runJob: async (job) => {
       job.status = 'running';
       await new Promise(() => {});

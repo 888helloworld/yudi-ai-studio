@@ -42,7 +42,7 @@ async function main() {
   const promptQuality = process.argv.includes('--prompt-quality');
   const promptSize = process.argv.includes('--prompt-size') || promptQuality;
   const selectedCases = promptQuality ? [{ size: '2048x2048', quality: 'high' }] : promptSize ? promptCases : cases;
-  const report = { date: new Date().toISOString(), model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2', promptSize, promptQuality, cases: [] };
+  const report = { date: new Date().toISOString(), model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex', promptSize, promptQuality, cases: [] };
   console.log(`Results: ${directory}`);
   try {
     for (const [index, requested] of selectedCases.entries()) {

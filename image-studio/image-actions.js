@@ -183,7 +183,7 @@
     }
 
     function sanitizeDownloadFilename(name) {
-      return String(name || '雨滴AI · gpt-image-2 生图')
+      return String(name || '雨滴AI · gpt-image-codex 生图')
         .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
         .replace(/\s+/g, ' ')
         .replace(/[. ]+$/g, '')

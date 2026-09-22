@@ -12,7 +12,7 @@ const { formatBeijingDateTime, normalizeClientTaskId, parseImageCount, sanitizeI
 
 function buildImageHistoryContent({ upstreamMeta = {}, quality, size, count, durationMs, outputDimensions, extra = {} }) {
   return JSON.stringify({
-    model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+    model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
     quality,
     requested_quality: upstreamMeta.requested_quality || quality,
     actual_quality: upstreamMeta.actual_quality || '',
@@ -58,15 +58,15 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const totalCost = POINTS.image * count;
     let refundablePoints = 0;
     try {
-      const charge = chargePoints(req.userId, totalCost, `gpt-image-2 生图 x${count}`, operationKey ? `${operationKey}:charge` : null);
+      const charge = chargePoints(req.userId, totalCost, `gpt-image-codex 生图 x${count}`, operationKey ? `${operationKey}:charge` : null);
       if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请不要重复提交' });
       refundablePoints = totalCost;
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message || '积分扣减失败' });
     }
     if (!getXiImageApiKey()) {
-      refundPoints(req.userId, refundablePoints, 'gpt-image-2 生图失败退款', operationKey ? `${operationKey}:failure` : null);
-      return res.status(500).json({ error: 'gpt-image-2 图片服务未配置' });
+      refundPoints(req.userId, refundablePoints, 'gpt-image-codex 生图失败退款', operationKey ? `${operationKey}:failure` : null);
+      return res.status(500).json({ error: 'gpt-image-codex 图片服务未配置' });
     }
 
     const startedAtMs = Date.now();
@@ -79,7 +79,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
       const actualCost = POINTS.image * actualCount;
       const refundAmount = Math.max(totalCost - actualCost, 0);
       if (refundAmount > 0) {
-        refundPoints(req.userId, refundAmount, `gpt-image-2 少出${count - actualCount}张退款`, operationKey ? `${operationKey}:partial` : null);
+        refundPoints(req.userId, refundAmount, `gpt-image-codex 少出${count - actualCount}张退款`, operationKey ? `${operationKey}:partial` : null);
         refundablePoints -= refundAmount;
       }
       const durationMs = Date.now() - startedAtMs;
@@ -99,13 +99,13 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         imageUrl: localUrls[0],
         historyId,
         remainingPoints: db.getUserPoints(req.userId),
-        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
         upstreamMeta,
         outputDimensions,
         createdAt: formatBeijingDateTime()
       });
     } catch (error) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, 'gpt-image-2 生图失败退款', operationKey ? `${operationKey}:failure` : null);
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, 'gpt-image-codex 生图失败退款', operationKey ? `${operationKey}:failure` : null);
       res.status(502).json({ error: error.message || '生图请求失败' });
     }
   });
@@ -129,7 +129,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const totalCost = POINTS.image * count;
     let refundablePoints = 0;
     try {
-      const charge = chargePoints(req.userId, totalCost, `gpt-image-2 改图 x${count}`, operationKey ? `${operationKey}:charge` : null);
+      const charge = chargePoints(req.userId, totalCost, `gpt-image-codex 改图 x${count}`, operationKey ? `${operationKey}:charge` : null);
       if (charge?.alreadyApplied) return res.status(409).json({ error: '该任务已提交，请不要重复提交' });
       refundablePoints = totalCost;
     } catch (error) {
@@ -157,7 +157,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
       const actualCost = POINTS.image * actualCount;
       const refundAmount = Math.max(totalCost - actualCost, 0);
       if (refundAmount > 0) {
-        refundPoints(req.userId, refundAmount, `gpt-image-2 改图少出${count - actualCount}张退款`, operationKey ? `${operationKey}:partial` : null);
+        refundPoints(req.userId, refundAmount, `gpt-image-codex 改图少出${count - actualCount}张退款`, operationKey ? `${operationKey}:partial` : null);
         refundablePoints -= refundAmount;
       }
       const sourcePreviewUrls = saveUploadedSourceImages(sourceFiles);
@@ -193,7 +193,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         historyId,
         mode: 'edit',
         remainingPoints: db.getUserPoints(req.userId),
-        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
         upstreamMeta,
         sourceDimensions,
         outputDimensions,
@@ -201,7 +201,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         createdAt: formatBeijingDateTime()
       });
     } catch (error) {
-      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, 'gpt-image-2 改图失败退款', operationKey ? `${operationKey}:failure` : null);
+      if (refundablePoints > 0) refundPoints(req.userId, refundablePoints, 'gpt-image-codex 改图失败退款', operationKey ? `${operationKey}:failure` : null);
       console.error('改图请求失败:', error.message || error);
       res.status(502).json({ error: error.message || '改图请求失败' });
     }

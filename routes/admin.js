@@ -158,7 +158,7 @@ router.get('/image-service-diagnostics', async (req, res) => {
       port: process.env.PORT || '3001',
       xiXuApiBaseUrl: xiXuBaseUrl,
       xiXuApiKeyConfigured: apiKeyConfigured,
-      xiXuImageModel: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2',
+      xiXuImageModel: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
       xiXuVisionModel: process.env.XI_XU_VISION_MODEL || 'gpt-5.5',
       xiXuProxyTokenConfigured: hasEnv('XI_XU_PROXY_TOKEN'),
       xiXuMaxActiveJobs: process.env.XI_XU_MAX_ACTIVE_JOBS || '0',

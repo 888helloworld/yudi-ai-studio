@@ -42,7 +42,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       content: manager.buildJobHistoryContent(job, 'queued')
     }),
     runJob: (job) => runXiJob(job),
-    getModel: () => process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2'
+    getModel: () => process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex'
   });
 
   function removeLocalOutputs(urls) {
@@ -87,7 +87,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       imageUrls: [],
       costPoints: 0,
       refundAmount,
-      refundDescription: 'gpt-image-2 重启恢复失败退款'
+      refundDescription: 'gpt-image-codex 重启恢复失败退款'
     });
   }
 
@@ -151,10 +151,10 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
         }
       }
       if (recovered > 0 || blocked > 0) {
-        console.log(`已处理重启遗留的 gpt-image-2 任务：恢复 ${recovered} 条，无法恢复并退款 ${blocked} 条`);
+        console.log(`已处理重启遗留的 gpt-image-codex 任务：恢复 ${recovered} 条，无法恢复并退款 ${blocked} 条`);
       }
     } catch (error) {
-      console.error('处理重启遗留 gpt-image-2 任务失败:', error);
+      console.error('处理重启遗留 gpt-image-codex 任务失败:', error);
     }
   }
 
@@ -197,7 +197,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
         imageUrls: localUrls,
         costPoints: actualCost,
         refundAmount,
-        refundDescription: `gpt-image-2 少出${expectedCount - actualCount}张退款`
+        refundDescription: `gpt-image-codex 少出${expectedCount - actualCount}张退款`
       });
       if (settled.updated) {
         job.refundedPoints = nextRefundedPoints;
@@ -217,7 +217,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       job.finishedAtMs = Date.now();
       if (error.fallbackReason && !job.fallbackReason) job.fallbackReason = error.fallbackReason;
       job.error = error.message || '任务失败';
-      console.error('gpt-image-2 任务失败:', JSON.stringify({
+      console.error('gpt-image-codex 任务失败:', JSON.stringify({
         id: job.id,
         mode: job.mode,
         size: job.size,
@@ -237,14 +237,14 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
           imageUrls: [],
           costPoints: 0,
           refundAmount: remainingRefund,
-          refundDescription: `gpt-image-2 ${job.mode === 'edit' ? '改图' : '生图'}失败退款`
+          refundDescription: `gpt-image-codex ${job.mode === 'edit' ? '改图' : '生图'}失败退款`
         });
         if (settled.updated) {
           job.refundedPoints = nextRefundedPoints;
           job.refundedOnFail = true;
         }
       } catch (settlementError) {
-        console.error('gpt-image-2 失败结算暂未完成，将由重启恢复流程继续处理:', settlementError.message || settlementError);
+        console.error('gpt-image-codex 失败结算暂未完成，将由重启恢复流程继续处理:', settlementError.message || settlementError);
       }
     } finally {
       manager.scheduleCleanup(job);

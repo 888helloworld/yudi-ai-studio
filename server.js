@@ -205,7 +205,7 @@ const adminLimiter = rateLimit({ windowMs: 60000, max: 60, message: limiterMessa
 const xiImageLimiter = rateLimit({
   windowMs: 60000,
   max: Number(process.env.XI_XU_IMAGE_RATE_LIMIT_PER_MIN || 30),
-  message: { error: 'gpt-image-2 生图请求过于频繁，请降低并发或稍后再试' }
+  message: { error: 'gpt-image-codex 生图请求过于频繁，请降低并发或稍后再试' }
 });
 const configuredUploadImageMb = Number(process.env.MAX_UPLOAD_IMAGE_MB || 20);
 const configuredUploadTotalMb = Number(process.env.MAX_UPLOAD_TOTAL_MB || 40);

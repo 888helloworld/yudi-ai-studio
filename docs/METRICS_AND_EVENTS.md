@@ -8,8 +8,8 @@
 
 有效创作包括：
 
-- `gpt-image-2` 文生图成功。
-- `gpt-image-2` 参考图改图成功。
+- `gpt-image-codex` 文生图成功。
+- `gpt-image-codex` 参考图改图成功。
 - 看图写 Prompt 成功。
 - 小红书图片生成成功。
 - 文案生成或改写成功。
