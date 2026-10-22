@@ -59,6 +59,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       source_dimensions: job.sourceDimensions || [],
       output_dimensions: job.outputDimensions || [],
       duration_ms: durationMs,
+      suspended_ms: Number(job.suspendedMs) || 0,
       error: job.error || '',
       refunded_points: job.refundedPoints || 0,
       ...extra
@@ -245,6 +246,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       startedAtMs: job.startedAtMs,
       finishedAtMs: job.finishedAtMs,
       durationMs: Math.max(durationMs, 0),
+      suspendedMs: Math.max(Number(job.suspendedMs) || 0, 0),
       imageUrls: job.imageUrls || [],
       imageUrl: job.imageUrls?.[0] || '',
       error: job.error || '',

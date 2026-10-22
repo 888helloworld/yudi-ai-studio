@@ -32,6 +32,7 @@ const { recoverOperations } = require('./repositories/operation-repository');
 const { createXiImageProvider } = require('./services/xi-image-provider');
 const { createXiJobRuntime } = require('./services/xi-job-runtime');
 const { formatUpstreamError, generateArkImageUrls } = require('./services/upstream-http');
+const suspendWatcher = require('./utils/suspend-watcher');
 const {
   formatBeijingDateTime,
   getRequiredEnv,
@@ -341,6 +342,8 @@ app.use((error, req, res, next) => {
 });
 
 if (require.main === module) {
+  // 记录电脑休眠窗口，任务结算时把休眠时间单独标出来，避免"生成用时"被睡眠时间撑大。
+  suspendWatcher.start();
   recoverOperations();
   xiRuntime.initializeRecovery();
   const port = process.env.PORT || 3001;

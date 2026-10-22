@@ -13,6 +13,7 @@ const { createXiJobManager } = require('./xi-job-manager');
 const { assertXiImageSizeSupported, parseXiImageSize } = require('./xi-image-size');
 const { getLocalImageDimensions, getLocalUploadPath } = require('../utils/image-storage');
 const { parseImageCount } = require('../utils/request-utils');
+const suspendWatcher = require('../utils/suspend-watcher');
 
 function getMaxActiveJobs() {
   const raw = String(process.env.XI_XU_MAX_ACTIVE_JOBS ?? '0').trim();
@@ -44,6 +45,23 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
     runJob: (job) => runXiJob(job),
     getModel: () => process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex'
   });
+
+  function recordSuspendedTime(job) {
+    if (!job.startedAtMs) {
+      job.suspendedMs = 0;
+      return 0;
+    }
+    const suspendedMs = Math.max(0, suspendWatcher.getSuspendedMsBetween(job.startedAtMs, job.finishedAtMs || Date.now()));
+    job.suspendedMs = suspendedMs;
+    if (suspendedMs >= 30000) {
+      console.warn('任务期间检测到电脑休眠，用时里已单独标记:', JSON.stringify({
+        id: job.id,
+        suspendedMs,
+        durationMs: (job.finishedAtMs || Date.now()) - job.startedAtMs
+      }));
+    }
+    return suspendedMs;
+  }
 
   function removeLocalOutputs(urls) {
     for (const url of Array.isArray(urls) ? urls : []) {
@@ -182,6 +200,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       if (!Array.isArray(localUrls) || localUrls.length === 0) throw new Error('没有生成图片，任务积分将退回');
       job.status = 'done';
       job.finishedAtMs = Date.now();
+      recordSuspendedTime(job);
       job.imageUrls = localUrls;
       job.outputDimensions = getLocalImageDimensions(localUrls);
       const durationMs = job.finishedAtMs - job.startedAtMs;
@@ -215,6 +234,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       const nextRefundedPoints = (job.refundedPoints || 0) + remainingRefund;
       job.status = 'failed';
       job.finishedAtMs = Date.now();
+      recordSuspendedTime(job);
       if (error.fallbackReason && !job.fallbackReason) job.fallbackReason = error.fallbackReason;
       job.error = error.message || '任务失败';
       console.error('gpt-image-codex 任务失败:', JSON.stringify({

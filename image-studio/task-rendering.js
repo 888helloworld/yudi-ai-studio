@@ -233,9 +233,17 @@
     }
 
     function getTaskDurationText(task) {
-      if (task.status !== 'running' && task.durationMs) return formatDurationMs(task.durationMs);
-      const startMs = task.status === 'running' ? (task.displayStartedAtMs || task.startedAtMs) : task.startedAtMs;
-      return startMs ? formatDurationMs((task.finishedAtMs || Date.now()) - startMs) : '历史记录';
+      let text;
+      if (task.status !== 'running' && task.durationMs) {
+        text = formatDurationMs(task.durationMs);
+      } else {
+        const startMs = task.status === 'running' ? (task.displayStartedAtMs || task.startedAtMs) : task.startedAtMs;
+        text = startMs ? formatDurationMs((task.finishedAtMs || Date.now()) - startMs) : '历史记录';
+      }
+      const suspendedMs = Math.max(Number(task.suspendedMs) || 0, 0);
+      // 电脑休眠时任务被冻结，墙钟时间会跳过去一大段，这里单独说明，避免看起来像上游生成了很久。
+      if (suspendedMs >= 30000 && text !== '历史记录') return `${text}（其中电脑休眠 ${formatDurationMs(suspendedMs)}）`;
+      return text;
     }
 
     function createSourceThumbStrip(task) {

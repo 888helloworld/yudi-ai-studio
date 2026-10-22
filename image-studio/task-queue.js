@@ -216,6 +216,7 @@
         task.startedAtMs = job.startedAtMs || task.startedAtMs;
         task.finishedAtMs = job.finishedAtMs || task.finishedAtMs;
         task.durationMs = job.durationMs || task.durationMs || 0;
+        task.suspendedMs = Number(job.suspendedMs) || task.suspendedMs || 0;
         if (task.status === 'running' && !task.displayStartedAtMs) {
           task.displayStartedAtMs = task.durationMs ? Date.now() - task.durationMs : Date.now();
         }
@@ -297,6 +298,7 @@
             if (meta.status === 'failed' || urls.length) {
               Object.assign(task, {status: urls.length ? 'done' : 'failed',imageUrls: urls,
                 refundedPoints:Number(meta.refunded_points || 0),costPoints:Number(history.cost_points || 0)+Number(meta.refunded_points || 0),
+                durationMs:Number(meta.duration_ms) || task.durationMs || 0,suspendedMs:Number(meta.suspended_ms) || 0,
                 outputDimensions:meta.output_dimensions || [],error:meta.error || '',saved:true});
               updateTaskCard(task); updateStats();
               if (task.status === 'done') { if (resolve) resolve({job:task}); }

@@ -41,6 +41,10 @@ function createXiImageProvider() {
   const generateRetries = boundedRetryCount(process.env.XI_XU_GENERATE_RETRIES, 1);
   const editRetries = boundedRetryCount(process.env.XI_XU_EDIT_RETRIES, 1);
 
+  function logSuccessTiming(action, timing) {
+    console.log(`gpt-image-codex ${action}完成:`, JSON.stringify(timing));
+  }
+
   function logGenerateError(error, details = {}) {
     const cause = error?.cause || {};
     console.error('gpt-image-codex 生图请求失败:', JSON.stringify({
@@ -90,7 +94,9 @@ function createXiImageProvider() {
           output_format: 'png'
         })
       }), timeoutMs, timeoutMessage('生图请求', timeoutMs), () => controller.abort());
+      const headersAtMs = Date.now() - startedAt;
       const text = await withTimeout(response.text(), timeoutMs, timeoutMessage('生图结果下载', timeoutMs), () => controller.abort());
+      const bodyAtMs = Date.now() - startedAt;
       let data = {};
       try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
       if (!response.ok) {
@@ -99,8 +105,21 @@ function createXiImageProvider() {
       }
       const imageUrls = parseXiXuImages(data);
       if (imageUrls.length === 0) throw new Error('上游未返回图片');
+      const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
+      logSuccessTiming('生图', {
+        attempt,
+        size,
+        count,
+        quality,
+        headersMs: headersAtMs,
+        bodyMs: bodyAtMs - headersAtMs,
+        bodyBytes: text.length,
+        saveMs: Date.now() - startedAt - bodyAtMs,
+        totalMs: Date.now() - startedAt,
+        imageCount: localUrls.length
+      });
       return {
-        localUrls: await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size),
+        localUrls,
         upstreamMeta: extractXiXuImageMetadata(data, { size, quality })
       };
     } catch (error) {
@@ -136,6 +155,7 @@ function createXiImageProvider() {
     if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
     const timeoutMs = editTimeoutMs;
+    const startedAt = Date.now();
     try {
       const form = new FormData();
       const requestSourceFiles = sourceFiles;
@@ -160,7 +180,9 @@ function createXiImageProvider() {
         headers: buildXiImageHeaders({ Authorization: `Bearer ${apiKey}` }),
         body: form
       }), timeoutMs, timeoutMessage('改图请求', timeoutMs), () => controller.abort());
+      const headersAtMs = Date.now() - startedAt;
       const text = await withTimeout(response.text(), timeoutMs, timeoutMessage('改图结果下载', timeoutMs), () => controller.abort());
+      const bodyAtMs = Date.now() - startedAt;
       let data = {};
       try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
       if (!response.ok) {
@@ -170,6 +192,18 @@ function createXiImageProvider() {
       const imageUrls = parseXiXuImages(data);
       if (imageUrls.length === 0) throw new Error('上游未返回图片');
       const localUrls = await saveXiXuImages(imageUrls, `xixu_edit_${size.replace('x', '_')}`, size);
+      logSuccessTiming('改图', {
+        attempt,
+        size,
+        count,
+        quality,
+        headersMs: headersAtMs,
+        bodyMs: bodyAtMs - headersAtMs,
+        bodyBytes: text.length,
+        saveMs: Date.now() - startedAt - bodyAtMs,
+        totalMs: Date.now() - startedAt,
+        imageCount: localUrls.length
+      });
       return { localUrls, upstreamMeta: extractXiXuImageMetadata(data, { size, quality }) };
     } catch (error) {
       const normalizedError = error.name === 'AbortError'

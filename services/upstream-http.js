@@ -65,6 +65,12 @@ function formatUpstreamError(message, fallback = '上游服务暂时不可用，
   const text = String(message || '').trim();
   if (!text) return fallback;
   const lower = text.toLowerCase();
+  if (lower.includes('admission queue') || lower.includes('queue is full') || lower.includes('queue full')) {
+    return '上游排队满了，这次没排上队，请稍后重试（同时生成的任务少一点更容易排上）。';
+  }
+  if (lower.includes('auth_unavailable') || lower.includes('no auth available')) {
+    return '上游通道暂时没有可用账号，请稍后重试。本次没有生成图片，积分已退回。';
+  }
   if (lower.includes('und_err_headers_timeout') || lower.includes('headers timeout')) {
     return '上游图片服务长时间没有返回响应头，请稍后重试。本次没有生成图片，积分已退回。';
   }
