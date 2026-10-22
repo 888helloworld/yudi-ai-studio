@@ -341,6 +341,13 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ error: '服务器内部错误' });
 });
 
+function describeUpstreamProxy() {
+  const enabled = String(process.env.NODE_USE_ENV_PROXY || '').trim() === '1';
+  if (!enabled) return '未启用（Node 不会自动读取 HTTP_PROXY/HTTPS_PROXY，上游大文件回传可能被限速到很慢）';
+  const target = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy || '';
+  return target ? `已启用（${target}）` : '已启用（未检测到代理地址，将直连）';
+}
+
 if (require.main === module) {
   // 记录电脑休眠窗口，任务结算时把休眠时间单独标出来，避免"生成用时"被睡眠时间撑大。
   suspendWatcher.start();
@@ -350,6 +357,7 @@ if (require.main === module) {
   const host = process.env.HOST || '127.0.0.1';
   app.listen(port, host, () => {
     console.log(`服务已启动：http://${host}:${port}`);
+    console.log(`上游请求代理：${describeUpstreamProxy()}`);
     console.log('Administrator account is ready.');
   });
 }
