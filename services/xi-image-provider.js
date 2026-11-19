@@ -107,7 +107,9 @@ function createXiImageProvider() {
       }
       const imageUrls = parseXiXuImages(data);
       if (imageUrls.length === 0) throw new Error('上游未返回图片');
-      const localUrls = await saveXiXuImages(imageUrls, `xixu_gen_${size.replace('x', '_')}`, size);
+      const expectedCount = Math.max(Number(count) || 1, 1);
+      const safeUrls = imageUrls.slice(0, expectedCount);
+      const localUrls = await saveXiXuImages(safeUrls, `xixu_gen_${size.replace('x', '_')}`, size);
       logSuccessTiming('生图', {
         attempt,
         size,
@@ -194,7 +196,9 @@ function createXiImageProvider() {
       }
       const imageUrls = parseXiXuImages(data);
       if (imageUrls.length === 0) throw new Error('上游未返回图片');
-      const localUrls = await saveXiXuImages(imageUrls, `xixu_edit_${size.replace('x', '_')}`, size);
+      const expectedCount = Math.max(Number(count) || 1, 1);
+      const safeUrls = imageUrls.slice(0, expectedCount);
+      const localUrls = await saveXiXuImages(safeUrls, `xixu_edit_${size.replace('x', '_')}`, size);
       logSuccessTiming('改图', {
         attempt,
         size,
