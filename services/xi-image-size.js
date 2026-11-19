@@ -11,7 +11,7 @@ const XI_IMAGE_SIZE_ALIASES = {
 
 function normalizeXiQuality(value) {
   const quality = String(value || '').trim().toLowerCase();
-  return ['low', 'medium', 'high'].includes(quality) ? quality : '';
+  return ['low', 'medium', 'high', 'hd', 'standard'].includes(quality) ? quality : '';
 }
 
 function normalizeXiImageSizeText(size) {

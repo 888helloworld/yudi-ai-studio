@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-  <title>gpt-image-codex 生图 - 雨滴AI</title>
+  <title>GPT 绘图工坊 (2.5) - 雨滴AI</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <link rel="stylesheet" href="style.css?v=20260818">
   <style>
@@ -226,6 +226,16 @@
       .xi-task-list{grid-template-columns:1fr}
       #prompt,.xi-main-panel input[type="text"],.xi-main-panel input[type="number"],.xi-main-panel select{font-size:16px}
     }
+  
+    .opt-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+    .opt-picker.opt-picker-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .opt-btn{min-height:46px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3px;cursor:pointer;transition:var(--base)}
+    .opt-btn:hover{border-color:rgba(7,193,96,0.35);color:var(--neon-cyan);background:rgba(7,193,96,0.05)}
+    .opt-btn.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(7,193,96,0.2),rgba(7,193,96,0.12));box-shadow:0 0 0 1px rgba(7,193,96,0.15)}
+    .opt-btn .opt-main{font-size:12px;font-weight:800;line-height:1.2;white-space:nowrap}
+    .opt-btn .opt-sub{font-size:11px;font-weight:400;color:var(--text-muted);line-height:1.2;white-space:nowrap}
+    .opt-btn.active .opt-sub{color:rgba(255,255,255,0.8)}
+
   </style>
 </head>
 <body>
@@ -343,14 +353,47 @@
         </div>
 
         <div class="form-group">
-          <label>图片尺寸</label>
+          <label>图片尺寸比例</label>
           <div class="ratio-selector" id="sizeSelector">
-            <div class="ratio-btn" data-size="1024x1024"><span class="ratio-main">1:1 方图</span><span class="ratio-size">1254×1254</span></div>
-            <div class="ratio-btn active" data-size="1024x1536"><span class="ratio-main">2:3 竖图</span><span class="ratio-size">1024×1536</span></div>
-            <div class="ratio-btn" data-size="1536x1024"><span class="ratio-main">3:2 横图</span><span class="ratio-size">1536×1024</span></div>
-            <div class="ratio-btn" data-size="2048x1152"><span class="ratio-main">横图</span><span class="ratio-size">1672×941</span></div>
-            <div class="ratio-btn" data-size="1152x2048"><span class="ratio-main">竖图</span><span class="ratio-size">941×1672</span></div>
+            <div class="ratio-btn active" data-size="1024x1536"><span class="ratio-main">2:3 竖图</span><span class="ratio-size">1024×1536 · 小红书</span></div>
+            <div class="ratio-btn" data-size="1024x1024"><span class="ratio-main">1:1 方图</span><span class="ratio-size">1024×1024 · 头像主图</span></div>
+            <div class="ratio-btn" data-size="1152x2048"><span class="ratio-main">9:16 长屏</span><span class="ratio-size">1152×2048 · 手机壁纸</span></div>
+            <div class="ratio-btn" data-size="1536x1024"><span class="ratio-main">3:2 横图</span><span class="ratio-size">1536×1024 · 摄影配图</span></div>
+            <div class="ratio-btn" data-size="2048x1152"><span class="ratio-main">16:9 宽屏</span><span class="ratio-size">2048×1152 · 横版海报</span></div>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>画面精细度</label>
+          <div class="opt-picker" id="qualitySelector">
+            <button class="opt-btn active" type="button" data-quality="hd">
+              <span class="opt-main">高清精细 (HD)</span>
+              <span class="opt-sub">细节丰富 · 汉字锐利</span>
+            </button>
+            <button class="opt-btn" type="button" data-quality="medium">
+              <span class="opt-main">均衡适中 (Medium)</span>
+              <span class="opt-sub">速度较快 · 效果平衡</span>
+            </button>
+            <button class="opt-btn" type="button" data-quality="standard">
+              <span class="opt-main">标准模式 (Standard)</span>
+              <span class="opt-sub">快速出图</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>画面风格偏好</label>
+          <div class="opt-picker opt-picker-2" id="styleSelector">
+            <button class="opt-btn active" type="button" data-style="vivid">
+              <span class="opt-main">鲜明生动 (Vivid)</span>
+              <span class="opt-sub">色彩张力强 · 小红书爆款</span>
+            </button>
+            <button class="opt-btn" type="button" data-style="natural">
+              <span class="opt-main">自然写实 (Natural)</span>
+              <span class="opt-sub">真实单反质感 · 光影柔和</span>
+            </button>
+          </div>
+        </div>
         </div>
 
         <div class="xi-count-control">

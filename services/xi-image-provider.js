@@ -74,25 +74,27 @@ function createXiImageProvider() {
     }));
   }
 
-  async function callXiXuGenerateOnce({ prompt, size, count, quality }, attempt = 1) {
+  async function callXiXuGenerateOnce({ prompt, size, count, quality, style }, attempt = 1) {
     const apiKey = getXiImageApiKey();
     if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
     const timeoutMs = generateTimeoutMs;
     const startedAt = Date.now();
     try {
+      const payload = {
+        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5',
+        prompt: buildXiGeneratePrompt(prompt, size),
+        size,
+        n: count,
+        quality,
+        output_format: 'png'
+      };
+      if (style) payload.style = style;
       const response = await withTimeout(fetch(buildXiImageUrl('/v1/images/generations'), {
         method: 'POST',
         signal: controller.signal,
         headers: buildXiImageHeaders({ Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }),
-        body: JSON.stringify({
-          model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5',
-          prompt: buildXiGeneratePrompt(prompt, size),
-          size,
-          n: count,
-          quality,
-          output_format: 'png'
-        })
+        body: JSON.stringify(payload)
       }), timeoutMs, timeoutMessage('生图请求', timeoutMs), () => controller.abort());
       const headersAtMs = Date.now() - startedAt;
       const text = await withTimeout(response.text(), timeoutMs, timeoutMessage('生图结果下载', timeoutMs), () => controller.abort());
@@ -150,7 +152,7 @@ function createXiImageProvider() {
     throw lastError;
   }
 
-  async function callXiXuEditOnce({ prompt, size, count, quality, sourceFiles, promptOverride }, attempt = 1) {
+  async function callXiXuEditOnce({ prompt, size, count, quality, style, sourceFiles, promptOverride }, attempt = 1) {
     const apiKey = getXiImageApiKey();
     if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
@@ -167,6 +169,7 @@ function createXiImageProvider() {
       form.append('size', size);
       form.append('n', String(count));
       form.append('quality', quality);
+      if (style) form.append('style', style);
       form.append('output_format', 'png');
       console.log('gpt-image-codex 改图请求:', JSON.stringify({
         size, quality, count,

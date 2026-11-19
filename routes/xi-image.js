@@ -2,7 +2,7 @@ const express = require('express');
 const { POINTS } = require('../config/points');
 const { getSourceImageFilename, normalizeSourceImageFilename } = require('../services/prompt-service');
 const { getXiImageApiKey } = require('../services/upstream-http');
-const { assertXiImageSizeSupported, parseXiImageSize } = require('../services/xi-image-size');
+const { assertXiImageSizeSupported, normalizeXiQuality, parseXiImageSize } = require('../services/xi-image-size');
 const {
   getLocalImageDimensions,
   getUploadedImageDimensions,
@@ -50,7 +50,8 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const count = parseImageCount(req.body.count, 5);
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const operationKey = clientTaskId ? `xi-sync-generate:${req.userId}:${clientTaskId}` : null;
-    const quality = provider.fixedQuality;
+    const quality = normalizeXiQuality(req.body.quality) || provider.fixedQuality;
+    const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     try { assertXiImageSizeSupported(size); } catch (error) {
       return res.status(error.statusCode || 400).json({ error: error.message });
@@ -71,7 +72,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
 
     const startedAtMs = Date.now();
     try {
-      const result = await provider.callXiXuGenerate({ prompt, size, count, quality });
+      const result = await provider.callXiXuGenerate({ prompt, size, count, quality, style });
       const localUrls = result.localUrls;
       const upstreamMeta = result.upstreamMeta || {};
       const outputDimensions = getLocalImageDimensions(localUrls);
@@ -116,7 +117,8 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const count = parseImageCount(req.body.count, 5);
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const operationKey = clientTaskId ? `xi-sync-edit:${req.userId}:${clientTaskId}` : null;
-    const quality = provider.fixedQuality;
+    const quality = normalizeXiQuality(req.body.quality) || provider.fixedQuality;
+    const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     const sourceFiles = Array.isArray(req.files) ? req.files : [];
     sourceFiles.forEach((file, index) => { file.originalname = normalizeSourceImageFilename(file.originalname, index); });
     if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
@@ -144,6 +146,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         size,
         count,
         quality,
+        style,
         sourceFiles: sourceFiles.map((file) => ({
           buffer: Buffer.from(file.buffer),
           mimetype: file.mimetype,

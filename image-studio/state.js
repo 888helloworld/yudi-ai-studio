@@ -215,7 +215,8 @@
       '1152x2048': '941x1672'
     };
     const DEFAULT_SIZE = '1024x1536';
-    const DEFAULT_QUALITY = 'medium';
+    const DEFAULT_QUALITY = 'hd';
+    const DEFAULT_STYLE = 'vivid';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
     // 服务端单图上限为 10MB；留出余量避免 multipart 编码和单位差异导致临界值失败。
@@ -277,6 +278,7 @@
       taskSeq: 0,
       selectedSize: DEFAULT_SIZE,
       quality: DEFAULT_QUALITY,
+      style: DEFAULT_STYLE,
       reverseMode: 'general',
       sourceFiles: [null, null, null],
       sourcePreviewUrls: ['', '', ''],

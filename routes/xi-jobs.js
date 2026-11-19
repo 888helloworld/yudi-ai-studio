@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const { POINTS } = require('../config/points');
 const { getSourceImageFilename, normalizeSourceImageFilename } = require('../services/prompt-service');
-const { assertXiImageSizeSupported, parseXiImageSize } = require('../services/xi-image-size');
+const { assertXiImageSizeSupported, normalizeXiQuality, parseXiImageSize } = require('../services/xi-image-size');
 const { getLocalUploadPath, getUploadedImageDimensions, saveUploadedSourceImages } = require('../utils/image-storage');
 const { normalizeClientTaskId, parseImageCount, sanitizeInput } = require('../utils/request-utils');
 
@@ -23,6 +23,8 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     const prompt = sanitizeInput(req.body.prompt, 3000);
     const size = parseXiImageSize(req.body.size);
     const count = parseImageCount(req.body.count, 5);
+    const quality = normalizeXiQuality(req.body.quality) || fixedQuality;
+    const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     try { assertXiImageSizeSupported(size); } catch (error) {
@@ -30,7 +32,7 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     }
     const costPoints = POINTS.image * count;
     try {
-      const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality: fixedQuality, costPoints, clientTaskId });
+      const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality, style, costPoints, clientTaskId });
       return res.json({ success: true, job: manager.serializeJob(job) });
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message || '任务创建失败' });
@@ -41,6 +43,8 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     const prompt = sanitizeInput(req.body.prompt, 3000);
     const size = parseXiImageSize(req.body.size);
     const count = parseImageCount(req.body.count, 5);
+    const quality = normalizeXiQuality(req.body.quality) || fixedQuality;
+    const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const sourceFiles = Array.isArray(req.files) ? req.files : [];
     sourceFiles.forEach((file, index) => { file.originalname = normalizeSourceImageFilename(file.originalname, index); });
@@ -64,7 +68,8 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
         prompt,
         size,
         count,
-        quality: fixedQuality,
+        quality,
+        style,
         sourceFiles: sourceFiles.map((file) => ({
           buffer: Buffer.from(file.buffer),
           mimetype: file.mimetype,

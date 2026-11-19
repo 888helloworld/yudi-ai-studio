@@ -157,6 +157,8 @@
         `#${task.index}`,
         task.status === 'done' ? `完成 ${getTaskDurationText(task)}` : '',
         getLabeledImageSize(displaySize),
+        task.quality === 'hd' ? '高清' : (task.quality === 'standard' ? '标清' : ''),
+        task.style === 'natural' ? '自然写实' : '',
         actualSize && actualSize !== displaySize ? `实际${actualSize}` : '',
         task.detailSuite ? task.detailSuite.moduleTitle : '',
         Number(task.count) > 1 ? `${task.count} 张` : '',
@@ -191,6 +193,12 @@
       sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
+      });
+      document.querySelectorAll('#qualitySelector .opt-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.quality === (task.quality || DEFAULT_QUALITY));
+      });
+      document.querySelectorAll('#styleSelector .opt-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.style === (task.style || DEFAULT_STYLE));
       });
       updateGenerateButton();
       updateEstimate();
