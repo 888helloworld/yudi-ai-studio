@@ -28,6 +28,7 @@ server.err.log
 .vscode/
 .claude/
 .workbuddy/
+.playwright-cli/
 
 # 本地测试/实验副本（可能含 .env、data.db，绝不可提交）
 测试/
