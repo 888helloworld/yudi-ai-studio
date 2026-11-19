@@ -86,8 +86,7 @@ function createXiImageProvider() {
         prompt: buildXiGeneratePrompt(prompt, size),
         size,
         n: count,
-        quality,
-        output_format: 'png'
+        quality
       };
       if (style) payload.style = style;
       const response = await withTimeout(fetch(buildXiImageUrl('/v1/images/generations'), {
@@ -107,6 +106,13 @@ function createXiImageProvider() {
       }
       const imageUrls = parseXiXuImages(data);
       if (imageUrls.length === 0) throw new Error('上游未返回图片');
+      imageUrls.sort((a, b) => {
+        const aIsGif = /\.gif($|\?)/i.test(a);
+        const bIsGif = /\.gif($|\?)/i.test(b);
+        if (aIsGif && !bIsGif) return -1;
+        if (!aIsGif && bIsGif) return 1;
+        return 0;
+      });
       const expectedCount = Math.max(Number(count) || 1, 1);
       const safeUrls = imageUrls.slice(0, expectedCount);
       const localUrls = await saveXiXuImages(safeUrls, `xixu_gen_${size.replace('x', '_')}`, size);
@@ -172,7 +178,6 @@ function createXiImageProvider() {
       form.append('n', String(count));
       form.append('quality', quality);
       if (style) form.append('style', style);
-      form.append('output_format', 'png');
       console.log('gpt-image-codex 改图请求:', JSON.stringify({
         size, quality, count,
         sourceDimensions: getUploadedImageDimensions(sourceFiles),
@@ -196,6 +201,13 @@ function createXiImageProvider() {
       }
       const imageUrls = parseXiXuImages(data);
       if (imageUrls.length === 0) throw new Error('上游未返回图片');
+      imageUrls.sort((a, b) => {
+        const aIsGif = /\.gif($|\?)/i.test(a);
+        const bIsGif = /\.gif($|\?)/i.test(b);
+        if (aIsGif && !bIsGif) return -1;
+        if (!aIsGif && bIsGif) return 1;
+        return 0;
+      });
       const expectedCount = Math.max(Number(count) || 1, 1);
       const safeUrls = imageUrls.slice(0, expectedCount);
       const localUrls = await saveXiXuImages(safeUrls, `xixu_edit_${size.replace('x', '_')}`, size);
