@@ -82,7 +82,7 @@ function createXiImageProvider() {
     const startedAt = Date.now();
     try {
       const payload = {
-        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5',
+        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
         prompt: buildXiGeneratePrompt(prompt, size),
         size,
         n: count,
@@ -166,7 +166,7 @@ function createXiImageProvider() {
       requestSourceFiles.forEach((file, index) => {
         form.append('image', new Blob([file.buffer], { type: file.mimetype }), file.originalname || getSourceImageFilename(index));
       });
-      form.append('model', process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5');
+      form.append('model', process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6');
       form.append('prompt', promptOverride || buildXiEditPrompt(prompt, sourceFiles, size));
       form.append('size', size);
       form.append('n', String(count));

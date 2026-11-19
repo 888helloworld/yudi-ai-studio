@@ -43,7 +43,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
       content: manager.buildJobHistoryContent(job, 'queued')
     }),
     runJob: (job) => runXiJob(job),
-    getModel: () => process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5'
+    getModel: () => process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6'
   });
 
   function recordSuspendedTime(job) {
