@@ -41,14 +41,6 @@
       });
     });
 
-    document.querySelectorAll('#styleSelector .opt-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#styleSelector .opt-btn').forEach((item) => item.classList.remove('active'));
-        btn.classList.add('active');
-        state.style = btn.dataset.style;
-      });
-    });
-
     document.querySelectorAll('#batchCountPicker .count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('#batchCountPicker .count-btn').forEach((item) => item.classList.remove('active'));

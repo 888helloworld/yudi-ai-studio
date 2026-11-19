@@ -28,7 +28,6 @@
           size: state.selectedSize,
           count,
           quality: state.quality,
-          style: state.style || 'vivid',
           sourceFiles: selectedSources.map((source) => source.file),
           sourcePreviewUrls: taskSourcePreviewUrls,
           localSourcePreviewUrls: taskSourcePreviewUrls,
