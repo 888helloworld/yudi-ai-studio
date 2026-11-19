@@ -227,6 +227,9 @@
       const text = String(message || '').trim();
       if (!text) return '';
       const lower = text.toLowerCase();
+      if (lower.includes('disk budget exceeded') || lower.includes('capacity exceeded')) {
+        return '上游图片服务器临时磁盘空间已满（disk budget exceeded），请稍后重试或联系服务商清理磁盘。本次没有生成图片，积分已退回。';
+      }
       if (text.includes('系统已跳过这张')) {
         return '图片服务连接中断，请稍后重试。本次没有生成图片，积分已退回。';
       }
