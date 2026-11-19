@@ -74,7 +74,7 @@ function createXiImageProvider() {
     }));
   }
 
-  async function callXiXuGenerateOnce({ prompt, size, count, quality, style }, attempt = 1) {
+  async function callXiXuGenerateOnce({ prompt, size, count, quality, style, model }, attempt = 1) {
     const apiKey = getXiImageApiKey();
     if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
@@ -82,7 +82,7 @@ function createXiImageProvider() {
     const startedAt = Date.now();
     try {
       const payload = {
-        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
+        model: model || process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
         prompt: buildXiGeneratePrompt(prompt, size),
         size,
         n: count,
@@ -160,7 +160,7 @@ function createXiImageProvider() {
     throw lastError;
   }
 
-  async function callXiXuEditOnce({ prompt, size, count, quality, style, sourceFiles, promptOverride }, attempt = 1) {
+  async function callXiXuEditOnce({ prompt, size, count, quality, style, sourceFiles, promptOverride, model }, attempt = 1) {
     const apiKey = getXiImageApiKey();
     if (!apiKey) throw new Error('gpt-image-codex 图片服务未配置');
     const controller = new AbortController();
@@ -172,7 +172,7 @@ function createXiImageProvider() {
       requestSourceFiles.forEach((file, index) => {
         form.append('image', new Blob([file.buffer], { type: file.mimetype }), file.originalname || getSourceImageFilename(index));
       });
-      form.append('model', process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6');
+      form.append('model', model || process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6');
       form.append('prompt', promptOverride || buildXiEditPrompt(prompt, sourceFiles, size));
       form.append('size', size);
       form.append('n', String(count));

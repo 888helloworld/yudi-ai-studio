@@ -28,6 +28,7 @@
           size: state.selectedSize,
           count,
           quality: state.quality,
+          model: state.model || DEFAULT_MODEL,
           sourceFiles: selectedSources.map((source) => source.file),
           sourcePreviewUrls: taskSourcePreviewUrls,
           localSourcePreviewUrls: taskSourcePreviewUrls,
@@ -62,6 +63,10 @@
       if (parallelismEl) parallelismEl.value = DEFAULT_PARALLELISM;
       state.selectedSize = DEFAULT_SIZE;
       state.quality = DEFAULT_QUALITY;
+      state.model = DEFAULT_MODEL;
+      document.querySelectorAll('#modelSelector .opt-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.model === DEFAULT_MODEL);
+      });
       document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.size === DEFAULT_SIZE);
       });
@@ -135,6 +140,7 @@
           size: task.size,
           count: task.count,
           quality: task.quality,
+          model: task.model,
           clientTaskId: task.id,
           clientRequestId: task.id
         })
@@ -158,6 +164,7 @@
       form.append('size', task.size);
       form.append('count', String(task.count));
       form.append('quality', task.quality);
+      if (task.model) form.append('model', task.model);
       form.append('clientTaskId', task.id);
       form.append('clientRequestId', task.id);
       (task.sourceFiles || []).forEach((file, index) => {
@@ -229,6 +236,7 @@
         task.actualQuality = job.upstreamMeta?.actual_quality || task.actualQuality || '';
         task.actualSize = job.upstreamMeta?.actual_size || task.actualSize || '';
         task.billingOutputTokens = job.upstreamMeta?.billing_output_tokens || task.billingOutputTokens || 0;
+        task.model = job.model || task.model;
         task.error = formatTaskError(job.error || '');
         task.costPoints = job.costPoints;
         task.refundedPoints = job.refundedPoints;

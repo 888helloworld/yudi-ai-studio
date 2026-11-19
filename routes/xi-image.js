@@ -10,9 +10,15 @@ const {
 } = require('../utils/image-storage');
 const { formatBeijingDateTime, normalizeClientTaskId, parseImageCount, sanitizeInput } = require('../utils/request-utils');
 
-function buildImageHistoryContent({ upstreamMeta = {}, quality, size, count, durationMs, outputDimensions, extra = {} }) {
+const ALLOWED_MODELS = ['gpt-image-2.6', 'gpt-image-2.5', 'gpt-image-2.6-sunburst'];
+function normalizeXiModel(input) {
+  const trimmed = String(input || '').trim().toLowerCase();
+  return ALLOWED_MODELS.includes(trimmed) ? trimmed : (process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6');
+}
+
+function buildImageHistoryContent({ upstreamMeta = {}, quality, size, count, durationMs, outputDimensions, model, extra = {} }) {
   return JSON.stringify({
-    model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
+    model: model || process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
     quality,
     requested_quality: upstreamMeta.requested_quality || quality,
     actual_quality: upstreamMeta.actual_quality || '',
@@ -51,6 +57,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
     const operationKey = clientTaskId ? `xi-sync-generate:${req.userId}:${clientTaskId}` : null;
     const quality = normalizeXiQuality(req.body.quality) || provider.fixedQuality;
+    const model = normalizeXiModel(req.body.model);
     const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     try { assertXiImageSizeSupported(size); } catch (error) {
@@ -72,7 +79,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
 
     const startedAtMs = Date.now();
     try {
-      const result = await provider.callXiXuGenerate({ prompt, size, count, quality, style });
+      const result = await provider.callXiXuGenerate({ prompt, size, count, quality, style, model });
       const localUrls = result.localUrls;
       const upstreamMeta = result.upstreamMeta || {};
       const outputDimensions = getLocalImageDimensions(localUrls);
@@ -87,7 +94,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
       const historyId = db.addHistory(req.userId, 'image', {
         sub_type: 'xi-generate',
         image_url: JSON.stringify(localUrls),
-        content: buildImageHistoryContent({ upstreamMeta, quality, size, count, durationMs, outputDimensions }),
+        content: buildImageHistoryContent({ upstreamMeta, quality, size, count, durationMs, outputDimensions, model }),
         prompt,
         ratio: size,
         cost_points: actualCost,
@@ -100,7 +107,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         imageUrl: localUrls[0],
         historyId,
         remainingPoints: db.getUserPoints(req.userId),
-        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
+        model,
         upstreamMeta,
         outputDimensions,
         createdAt: formatBeijingDateTime()
@@ -119,6 +126,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
     const operationKey = clientTaskId ? `xi-sync-edit:${req.userId}:${clientTaskId}` : null;
     const quality = normalizeXiQuality(req.body.quality) || provider.fixedQuality;
     const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
+    const model = normalizeXiModel(req.body.model);
     const sourceFiles = Array.isArray(req.files) ? req.files : [];
     sourceFiles.forEach((file, index) => { file.originalname = normalizeSourceImageFilename(file.originalname, index); });
     if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
@@ -147,6 +155,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         count,
         quality,
         style,
+        model,
         sourceFiles: sourceFiles.map((file) => ({
           buffer: Buffer.from(file.buffer),
           mimetype: file.mimetype,
@@ -175,6 +184,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
           count,
           durationMs,
           outputDimensions,
+          model,
           extra: {
             provider: 'xixu',
             fallback_reason: '',
@@ -196,7 +206,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         historyId,
         mode: 'edit',
         remainingPoints: db.getUserPoints(req.userId),
-        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
+        model,
         upstreamMeta,
         sourceDimensions,
         outputDimensions,

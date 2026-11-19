@@ -216,6 +216,7 @@
     };
     const DEFAULT_SIZE = '1024x1536';
     const DEFAULT_QUALITY = 'hd';
+    const DEFAULT_MODEL = 'gpt-image-2.6';
     const DEFAULT_BATCH_COUNT = 1;
     const DEFAULT_PARALLELISM = 10;
     // 服务端单图上限为 10MB；留出余量避免 multipart 编码和单位差异导致临界值失败。
@@ -277,6 +278,7 @@
       taskSeq: 0,
       selectedSize: DEFAULT_SIZE,
       quality: DEFAULT_QUALITY,
+      model: DEFAULT_MODEL,
       reverseMode: 'general',
       sourceFiles: [null, null, null],
       sourcePreviewUrls: ['', '', ''],

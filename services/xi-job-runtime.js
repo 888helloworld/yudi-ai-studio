@@ -148,6 +148,7 @@ function createXiJobRuntime({ db, provider, refundPoints, formatDateTime }) {
             size,
             count,
             quality: provider.fixedQuality,
+            model: meta.model || process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6',
             costPoints,
             sourceFiles,
             sourceFileNames: Array.isArray(meta.sources) ? meta.sources : [],

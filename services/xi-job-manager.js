@@ -35,7 +35,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
     const durationMs = job.finishedAtMs && job.startedAtMs ? job.finishedAtMs - job.startedAtMs : 0;
     return JSON.stringify({
       status,
-      model: getModel(),
+      model: job.model || getModel(),
       provider: job.provider || '',
       fallback_reason: job.fallbackReason || '',
       quality: job.quality,
@@ -117,7 +117,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
         image_url: null,
         content: JSON.stringify({
           status: 'failed',
-          model: getModel(),
+          model: job.model || getModel(),
           provider: job.provider || '',
           fallback_reason: job.fallbackReason || '',
           quality: job.quality,
@@ -257,7 +257,7 @@ function createXiJobManager({ db, maxActiveJobs = Number.POSITIVE_INFINITY, maxJ
       provider: job.provider || '',
       fallbackReason: job.fallbackReason || '',
       remainingPoints: db.getUserPoints(job.userId),
-      model: getModel()
+      model: job.model || getModel()
     };
   }
 

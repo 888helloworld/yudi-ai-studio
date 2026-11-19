@@ -146,3 +146,45 @@ test('Xi 默认不限并发，25个同账号任务立即运行且不被2/4/10/20
   assert.equal(jobs.length, 25);
   assert.ok(jobs.every(job => job.status === 'running'));
 });
+
+test('Xi 任务支持动态指定 model 并在序列化与历史中正确保留', async () => {
+  const user = api.createUser('xi_model_user', 'XiModelPass123');
+  const manager = createXiJobManager({
+    db: api,
+    formatDateTime: () => '12:00',
+    getModel: () => 'gpt-image-2.6',
+    runJob: async (job) => {
+      job.status = 'done';
+      manager.updateJobHistory(job, 'done', ['/uploads/xi/test.png'], 10);
+    }
+  });
+
+  const job25 = manager.createJob(user.id, {
+    mode: 'generate',
+    prompt: '2.5模型测试',
+    size: '1024x1024',
+    count: 1,
+    quality: 'hd',
+    model: 'gpt-image-2.5',
+    costPoints: 10
+  });
+
+  const serialized25 = manager.serializeJob(job25);
+  assert.equal(serialized25.model, 'gpt-image-2.5');
+
+  const history = api.getUserHistory(user.id, { type: 'image' });
+  assert.ok(history.length > 0);
+  const meta = JSON.parse(history[0].content);
+  assert.equal(meta.model, 'gpt-image-2.5');
+
+  const defaultJob = manager.createJob(user.id, {
+    mode: 'generate',
+    prompt: '默认模型测试',
+    size: '1024x1024',
+    count: 1,
+    quality: 'hd',
+    costPoints: 10
+  });
+  const serializedDefault = manager.serializeJob(defaultJob);
+  assert.equal(serializedDefault.model, 'gpt-image-2.6');
+});

@@ -41,6 +41,15 @@
       });
     });
 
+    document.querySelectorAll('#modelSelector .opt-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#modelSelector .opt-btn').forEach((item) => item.classList.remove('active'));
+        btn.classList.add('active');
+        state.model = btn.dataset.model || DEFAULT_MODEL;
+        updateEstimate();
+      });
+    });
+
     document.querySelectorAll('#batchCountPicker .count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('#batchCountPicker .count-btn').forEach((item) => item.classList.remove('active'));

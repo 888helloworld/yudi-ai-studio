@@ -153,8 +153,10 @@
       meta.className = 'xi-task-meta';
       const actualSize = getFirstDimensionSize(task.outputDimensions);
       const displaySize = getDisplayImageSize(task.size, task.outputDimensions);
+      const modelLabel = task.model === 'gpt-image-2.5' ? 'GPT 2.5' : (task.model === 'gpt-image-2.6' ? 'GPT 2.6' : (task.model || ''));
       meta.textContent = [
         `#${task.index}`,
+        modelLabel,
         task.status === 'done' ? `完成 ${getTaskDurationText(task)}` : '',
         getLabeledImageSize(displaySize),
         task.quality === 'hd' ? '高清' : (task.quality === 'standard' ? '标清' : ''),
@@ -195,6 +197,10 @@
       });
       document.querySelectorAll('#qualitySelector .opt-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.quality === (task.quality || DEFAULT_QUALITY));
+      });
+      state.model = task.model || DEFAULT_MODEL;
+      document.querySelectorAll('#modelSelector .opt-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.model === state.model);
       });
       updateGenerateButton();
       updateEstimate();
@@ -337,6 +343,10 @@
         updateBatchCountButtons();
         document.querySelectorAll('#sizeSelector .ratio-btn').forEach((btn) => {
           btn.classList.toggle('active', btn.dataset.size === state.selectedSize);
+        });
+        state.model = task.model || DEFAULT_MODEL;
+        document.querySelectorAll('#modelSelector .opt-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.model === state.model);
         });
         sourceSlots.forEach((_, index) => clearSourceImage(index, { silent: true }));
 

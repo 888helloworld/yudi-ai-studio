@@ -229,6 +229,7 @@
     }
   
     .opt-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+    .opt-picker-2{grid-template-columns:repeat(2,minmax(0,1fr))}
     .opt-btn{min-height:36px;padding:6px 4px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:var(--base)}
     .opt-btn:hover{border-color:rgba(7,193,96,0.35);color:var(--neon-cyan);background:rgba(7,193,96,0.05)}
     .opt-btn.active{border-color:var(--neon-cyan);color:#fff;background:linear-gradient(135deg,rgba(7,193,96,0.2),rgba(7,193,96,0.12));box-shadow:0 0 0 1px rgba(7,193,96,0.15)}
@@ -372,6 +373,18 @@
             </button>
             <button class="opt-btn" type="button" data-quality="standard">
               <span class="opt-main">标准 (Standard)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>GPT 生图版本</label>
+          <div class="opt-picker opt-picker-2" id="modelSelector">
+            <button class="opt-btn active" type="button" data-model="gpt-image-2.6">
+              <span class="opt-main">GPT 2.6 (最新旗舰)</span>
+            </button>
+            <button class="opt-btn" type="button" data-model="gpt-image-2.5">
+              <span class="opt-main">GPT 2.5 (高性价比)</span>
             </button>
           </div>
         </div>

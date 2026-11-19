@@ -59,6 +59,7 @@
             prompt: item.prompt || '',
             size: item.ratio || DEFAULT_SIZE,
             count: imageUrls.length || meta.count || 1,
+            model: meta.model || '',
             quality: meta.quality || 'medium',
             requestedQuality: meta.requested_quality || meta.quality || 'medium',
             actualQuality: meta.actual_quality || '',
@@ -216,6 +217,7 @@
         imageUrls: job.imageUrls || [],
         error: job.error || '',
         historyId: job.historyId || '',
+        model: job.model || '',
         provider: job.provider || '',
         fallbackReason: job.fallbackReason || '',
         saved: Boolean(job.historyId)

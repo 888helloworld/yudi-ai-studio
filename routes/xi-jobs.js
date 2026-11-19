@@ -6,6 +6,12 @@ const { assertXiImageSizeSupported, normalizeXiQuality, parseXiImageSize } = req
 const { getLocalUploadPath, getUploadedImageDimensions, saveUploadedSourceImages } = require('../utils/image-storage');
 const { normalizeClientTaskId, parseImageCount, sanitizeInput } = require('../utils/request-utils');
 
+const ALLOWED_MODELS = ['gpt-image-2.6', 'gpt-image-2.5', 'gpt-image-2.6-sunburst'];
+function normalizeXiModel(input) {
+  const trimmed = String(input || '').trim().toLowerCase();
+  return ALLOWED_MODELS.includes(trimmed) ? trimmed : (process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.6');
+}
+
 function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUploadedImageFiles, manager, chargePoints, refundPoints, fixedQuality }) {
   const router = express.Router();
 
@@ -26,13 +32,14 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     const quality = normalizeXiQuality(req.body.quality) || fixedQuality;
     const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
+    const model = normalizeXiModel(req.body.model);
     if (!prompt) return res.status(400).json({ error: '请输入图片描述' });
     try { assertXiImageSizeSupported(size); } catch (error) {
       return res.status(error.statusCode || 400).json({ error: error.message });
     }
     const costPoints = POINTS.image * count;
     try {
-      const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality, style, costPoints, clientTaskId });
+      const job = manager.createJob(req.userId, { mode: 'generate', prompt, size, count, quality, style, costPoints, clientTaskId, model });
       return res.json({ success: true, job: manager.serializeJob(job) });
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message || '任务创建失败' });
@@ -46,6 +53,7 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
     const quality = normalizeXiQuality(req.body.quality) || fixedQuality;
     const style = ['vivid', 'natural'].includes(String(req.body.style || '').toLowerCase()) ? String(req.body.style).toLowerCase() : '';
     const clientTaskId = normalizeClientTaskId(req.body.clientTaskId || req.body.clientRequestId);
+    const model = normalizeXiModel(req.body.model);
     const sourceFiles = Array.isArray(req.files) ? req.files : [];
     sourceFiles.forEach((file, index) => { file.originalname = normalizeSourceImageFilename(file.originalname, index); });
     if (!prompt) return res.status(400).json({ error: '请输入图片编辑描述' });
@@ -69,6 +77,7 @@ function createXiJobsRouter({ authMiddleware, xiImageLimiter, upload, validateUp
         size,
         count,
         quality,
+        model,
         style,
         sourceFiles: sourceFiles.map((file) => ({
           buffer: Buffer.from(file.buffer),
