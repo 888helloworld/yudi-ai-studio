@@ -12,7 +12,7 @@ const { formatBeijingDateTime, normalizeClientTaskId, parseImageCount, sanitizeI
 
 function buildImageHistoryContent({ upstreamMeta = {}, quality, size, count, durationMs, outputDimensions, extra = {} }) {
   return JSON.stringify({
-    model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
+    model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5',
     quality,
     requested_quality: upstreamMeta.requested_quality || quality,
     actual_quality: upstreamMeta.actual_quality || '',
@@ -99,7 +99,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         imageUrl: localUrls[0],
         historyId,
         remainingPoints: db.getUserPoints(req.userId),
-        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
+        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5',
         upstreamMeta,
         outputDimensions,
         createdAt: formatBeijingDateTime()
@@ -193,7 +193,7 @@ function createXiImageRouter({ authMiddleware, xiImageLimiter, upload, validateU
         historyId,
         mode: 'edit',
         remainingPoints: db.getUserPoints(req.userId),
-        model: process.env.XI_XU_IMAGE_MODEL || 'gpt-image-codex',
+        model: process.env.OPENAI_IMAGE_MODEL || process.env.XI_XU_IMAGE_MODEL || 'gpt-image-2.5',
         upstreamMeta,
         sourceDimensions,
         outputDimensions,

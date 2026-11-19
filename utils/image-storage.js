@@ -14,12 +14,17 @@ const MAX_THUMBNAIL_SOURCE_BYTES = 25 * 1024 * 1024;
 const IMAGE_THUMBNAIL_MAX_SIDE = 480;
 
 const privateAddressBlockList = new net.BlockList();
-[
+const allowProxyFakeIp = /^true$/i.test(process.env.ALLOW_PROXY_FAKE_IP || 'true');
+const ipv4Subnets = [
   ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
   ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
-  ['192.168.0.0', 16], ['198.18.0.0', 15], ['198.51.100.0', 24], ['203.0.113.0', 24],
+  ['192.168.0.0', 16], ['198.51.100.0', 24], ['203.0.113.0', 24],
   ['224.0.0.0', 4], ['240.0.0.0', 4]
-].forEach(([address, prefix]) => privateAddressBlockList.addSubnet(address, prefix, 'ipv4'));
+];
+if (!allowProxyFakeIp) {
+  ipv4Subnets.push(['198.18.0.0', 15]);
+}
+ipv4Subnets.forEach(([address, prefix]) => privateAddressBlockList.addSubnet(address, prefix, 'ipv4'));
 [
   ['::', 128], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8],
   ['2001:db8::', 32]
@@ -77,7 +82,12 @@ async function fetchExternalImage(url, signal) {
     const dispatcher = new Agent({
       connect: {
         lookup(hostname, options, callback) {
-          callback(null, resolved.address, resolved.family);
+          const cb = typeof options === 'function' ? options : callback;
+          if (options && options.all) {
+            cb(null, [{ address: resolved.address, family: resolved.family }]);
+          } else {
+            cb(null, resolved.address, resolved.family);
+          }
         }
       }
     });

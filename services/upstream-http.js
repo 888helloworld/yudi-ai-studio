@@ -15,10 +15,7 @@ function buildXiImageUrl(pathname) {
 }
 
 function getXiImageApiKey() {
-  if (getRequiredEnv('OPENAI_IMAGE_API_KEY') || getRequiredEnv('OPENAI_IMAGE_API_BASE_URL')) {
-    return getRequiredEnv('OPENAI_IMAGE_API_KEY');
-  }
-  return getRequiredEnv('XI_XU_API_KEY');
+  return getRequiredEnv('OPENAI_IMAGE_API_KEY') || getRequiredEnv('XI_XU_API_KEY');
 }
 
 function isOfficialOpenAIImageApi() {
